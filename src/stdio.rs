@@ -54,11 +54,11 @@ where
     }
 
     /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
-    pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send + 'static
+    pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send
     where
         T: Service<String, Response = String> + Send + 'static,
         T::Error: Into<Box<dyn Error + Send + Sync>>,
-        T::Future: Send + 'static,
+        T::Future: Send,
     {
         let (sender, receiver) = mpsc::channel(1);
 

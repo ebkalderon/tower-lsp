@@ -38,9 +38,9 @@ impl ExitReceiver {
     /// Drives the future to completion, only canceling if the [`exit`] notification is received.
     ///
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
-    pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send + 'static
+    pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future<Item = (), Error = ()> + Send,
     {
         self.0
             .then(|_| Ok(()))
