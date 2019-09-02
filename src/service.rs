@@ -28,7 +28,11 @@ impl ExitReceiver {
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        self.0.then(|_| Ok(())).select(future).then(|_| Ok(()))
+        self.0
+            .then(|_| Ok(()))
+            .select(future)
+            .map(|item| item.0)
+            .map_err(|err| err.0)
     }
 }
 
