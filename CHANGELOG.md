@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2019-09-03
+
 ### Added
 
 * Add `ExitedError` for when calling `LspService` after it has already exited.
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * `Server` can now accept any service where `Service::Error` is convertible to
   `Box<dyn Error + Send + Sync>`. This enables compatibility with most Tower
   middleware.
+* Retain error or success from future in `ExitReceiver::run_until_exit()`.
 * Remove `'static` bounds on some `Server` and `ExitReceiver` methods.
 
 [init]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -43,5 +46,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ebkalderon/tower-lsp/releases/tag/v0.1.0

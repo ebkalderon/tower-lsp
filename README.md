@@ -30,8 +30,8 @@ This library (`tower-lsp`) provides a simple implementation of the Language
 Server Protocol (LSP) that makes it easy to write your own language server. It
 consists of three parts:
 
-* The `LanguageServer` trait, which defines the behavior of your language server.
-* The asynchronous `LspService` delegate, which wraps your language server
+* The `LanguageServer` trait which defines the behavior of your language server.
+* The asynchronous `LspService` delegate which wraps your language server
   implementation and defines the behavior of the protocol.
 * A `Server` which spawns the `LspService` and processes requests and responses
   over stdin and stdout.
