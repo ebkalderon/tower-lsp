@@ -135,7 +135,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didOpen
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams);
 
-    /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
+    /// The [`textDocument/didChange`] notification is sent from the client to the server to signal
     /// changes to a text document.
     ///
     /// This notification will contain a distinct version tag and a list of edits made to the
