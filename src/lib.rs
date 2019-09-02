@@ -70,6 +70,7 @@
 //! ```
 
 #![deny(missing_debug_implementations)]
+#![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
 pub extern crate lsp_types;
@@ -94,8 +95,11 @@ mod stdio;
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
 pub trait LanguageServer: Send + Sync + 'static {
+    /// Response returned on requested shutdown.
     type ShutdownFuture: Future<Item = (), Error = Error> + Send;
+    /// Response returned when a document highlight action is requested.
     type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
+    /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
 
     /// The [`initialize`] request is the first request sent from the client to the server.
