@@ -4,12 +4,12 @@ on: [push]
 
 jobs:
   build:
-    name: Test on Rust ${{ matrix.rust_version }}
+    name: Rust ${{ matrix.rust-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        rust-version: [1.33.0, beta, nightly]
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust-version: [1.33.0, beta, nightly]
 
     steps:
     - uses: hecrj/setup-rust-action@master
