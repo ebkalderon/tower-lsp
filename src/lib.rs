@@ -95,7 +95,7 @@ mod stdio;
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
 pub trait LanguageServer: Send + Sync + 'static {
-    /// Response returned on requested shutdown.
+    /// Response returned when a server shutdown is requested.
     type ShutdownFuture: Future<Item = (), Error = Error> + Send;
     /// Response returned when a document highlight action is requested.
     type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
