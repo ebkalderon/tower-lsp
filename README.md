@@ -1,13 +1,15 @@
 # tower-lsp
 
-[![Build Status][s1]][gh] [![Crates.io][s2]][ci] [![Documentation][s3]][docs]
+[![Build Status][build-badge]][build-url]
+[![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 
-[s1]: https://github.com/ebkalderon/tower-lsp/workflows/rust/badge.svg
-[gh]: https://github.com/ebkalderon/tower-lsp/actions
-[s2]: https://img.shields.io/crates/v/tower-lsp.svg
-[ci]: https://crates.io/crates/tower-lsp
-[s3]: https://img.shields.io/badge/docs-master-blue.svg
-[docs]: https://docs.rs/tower-lsp
+[build-badge]: https://github.com/ebkalderon/tower-lsp/workflows/rust/badge.svg
+[build-url]: https://github.com/ebkalderon/tower-lsp/actions
+[crates-badge]: https://img.shields.io/crates/v/tower-lsp.svg
+[crates-url]: https://crates.io/crates/tower-lsp
+[docs-badge]: https://docs.rs/tower-lsp/badge.svg
+[docs-url]: https://docs.rs/tower-lsp
 
 [Language Server Protocol] implementation for Rust based on [Tower].
 
