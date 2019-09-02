@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* Add `ExitedError` for when calling `LspService` after it has already exited.
+
+### Changed
+
+* Language server now returns server error code `-32002` if any method is called
+  before `initialize` request is received, [as per the spec][init].
+* `LspService` sets `Service::Error` to `ExitedError`.
+* `Server` can now accept any service where `Service::Error` is convertible to
+  `Box<dyn Error + Send + Sync>`. This enables compatibility with most Tower
+  middleware.
+* Remove `'static` bounds on some `Server` and `ExitReceiver` methods.
+
+[init]: https://microsoft.github.io/language-server-protocol/specification#initialize
+
 ## [0.1.0] - 2019-09-02
 
 ### Added
