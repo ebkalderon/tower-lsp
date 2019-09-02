@@ -107,7 +107,7 @@ pub trait LanguageServerCore {
     #[rpc(name = "initialized", raw_params)]
     fn initialized(&self, params: Params);
 
-    #[rpc(name = "shutdown", returns = "()")]
+    #[rpc(name = "shutdown")]
     fn shutdown(&self) -> Self::ShutdownFuture;
 
     // Text synchronization
