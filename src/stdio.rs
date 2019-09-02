@@ -1,5 +1,7 @@
 //! Asynchronous `tower` server with an stdio transport.
 
+use std::error::Error;
+
 use futures::future::{Empty, IntoStream};
 use futures::sync::mpsc;
 use futures::{future, Future, Poll, Sink, Stream};
@@ -55,6 +57,7 @@ where
     pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send + 'static
     where
         T: Service<String, Response = String> + Send + 'static,
+        T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(1);
@@ -78,6 +81,7 @@ where
                     let sender = sender.clone();
                     service
                         .call(line)
+                        .map_err(|e| error!("{}", e.into()))
                         .and_then(move |resp| sender.send(resp).map_err(|_| unreachable!()))
                         .then(move |_| Ok(service))
                 })
@@ -119,7 +123,7 @@ mod tests {
 
     impl Service<String> for MockService {
         type Response = String;
-        type Error = ();
+        type Error = String;
         type Future = FutureResult<Self::Response, Self::Error>;
 
         fn poll_ready(&mut self) -> Poll<(), Self::Error> {
