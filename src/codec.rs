@@ -133,7 +133,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn round_trip() {
+    fn encode_and_decode() {
         let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
         let encoded = format!("Content-Length: {}\r\n\r\n{}", decoded.len(), decoded);
 
