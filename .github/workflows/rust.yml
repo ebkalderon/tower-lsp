@@ -17,7 +17,9 @@ jobs:
         rust-version: ${{ matrix.rust-version }}
     - uses: actions/checkout@v1
     - name: Check formatting
-      run: cargo fmt --all -- --check
+      run: |
+        rustup component add rustfmt
+        cargo fmt --all -- --check
     - name: Build
       run: cargo build --all --verbose
     - name: Run tests
