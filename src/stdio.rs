@@ -20,8 +20,8 @@ pub struct Server<I, O, S = Nothing> {
 
 impl<I, O> Server<I, O, Nothing>
 where
-    I: AsyncRead + Send,
-    O: AsyncWrite + Send,
+    I: AsyncRead + Send + 'static,
+    O: AsyncWrite + Send + 'static,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
