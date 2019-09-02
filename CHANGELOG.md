@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `initialized`
   * `shutdown`
   * `exit`
+  * `window/showMessage`
+  * `window/logMessage`
+  * `textDocument/publishDiagnostics`
   * `textDocument/didOpen`
   * `textDocument/didChange`
   * `textDocument/didSave`
