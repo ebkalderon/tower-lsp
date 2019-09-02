@@ -1,5 +1,7 @@
 //! Service abstraction for language servers.
 
+use std::error::Error;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -13,6 +15,18 @@ use tower_service::Service;
 
 use super::delegate::{Delegate, LanguageServerCore, MessageStream};
 use super::LanguageServer;
+
+/// Error that occurs when attempting to call the language server after it has already exited.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExitedError;
+
+impl Display for ExitedError {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        write!(fmt, "language server has exited")
+    }
+}
+
+impl Error for ExitedError {}
 
 /// Future which never resolves until the [`exit`] notification is received.
 ///
@@ -115,7 +129,7 @@ impl LspService {
 
 impl Service<String> for LspService {
     type Response = String;
-    type Error = ();
+    type Error = ExitedError;
     type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error> + Send>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
@@ -128,14 +142,19 @@ impl Service<String> for LspService {
 
     fn call(&mut self, request: String) -> Self::Future {
         if self.stopped.load(Ordering::SeqCst) {
-            Box::new(future::err(()))
+            Box::new(future::err(ExitedError))
         } else {
-            Box::new(self.handler.handle_request(&request).map(move |result| {
-                result.unwrap_or_else(|| {
-                    trace!("request produced no response: {}", request);
-                    String::new()
-                })
-            }))
+            Box::new(
+                self.handler
+                    .handle_request(&request)
+                    .map_err(|_| unreachable!())
+                    .map(move |result| {
+                        result.unwrap_or_else(|| {
+                            trace!("request produced no response: {}", request);
+                            String::new()
+                        })
+                    }),
+            )
         }
     }
 }
@@ -196,6 +215,6 @@ mod tests {
         assert_eq!(service.call(exit).wait(), Ok("".to_owned()));
 
         assert_eq!(service.poll_ready(), Ok(Async::NotReady));
-        assert_eq!(service.call(initialized).wait(), Err(()));
+        assert_eq!(service.call(initialized).wait(), Err(ExitedError));
     }
 }
