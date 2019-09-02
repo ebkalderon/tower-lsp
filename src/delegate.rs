@@ -4,8 +4,8 @@ use std::fmt::Display;
 
 use futures::sync::mpsc::{self, Receiver, Sender};
 use futures::{future, Future, Poll, Sink, Stream};
-use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{BoxFuture, Error, Result};
+use jsonrpc_core::types::{request, Params, Version};
+use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
 use lsp_types::notification::{LogMessage, Notification, PublishDiagnostics, ShowMessage};
@@ -38,8 +38,9 @@ impl Printer {
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        let params = PublishDiagnosticsParams::new(uri, diagnostics);
-        self.send_notification(PublishDiagnostics::METHOD, params);
+        self.send_message(make_notification::<PublishDiagnostics>(
+            PublishDiagnosticsParams::new(uri, diagnostics),
+        ));
     }
 
     /// Notifies the client to log a particular message.
@@ -48,13 +49,10 @@ impl Printer {
     ///
     /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
     pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification(
-            LogMessage::METHOD,
-            LogMessageParams {
-                typ,
-                message: message.to_string(),
-            },
-        );
+        self.send_message(make_notification::<LogMessage>(LogMessageParams {
+            typ,
+            message: message.to_string(),
+        }));
     }
 
     /// Notifies the client to display a particular message in the user interface.
@@ -63,33 +61,37 @@ impl Printer {
     ///
     /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
     pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification(
-            ShowMessage::METHOD,
-            ShowMessageParams {
-                typ,
-                message: message.to_string(),
-            },
-        );
+        self.send_message(make_notification::<ShowMessage>(ShowMessageParams {
+            typ,
+            message: message.to_string(),
+        }));
     }
 
-    fn send_notification<S: Serialize>(&self, method: &str, params: S) {
-        match serde_json::to_string(&params) {
-            Err(err) => error!("failed to serialize message for `{}`: {}", method, err),
-            Ok(params) => {
-                let message = format!(
-                    r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
-                    method, params
-                );
-                tokio_executor::spawn(
-                    self.0
-                        .clone()
-                        .send(message)
-                        .map(|_| ())
-                        .map_err(|_| error!("failed to send message")),
-                );
-            }
-        }
+    fn send_message(&self, message: String) {
+        tokio_executor::spawn(
+            self.0
+                .clone()
+                .send(message)
+                .map(|_| ())
+                .map_err(|_| error!("failed to send message")),
+        );
     }
+}
+
+/// Constructs a JSON-RPC notification from its corresponding LSP type.
+fn make_notification<N>(params: N::Params) -> String
+where
+    N: Notification,
+    N::Params: Serialize,
+{
+    let output = serde_json::to_string(&params).unwrap();
+    let params = serde_json::from_str(&output).unwrap();
+    serde_json::to_string(&request::Notification {
+        jsonrpc: Some(Version::V2),
+        method: N::METHOD.to_owned(),
+        params,
+    })
+    .expect("LSP notifications must be valid JSON")
 }
 
 /// JSON-RPC interface used by the Language Server Protocol.
@@ -100,7 +102,7 @@ pub trait LanguageServerCore {
     // Initialization
 
     #[rpc(name = "initialize", raw_params)]
-    fn initialize(&self, params: Params) -> Result<InitializeResult>;
+    fn initialize(&self, params: Params) -> RpcResult<InitializeResult>;
 
     #[rpc(name = "initialized", raw_params)]
     fn initialized(&self, params: Params);
@@ -155,7 +157,7 @@ impl<T: LanguageServer> Delegate<T> {
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     type ShutdownFuture = T::ShutdownFuture;
 
-    fn initialize(&self, params: Params) -> Result<InitializeResult> {
+    fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         trace!("received `initialize` request: {:?}", params);
         let params: InitializeParams = params.parse()?;
         self.server.initialize(params)
@@ -237,18 +239,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Result;
     use tokio::runtime::current_thread;
 
     use super::*;
-
-    fn notification<S: Serialize>(method: &str, params: S) -> Result<String> {
-        let params = serde_json::to_string(&params)?;
-        Ok(format!(
-            r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
-            method, params
-        ))
-    }
 
     fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
         let (tx, rx) = mpsc::channel(1);
@@ -274,39 +267,29 @@ mod tests {
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
-        let expected = notification(PublishDiagnostics::METHOD, params).unwrap();
+        let expected = make_notification::<PublishDiagnostics>(params);
 
         assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
     }
 
     #[test]
     fn log_message() {
-        let typ = MessageType::Log;
-        let message = "foo bar".to_owned();
-        let expected = notification(
-            LogMessage::METHOD,
-            LogMessageParams {
-                typ,
-                message: message.clone(),
-            },
-        )
-        .unwrap();
+        let (typ, message) = (MessageType::Log, "foo bar".to_owned());
+        let expected = make_notification::<LogMessage>(LogMessageParams {
+            typ,
+            message: message.clone(),
+        });
 
         assert_printer_messages(|p| p.log_message(typ, message), expected);
     }
 
     #[test]
     fn show_message() {
-        let typ = MessageType::Log;
-        let message = "foo bar".to_owned();
-        let expected = notification(
-            ShowMessage::METHOD,
-            ShowMessageParams {
-                typ,
-                message: message.clone(),
-            },
-        )
-        .unwrap();
+        let (typ, message) = (MessageType::Log, "foo bar".to_owned());
+        let expected = make_notification::<ShowMessage>(ShowMessageParams {
+            typ,
+            message: message.clone(),
+        });
 
         assert_printer_messages(|p| p.show_message(typ, message), expected);
     }
