@@ -135,3 +135,63 @@ impl Service<String> for LspService {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use jsonrpc_core::{BoxFuture, Result};
+    use lsp_types::*;
+
+    use super::*;
+    use crate::Printer;
+
+    #[derive(Debug, Default)]
+    struct Mock;
+
+    impl LanguageServer for Mock {
+        type ShutdownFuture = BoxFuture<()>;
+        type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+        type HoverFuture = BoxFuture<Option<Hover>>;
+
+        fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+            Ok(InitializeResult::default())
+        }
+
+        fn initialized(&self, _: &Printer, _: InitializedParams) {}
+
+        fn shutdown(&self) -> Self::ShutdownFuture {
+            Box::new(future::ok(()))
+        }
+
+        fn did_open(&self, _: &Printer, _: DidOpenTextDocumentParams) {}
+
+        fn did_change(&self, _: &Printer, _: DidChangeTextDocumentParams) {}
+
+        fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
+
+        fn did_close(&self, _: &Printer, _: DidCloseTextDocumentParams) {}
+
+        fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+            Box::new(future::ok(None))
+        }
+    }
+
+    #[test]
+    fn exit_notification() {
+        let (mut service, _) = LspService::new(Mock::default());
+
+        let initialized = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#.to_owned();
+        assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
+        assert_eq!(service.call(initialized.clone()).wait(), Ok("".to_owned()));
+
+        let exit = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_owned();
+        assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
+        assert_eq!(service.call(exit).wait(), Ok("".to_owned()));
+
+        assert_eq!(service.poll_ready(), Ok(Async::NotReady));
+        assert_eq!(service.call(initialized).wait(), Err(()));
+    }
+}

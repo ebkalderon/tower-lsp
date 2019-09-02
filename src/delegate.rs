@@ -234,3 +234,80 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Result;
+    use tokio::runtime::current_thread;
+
+    use super::*;
+
+    fn notification<S: Serialize>(method: &str, params: S) -> Result<String> {
+        let params = serde_json::to_string(&params)?;
+        Ok(format!(
+            r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
+            method, params
+        ))
+    }
+
+    fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
+        let (tx, rx) = mpsc::channel(1);
+        let printer = Printer(tx);
+        let messages = MessageStream(rx);
+
+        current_thread::block_on_all(
+            future::lazy(move || {
+                f(printer);
+                messages.collect()
+            })
+            .and_then(move |messages| {
+                assert_eq!(messages, vec![expected]);
+                Ok(())
+            }),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn publish_diagnostics() {
+        let uri: Url = "file:///path/to/file".parse().unwrap();
+        let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
+
+        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
+        let expected = notification(PublishDiagnostics::METHOD, params).unwrap();
+
+        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
+    }
+
+    #[test]
+    fn log_message() {
+        let typ = MessageType::Log;
+        let message = "foo bar".to_owned();
+        let expected = notification(
+            LogMessage::METHOD,
+            LogMessageParams {
+                typ,
+                message: message.clone(),
+            },
+        )
+        .unwrap();
+
+        assert_printer_messages(|p| p.log_message(typ, message), expected);
+    }
+
+    #[test]
+    fn show_message() {
+        let typ = MessageType::Log;
+        let message = "foo bar".to_owned();
+        let expected = notification(
+            ShowMessage::METHOD,
+            ShowMessageParams {
+                typ,
+                message: message.clone(),
+            },
+        )
+        .unwrap();
+
+        assert_printer_messages(|p| p.show_message(typ, message), expected);
+    }
+}

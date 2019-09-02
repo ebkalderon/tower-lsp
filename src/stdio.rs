@@ -20,8 +20,8 @@ pub struct Server<I, O, S = Nothing> {
 
 impl<I, O> Server<I, O, Nothing>
 where
-    I: AsyncRead + Send + 'static,
-    O: AsyncWrite + Send + 'static,
+    I: AsyncRead + Send,
+    O: AsyncWrite + Send,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
@@ -102,5 +102,67 @@ impl Stream for Nothing {
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.0.poll()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use futures::{future::FutureResult, stream, Async};
+    use tokio::runtime::current_thread;
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct MockService;
+
+    impl Service<String> for MockService {
+        type Response = String;
+        type Error = ();
+        type Future = FutureResult<Self::Response, Self::Error>;
+
+        fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+            Ok(Async::Ready(()))
+        }
+
+        fn call(&mut self, request: String) -> Self::Future {
+            future::ok(request)
+        }
+    }
+
+    fn mock_stdio() -> (Cursor<Box<[u8]>>, Cursor<Box<[u8]>>) {
+        let message = r#"{"jsonrpc":"2.0","method":"initialized"}"#;
+        let stdin = format!("Content-Length: {}\r\n\r\n{}", message.len(), message);
+        (
+            Cursor::new(stdin.into_bytes().into_boxed_slice()),
+            Cursor::new(Box::new([])),
+        )
+    }
+
+    // FIXME: Cannot inspect the input/output after serving because the server currently requires
+    // the `stdin` and `stdout` handles to be `'static`, thereby requiring owned values and
+    // disallowing `&` or `&mut` handles. This could potentially be fixed once async/await is
+    // ready, or perhaps if we write a mock stdio type that is cloneable and has internal
+    // synchronization.
+
+    #[test]
+    fn serves_on_stdio() {
+        let (stdin, stdout) = mock_stdio();
+        let server = Server::new(stdin, stdout).serve(MockService);
+        current_thread::block_on_all(server).expect("failed to decode/encode message");
+    }
+
+    #[test]
+    fn interleaves_messages() {
+        let message = r#"{"jsonrpc":"2.0","method":"initialized"}"#.to_owned();
+        let messages = stream::iter_ok(vec![message]);
+
+        let (stdin, stdout) = mock_stdio();
+        let server = Server::new(stdin, stdout)
+            .interleave(messages)
+            .serve(MockService);
+
+        current_thread::block_on_all(server).expect("failed to decode/encode message");
     }
 }
