@@ -91,8 +91,8 @@ on the same page, we can do this inline.
 [al]: https://another.url/
 ```
 
-When submitting your pull requests, please follow the same procedures described
-in the [Pull Requests](#pull-requests) section above.
+When submitting your pull requests, please follow the same workflow described in
+the [Contributing Code](#contributing-code) section above.
 
 ## Code of conduct
 
