@@ -1,10 +1,12 @@
 //! Type-safe wrapper for the JSON-RPC interface.
 
 use std::fmt::Display;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use futures::sync::mpsc::{self, Receiver, Sender};
 use futures::{future, Future, Poll, Sink, Stream};
-use jsonrpc_core::types::{request, Params, Version};
+use jsonrpc_core::types::{request, ErrorCode, Params, Version};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
@@ -29,9 +31,19 @@ impl Stream for MessageStream {
 
 /// Sends notifications from the language server to the client.
 #[derive(Debug)]
-pub struct Printer(Sender<String>);
+pub struct Printer {
+    buffer: Sender<String>,
+    initialized: Arc<AtomicBool>,
+}
 
 impl Printer {
+    fn new(buffer: Sender<String>, initialized: Arc<AtomicBool>) -> Self {
+        Printer {
+            buffer,
+            initialized,
+        }
+    }
+
     /// Submits validation diagnostics for an open file with the given URI.
     ///
     /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
@@ -68,13 +80,17 @@ impl Printer {
     }
 
     fn send_message(&self, message: String) {
-        tokio_executor::spawn(
-            self.0
-                .clone()
-                .send(message)
-                .map(|_| ())
-                .map_err(|_| error!("failed to send message")),
-        );
+        if self.initialized.load(Ordering::SeqCst) {
+            tokio_executor::spawn(
+                self.buffer
+                    .clone()
+                    .send(message)
+                    .map(|_| ())
+                    .map_err(|_| error!("failed to send message")),
+            );
+        } else {
+            trace!("server not initialized, supressing message: {}", message);
+        }
     }
 }
 
@@ -97,8 +113,6 @@ where
 /// JSON-RPC interface used by the Language Server Protocol.
 #[rpc(server)]
 pub trait LanguageServerCore {
-    type ShutdownFuture: Future<Item = (), Error = Error> + Send;
-
     // Initialization
 
     #[rpc(name = "initialize", raw_params)]
@@ -108,7 +122,7 @@ pub trait LanguageServerCore {
     fn initialized(&self, params: Params);
 
     #[rpc(name = "shutdown")]
-    fn shutdown(&self) -> Self::ShutdownFuture;
+    fn shutdown(&self) -> BoxFuture<()>;
 
     // Text synchronization
 
@@ -142,6 +156,7 @@ pub trait LanguageServerCore {
 pub struct Delegate<T> {
     server: T,
     printer: Printer,
+    initialized: Arc<AtomicBool>,
 }
 
 impl<T: LanguageServer> Delegate<T> {
@@ -149,38 +164,52 @@ impl<T: LanguageServer> Delegate<T> {
     pub fn new(server: T) -> (Self, MessageStream) {
         let (tx, rx) = mpsc::channel(1);
         let messages = MessageStream(rx);
-        let printer = Printer(tx);
-        (Delegate { server, printer }, messages)
+        let initialized = Arc::new(AtomicBool::new(false));
+        let delegate = Delegate {
+            server,
+            printer: Printer::new(tx, initialized.clone()),
+            initialized,
+        };
+
+        (delegate, messages)
     }
 }
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
-    type ShutdownFuture = T::ShutdownFuture;
-
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         trace!("received `initialize` request: {:?}", params);
         let params: InitializeParams = params.parse()?;
-        self.server.initialize(params)
+        let response = self.server.initialize(params)?;
+        self.initialized.store(true, Ordering::SeqCst);
+        Ok(response)
     }
 
     fn initialized(&self, params: Params) {
         trace!("received `initialized` notification: {:?}", params);
-        match params.parse::<InitializedParams>() {
-            Ok(params) => self.server.initialized(&self.printer, params),
-            Err(err) => error!("invalid parameters for `initialized`: {:?}", err),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<InitializedParams>() {
+                Ok(params) => self.server.initialized(&self.printer, params),
+                Err(err) => error!("invalid parameters for `initialized`: {:?}", err),
+            }
         }
     }
 
-    fn shutdown(&self) -> Self::ShutdownFuture {
+    fn shutdown(&self) -> BoxFuture<()> {
         trace!("received `shutdown` request");
-        self.server.shutdown()
+        if self.initialized.load(Ordering::SeqCst) {
+            Box::new(self.server.shutdown())
+        } else {
+            Box::new(future::err(not_initialized_error()))
+        }
     }
 
     fn did_open(&self, params: Params) {
         trace!("received `textDocument/didOpen` notification: {:?}", params);
-        match params.parse::<DidOpenTextDocumentParams>() {
-            Ok(params) => self.server.did_open(&self.printer, params),
-            Err(err) => error!("invalid parameters for `textDocument/didOpen`: {:?}", err),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<DidOpenTextDocumentParams>() {
+                Ok(params) => self.server.did_open(&self.printer, params),
+                Err(err) => error!("invalid parameters for `textDocument/didOpen`: {:?}", err),
+            }
         }
     }
 
@@ -189,17 +218,23 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
             "received `textDocument/didChange` notification: {:?}",
             params
         );
-        match params.parse::<DidChangeTextDocumentParams>() {
-            Ok(params) => self.server.did_change(&self.printer, params),
-            Err(err) => error!("invalid parameters for `textDocument/didChange`: {:?}", err),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<DidChangeTextDocumentParams>() {
+                Ok(params) => self.server.did_change(&self.printer, params),
+                Err(err) => error!("invalid parameters for `textDocument/didChange`: {:?}", err),
+            }
         }
     }
 
     fn did_save(&self, params: Params) {
-        trace!("received `textDocument/didSave` notification: {:?}", params);
-        match params.parse::<DidSaveTextDocumentParams>() {
-            Ok(params) => self.server.did_save(&self.printer, params),
-            Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
+        if self.initialized.load(Ordering::SeqCst) {
+            trace!("received `textDocument/didSave` notification: {:?}", params);
+            match params.parse::<DidSaveTextDocumentParams>() {
+                Ok(params) => self.server.did_save(&self.printer, params),
+                Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
+            }
+        } else {
+            trace!("dropped `textDocument/didSave` notification: {:?}", params);
         }
     }
 
@@ -208,33 +243,47 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
             "received `textDocument/didClose` notification: {:?}",
             params
         );
-        match params.parse::<DidCloseTextDocumentParams>() {
-            Ok(params) => self.server.did_close(&self.printer, params),
-            Err(err) => error!("invalid parameters for `textDocument/didClose`: {:?}", err),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<DidCloseTextDocumentParams>() {
+                Ok(params) => self.server.did_close(&self.printer, params),
+                Err(err) => error!("invalid parameters for `textDocument/didClose`: {:?}", err),
+            }
         }
     }
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
         trace!("received `textDocument/hover` request: {:?}", params);
-        match params.parse::<TextDocumentPositionParams>() {
-            Ok(params) => Box::new(self.server.hover(params)),
-            Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                "invalid parameters",
-                err,
-            ))),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<TextDocumentPositionParams>() {
+                Ok(params) => Box::new(self.server.hover(params)),
+                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
+                    "invalid parameters",
+                    err,
+                ))),
+            }
+        } else {
+            Box::new(future::err(not_initialized_error()))
         }
     }
 
     fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
         trace!("received `textDocument/highlight` request: {:?}", params);
-        match params.parse::<TextDocumentPositionParams>() {
-            Ok(params) => Box::new(self.server.highlight(params)),
-            Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                "invalid parameters",
-                err,
-            ))),
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<TextDocumentPositionParams>() {
+                Ok(params) => Box::new(self.server.highlight(params)),
+                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
+                    "invalid parameters",
+                    err,
+                ))),
+            }
+        } else {
+            Box::new(future::err(not_initialized_error()))
         }
     }
+}
+
+fn not_initialized_error() -> Error {
+    Error::new(ErrorCode::ServerError(-32002))
 }
 
 #[cfg(test)]
@@ -245,8 +294,8 @@ mod tests {
 
     fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
         let (tx, rx) = mpsc::channel(1);
-        let printer = Printer(tx);
         let messages = MessageStream(rx);
+        let printer = Printer::new(tx, Arc::new(AtomicBool::new(true)));
 
         current_thread::block_on_all(
             future::lazy(move || {
