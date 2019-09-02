@@ -3,6 +3,14 @@ name = "tower-lsp"
 version = "0.1.0"
 authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
 edition = "2018"
+description = "Language Server Protocol implementation based on Tower"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/ebkalderon/tower-lsp"
+repository = "https://github.com/ebkalderon/tower-lsp"
+documentation = "https://docs.rs/tower-lsp/"
+readme = "README.md"
+categories = ["asynchronous"]
+keywords = ["language-server", "lsp", "tower"]
 
 [dependencies]
 bytes = "0.4.12"
