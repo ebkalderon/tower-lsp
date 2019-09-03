@@ -100,6 +100,8 @@ where
     N: Notification,
     N::Params: Serialize,
 {
+    // Since these types come from the `lsp-types` crate and validity is enforced via the
+    // `Notification` trait, the `unwrap()` calls below should never fail.
     let output = serde_json::to_string(&params).unwrap();
     let params = serde_json::from_str(&output).unwrap();
     serde_json::to_string(&request::Notification {
@@ -107,7 +109,7 @@ where
         method: N::METHOD.to_owned(),
         params,
     })
-    .expect("LSP notifications must be valid JSON")
+    .unwrap()
 }
 
 /// JSON-RPC interface used by the Language Server Protocol.
