@@ -146,7 +146,7 @@ pub trait LanguageServerCore {
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>>;
 
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
-    fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
+    fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -262,11 +262,14 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
-    fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
-        trace!("received `textDocument/highlight` request: {:?}", params);
+    fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
+        trace!(
+            "received `textDocument/documentHighlight` request: {:?}",
+            params
+        );
         if self.initialized.load(Ordering::SeqCst) {
             match params.parse::<TextDocumentPositionParams>() {
-                Ok(params) => Box::new(self.server.highlight(params)),
+                Ok(params) => Box::new(self.server.document_highlight(params)),
                 Err(err) => Box::new(future::err(Error::invalid_params_with_details(
                     "invalid parameters",
                     err,

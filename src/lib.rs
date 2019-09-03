@@ -50,7 +50,7 @@
 //!         Box::new(future::ok(None))
 //!     }
 //!
-//!     fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+//!     fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
 //!         Box::new(future::ok(None))
 //!     }
 //! }
@@ -178,7 +178,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// be more fuzzy.
     ///
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight
-    fn highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
+    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
 }
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
@@ -218,7 +218,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).hover(params)
     }
 
-    fn highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
-        (**self).highlight(params)
+    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
+        (**self).document_highlight(params)
     }
 }
