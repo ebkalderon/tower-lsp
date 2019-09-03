@@ -97,7 +97,7 @@ impl Decoder for LanguageServerCodec {
         }
 
         let string = str::from_utf8(src)?;
-        let (message, len) = match parse_request(string) {
+        let (message, len) = match parse_message(string) {
             Ok((remaining, message)) => (message.to_string(), src.len() - remaining.len()),
             Err(Err::Incomplete(Needed::Size(min))) => {
                 self.remaining_msg_bytes = min;
@@ -119,7 +119,7 @@ impl Decoder for LanguageServerCodec {
     }
 }
 
-fn parse_request(input: &str) -> IResult<&str, String> {
+fn parse_message(input: &str) -> IResult<&str, String> {
     let content_len = delimited(tag("Content-Length: "), digit1, tag("\r\n\r\n"));
     let header = map_res(content_len, |s: &str| s.parse::<usize>());
     let message = length_data(header);
