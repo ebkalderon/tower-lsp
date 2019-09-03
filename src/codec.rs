@@ -6,6 +6,7 @@ use std::io::{Error as IoError, Write};
 use std::str::{self, Utf8Error};
 
 use bytes::{BufMut, BytesMut};
+use nom::branch::alt;
 use nom::bytes::streaming::{is_not, tag};
 use nom::character::streaming::{char, crlf, digit1, space0};
 use nom::combinator::{map, map_res, opt};
@@ -126,9 +127,9 @@ impl Decoder for LanguageServerCodec {
 fn parse_message(input: &str) -> IResult<&str, String> {
     let content_len = delimited(tag("Content-Length: "), digit1, crlf);
 
-    let charset = tuple((space0, char(';'), space0, tag("charset=utf-8")));
-    let mime = tuple((is_not(";\r"), opt(charset)));
-    let content_type = tuple((tag("Content-Type: "), mime, crlf));
+    let utf8 = alt((tag("utf-8"), tag("utf8")));
+    let charset = tuple((space0, char(';'), space0, tag("charset="), utf8));
+    let content_type = tuple((tag("Content-Type: "), is_not(";\r"), opt(charset), crlf));
 
     let header = terminated(terminated(content_len, opt(content_type)), crlf);
     let length = map_res(header, |s: &str| s.parse::<usize>());
