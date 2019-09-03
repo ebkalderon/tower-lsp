@@ -225,14 +225,12 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn did_save(&self, params: Params) {
+        trace!("received `textDocument/didSave` notification: {:?}", params);
         if self.initialized.load(Ordering::SeqCst) {
-            trace!("received `textDocument/didSave` notification: {:?}", params);
             match params.parse::<DidSaveTextDocumentParams>() {
                 Ok(params) => self.server.did_save(&self.printer, params),
                 Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
             }
-        } else {
-            trace!("dropped `textDocument/didSave` notification: {:?}", params);
         }
     }
 
