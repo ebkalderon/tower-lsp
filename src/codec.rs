@@ -6,12 +6,13 @@ use std::io::{Error as IoError, Write};
 use std::str::{self, Utf8Error};
 
 use bytes::{BufMut, BytesMut};
-use nom::bytes::streaming::tag;
-use nom::character::streaming::digit1;
-use nom::combinator::{map, map_res};
+use nom::branch::alt;
+use nom::bytes::streaming::{is_not, tag};
+use nom::character::streaming::{char, crlf, digit1, space0};
+use nom::combinator::{map, map_res, opt};
 use nom::error::ErrorKind;
 use nom::multi::length_data;
-use nom::sequence::delimited;
+use nom::sequence::{delimited, terminated, tuple};
 use nom::{Err, IResult, Needed};
 use tokio_codec::{Decoder, Encoder};
 
@@ -22,6 +23,8 @@ pub enum ParseError {
     MissingHeader,
     /// The length value in the `Content-Length` header is invalid.
     InvalidLength,
+    /// The media type in the `Content-Type` header is invalid.
+    InvalidType,
     /// Failed to encode the response.
     Encode(IoError),
     /// Request contains invalid UTF8.
@@ -33,6 +36,7 @@ impl Display for ParseError {
         match *self {
             ParseError::MissingHeader => write!(fmt, "missing required `Content-Length` header"),
             ParseError::InvalidLength => write!(fmt, "unable to parse content length"),
+            ParseError::InvalidType => write!(fmt, "unable to parse content type"),
             ParseError::Encode(ref e) => write!(fmt, "failed to encode response: {}", e),
             ParseError::Utf8(ref e) => write!(fmt, "request contains invalid UTF8: {}", e),
         }
@@ -108,6 +112,7 @@ impl Decoder for LanguageServerCodec {
             }
             Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => match err {
                 ErrorKind::Digit | ErrorKind::MapRes => return Err(ParseError::InvalidLength),
+                ErrorKind::Char | ErrorKind::IsNot => return Err(ParseError::InvalidType),
                 _ => return Err(ParseError::MissingHeader),
             },
         };
@@ -120,9 +125,16 @@ impl Decoder for LanguageServerCodec {
 }
 
 fn parse_message(input: &str) -> IResult<&str, String> {
-    let content_len = delimited(tag("Content-Length: "), digit1, tag("\r\n\r\n"));
-    let header = map_res(content_len, |s: &str| s.parse::<usize>());
-    let message = length_data(header);
+    let content_len = delimited(tag("Content-Length: "), digit1, crlf);
+
+    let utf8 = alt((tag("utf-8"), tag("utf8")));
+    let charset = tuple((space0, char(';'), space0, tag("charset="), utf8));
+    let content_type = tuple((tag("Content-Type:"), is_not(";\r"), opt(charset), crlf));
+
+    let header = terminated(terminated(content_len, opt(content_type)), crlf);
+    let length = map_res(header, |s: &str| s.parse::<usize>());
+    let message = length_data(length);
+
     map(message, |msg| msg.to_string())(input)
 }
 
@@ -153,5 +165,18 @@ mod tests {
         let mut buffer = BytesMut::new();
         codec.encode("".to_string(), &mut buffer).unwrap();
         assert_eq!(buffer, BytesMut::new());
+    }
+
+    #[test]
+    fn decodes_optional_content_type() {
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
+        let content_len = format!("Content-Length: {}", decoded.len());
+        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8".to_string();
+        let encoded = format!("{}\r\n{}\r\n\r\n{}", content_len, content_type, decoded);
+
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::from(encoded);
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, Some(decoded));
     }
 }
