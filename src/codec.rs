@@ -129,7 +129,7 @@ fn parse_message(input: &str) -> IResult<&str, String> {
 
     let utf8 = alt((tag("utf-8"), tag("utf8")));
     let charset = tuple((space0, char(';'), space0, tag("charset="), utf8));
-    let content_type = tuple((tag("Content-Type: "), is_not(";\r"), opt(charset), crlf));
+    let content_type = tuple((tag("Content-Type:"), is_not(";\r"), opt(charset), crlf));
 
     let header = terminated(terminated(content_len, opt(content_type)), crlf);
     let length = map_res(header, |s: &str| s.parse::<usize>());
