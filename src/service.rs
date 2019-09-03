@@ -197,7 +197,7 @@ mod tests {
             Box::new(future::ok(None))
         }
 
-        fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+        fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
             Box::new(future::ok(None))
         }
     }
