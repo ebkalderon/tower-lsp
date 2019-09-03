@@ -142,14 +142,10 @@ pub trait LanguageServerCore {
 
     // Language features
 
-    #[rpc(name = "textDocument/hover", raw_params, returns = "Option<Hover>")]
+    #[rpc(name = "textDocument/hover", raw_params)]
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>>;
 
-    #[rpc(
-        name = "textDocument/documentHighlight",
-        raw_params,
-        returns = "Option<Vec<DocumentHighlight>>"
-    )]
+    #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }
 
