@@ -128,7 +128,7 @@ fn parse_message(input: &str) -> IResult<&str, String> {
     let content_len = delimited(tag("Content-Length: "), digit1, crlf);
 
     let utf8 = alt((tag("utf-8"), tag("utf8")));
-    let charset = tuple((space0, char(';'), space0, tag("charset="), utf8));
+    let charset = tuple((char(';'), space0, tag("charset="), utf8));
     let content_type = tuple((tag("Content-Type:"), is_not(";\r"), opt(charset), crlf));
 
     let header = terminated(terminated(content_len, opt(content_type)), crlf);
