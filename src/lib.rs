@@ -30,22 +30,6 @@
 //!         Box::new(future::ok(()))
 //!     }
 //!
-//!     fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file opened!");
-//!     }
-//!
-//!     fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file changed!");
-//!     }
-//!
-//!     fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file saved!");
-//!     }
-//!
-//!     fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file closed!");
-//!     }
-//!
 //!     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
 //!         Box::new(future::ok(None))
 //!     }
@@ -116,7 +100,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specification#initialized
-    fn initialized(&self, printer: &Printer, params: InitializedParams);
+    fn initialized(&self, printer: &Printer, params: InitializedParams) {
+        let _ = printer;
+        let _ = params;
+    }
 
     /// The [`shutdown`] request asks the server to gracefully shut down, but to not exit.
     ///
@@ -135,7 +122,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didOpen
-    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams);
+    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
+        let _ = printer;
+        let _ = params;
+    }
 
     /// The [`textDocument/didChange`] notification is sent from the client to the server to signal
     /// changes to a text document.
@@ -144,13 +134,19 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document for the server to interpret.
     ///
     /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didChange
-    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams);
+    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
+        let _ = printer;
+        let _ = params;
+    }
 
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
     /// document was saved in the client.
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didSave
-    fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams);
+    fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
+        let _ = printer;
+        let _ = params;
+    }
 
     /// The [`textDocument/didClose`] notification is sent from the client to the server when the
     /// document got closed in the client.
@@ -159,7 +155,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// URI is a file URI, the truth now exists on disk).
     ///
     /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didClose
-    fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams);
+    fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
+        let _ = printer;
+        let _ = params;
+    }
 
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
