@@ -102,7 +102,8 @@ impl Printer {
         ))
     }
 
-    /// Requests a workspace resource be edited on the client side.
+    /// Requests a workspace resource be edited on the client side and returns whether the edit was
+    /// applied.
     ///
     /// This corresponds to the [`workspace/applyEdit`] request.
     ///
