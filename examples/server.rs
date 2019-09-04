@@ -15,7 +15,35 @@ impl LanguageServer for Backend {
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
     fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        Ok(InitializeResult::default())
+        Ok(InitializeResult {
+            capabilities: ServerCapabilities {
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(
+                    TextDocumentSyncKind::Incremental,
+                )),
+                hover_provider: Some(true),
+                completion_provider: Some(CompletionOptions {
+                    resolve_provider: Some(false),
+                    trigger_characters: Some(vec![".".to_string()]),
+                }),
+                signature_help_provider: Some(SignatureHelpOptions {
+                    trigger_characters: None,
+                }),
+                document_highlight_provider: Some(true),
+                workspace_symbol_provider: Some(true),
+                execute_command_provider: Some(ExecuteCommandOptions {
+                    commands: vec!["dummy.do_something".to_string()],
+                }),
+                workspace: Some(WorkspaceCapability {
+                    workspace_folders: Some(WorkspaceFolderCapability {
+                        supported: Some(true),
+                        change_notifications: Some(
+                            WorkspaceFolderCapabilityChangeNotifications::Bool(true),
+                        ),
+                    }),
+                }),
+                ..ServerCapabilities::default()
+            },
+        })
     }
 
     fn initialized(&self, printer: &Printer, _: InitializedParams) {
