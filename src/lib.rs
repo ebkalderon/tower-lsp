@@ -7,6 +7,7 @@
 //! ```rust
 //! # use futures::future;
 //! # use jsonrpc_core::{BoxFuture, Result};
+//! # use serde_json::Value;
 //! # use tower_lsp::lsp_types::*;
 //! # use tower_lsp::{LanguageServer, LspService, Printer, Server};
 //! #
@@ -15,6 +16,8 @@
 //!
 //! impl LanguageServer for Backend {
 //!     type ShutdownFuture = BoxFuture<()>;
+//!     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
+//!     type ExecuteFuture = BoxFuture<Option<Value>>;
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!
@@ -28,6 +31,14 @@
 //!
 //!     fn shutdown(&self) -> Self::ShutdownFuture {
 //!         Box::new(future::ok(()))
+//!     }
+//!
+//!     fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+//!         Box::new(future::ok(None))
 //!     }
 //!
 //!     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
@@ -67,6 +78,7 @@ pub use self::stdio::Server;
 use futures::Future;
 use jsonrpc_core::{Error, Result};
 use lsp_types::*;
+use serde_json::Value;
 
 mod codec;
 mod delegate;
@@ -83,6 +95,10 @@ mod stdio;
 pub trait LanguageServer: Send + Sync + 'static {
     /// Response returned when a server shutdown is requested.
     type ShutdownFuture: Future<Item = (), Error = Error> + Send;
+    /// Response returned when a workspace symbol action is requested.
+    type SymbolFuture: Future<Item = Option<Vec<SymbolInformation>>, Error = Error> + Send;
+    /// Response returned when an execute command action is requested.
+    type ExecuteFuture: Future<Item = Option<Value>, Error = Error> + Send;
     /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
     /// Response returned when a document highlight action is requested.
@@ -113,6 +129,23 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specification#shutdown
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
     fn shutdown(&self) -> Self::ShutdownFuture;
+
+    /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
+    /// symbols matching the given query string.
+    ///
+    /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specification#workspace_symbol
+    fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture;
+
+    /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
+    /// command execution on the server.
+    ///
+    /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
+    /// the workspace using the [`workspace/applyEdit`] request which is sent from the server to
+    /// the client. This can be done here with `Printer::apply_edit()`.
+    ///
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
+    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
+    fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture;
 
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
     /// that a new text document has been opened by the client.
@@ -184,6 +217,8 @@ pub trait LanguageServer: Send + Sync + 'static {
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type ShutdownFuture = S::ShutdownFuture;
+    type SymbolFuture = S::SymbolFuture;
+    type ExecuteFuture = S::ExecuteFuture;
     type HoverFuture = S::HoverFuture;
     type HighlightFuture = S::HighlightFuture;
 
@@ -197,6 +232,14 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn shutdown(&self) -> Self::ShutdownFuture {
         (**self).shutdown()
+    }
+
+    fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture {
+        (**self).symbol(params)
+    }
+
+    fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture {
+        (**self).execute_command(p, params)
     }
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {

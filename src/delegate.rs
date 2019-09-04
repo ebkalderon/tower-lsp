@@ -12,6 +12,7 @@ use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
 use lsp_types::*;
+use serde_json::Value;
 
 use super::LanguageServer;
 
@@ -43,6 +44,14 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "shutdown")]
     fn shutdown(&self) -> BoxFuture<()>;
+
+    // Workspace
+
+    #[rpc(name = "workspace/symbol", raw_params)]
+    fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>>;
+
+    #[rpc(name = "workspace/executeCommand", raw_params)]
+    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>>;
 
     // Text synchronization
 
@@ -114,6 +123,36 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         trace!("received `shutdown` request");
         if self.initialized.load(Ordering::SeqCst) {
             Box::new(self.server.shutdown())
+        } else {
+            Box::new(future::err(not_initialized_error()))
+        }
+    }
+
+    fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>> {
+        trace!("received `workspace/symbol` request: {:?}", params);
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<WorkspaceSymbolParams>() {
+                Ok(params) => Box::new(self.server.symbol(params)),
+                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
+                    "invalid parameters",
+                    err,
+                ))),
+            }
+        } else {
+            Box::new(future::err(not_initialized_error()))
+        }
+    }
+
+    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
+        trace!("received `workspace/executeCommand` request: {:?}", params);
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<ExecuteCommandParams>() {
+                Ok(params) => Box::new(self.server.execute_command(&self.printer, params)),
+                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
+                    "invalid parameters",
+                    err,
+                ))),
+            }
         } else {
             Box::new(future::err(not_initialized_error()))
         }

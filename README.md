@@ -41,6 +41,7 @@ consists of three parts:
 ```rust
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
+use serde_json::Value;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
@@ -49,6 +50,8 @@ struct Backend;
 
 impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
+    type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
+    type ExecuteFuture = BoxFuture<Option<Value>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
 
@@ -62,6 +65,14 @@ impl LanguageServer for Backend {
 
     fn shutdown(&self) -> Self::ShutdownFuture {
         Box::new(future::ok(()))
+    }
+
+    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        Box::new(future::ok(None))
     }
 
     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {

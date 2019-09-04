@@ -1,5 +1,6 @@
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
+use serde_json::Value;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
@@ -8,6 +9,8 @@ struct Backend;
 
 impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
+    type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
+    type ExecuteFuture = BoxFuture<Option<Value>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
@@ -21,6 +24,15 @@ impl LanguageServer for Backend {
 
     fn shutdown(&self) -> Self::ShutdownFuture {
         Box::new(future::ok(()))
+    }
+
+    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn execute_command(&self, printer: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        printer.apply_edit(WorkspaceEdit::default());
+        Box::new(future::ok(None))
     }
 
     fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
