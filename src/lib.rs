@@ -85,6 +85,7 @@ use lsp_types::*;
 
 mod codec;
 mod delegate;
+mod message;
 mod service;
 mod stdio;
 
