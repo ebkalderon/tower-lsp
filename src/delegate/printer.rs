@@ -151,7 +151,7 @@ where
     N::Params: Serialize,
 {
     // Since these types come from the `lsp-types` crate and validity is enforced via the
-    // `Notification` trait, the `unwrap()` calls below should never fail.
+    // `Request` trait, the `unwrap()` calls below should never fail.
     let output = serde_json::to_string(&params).unwrap();
     let params = serde_json::from_str(&output).unwrap();
     serde_json::to_string(&request::MethodCall {
