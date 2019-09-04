@@ -206,17 +206,6 @@ mod tests {
     }
 
     #[test]
-    fn publish_diagnostics() {
-        let uri: Url = "file:///path/to/file".parse().unwrap();
-        let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
-
-        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
-        let expected = make_notification::<PublishDiagnostics>(params);
-
-        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
-    }
-
-    #[test]
     fn log_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
         let expected = make_notification::<LogMessage>(LogMessageParams {
@@ -236,5 +225,16 @@ mod tests {
         });
 
         assert_printer_messages(|p| p.show_message(typ, message), expected);
+    }
+
+    #[test]
+    fn publish_diagnostics() {
+        let uri: Url = "file:///path/to/file".parse().unwrap();
+        let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
+
+        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
+        let expected = make_notification::<PublishDiagnostics>(params);
+
+        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
     }
 }
