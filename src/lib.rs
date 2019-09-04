@@ -182,11 +182,9 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// command execution on the server.
     ///
     /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
-    /// the workspace using the [`workspace/applyEdit`] request which is sent from the server to
-    /// the client. This can be done here with `Printer::apply_edit()`.
+    /// the workspace using `Printer::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
-    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
     fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture;
 
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
