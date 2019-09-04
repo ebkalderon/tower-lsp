@@ -184,6 +184,7 @@ where
 #[cfg(test)]
 mod tests {
     use futures::{future, sync::mpsc, Stream};
+    use serde_json::json;
     use tokio::runtime::current_thread;
 
     use super::*;
@@ -206,17 +207,6 @@ mod tests {
     }
 
     #[test]
-    fn publish_diagnostics() {
-        let uri: Url = "file:///path/to/file".parse().unwrap();
-        let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
-
-        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
-        let expected = make_notification::<PublishDiagnostics>(params);
-
-        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
-    }
-
-    #[test]
     fn log_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
         let expected = make_notification::<LogMessage>(LogMessageParams {
@@ -236,5 +226,36 @@ mod tests {
         });
 
         assert_printer_messages(|p| p.show_message(typ, message), expected);
+    }
+
+    #[test]
+    fn telemetry_event() {
+        let null = json!(null);
+        let expected = make_notification::<TelemetryEvent>(null.clone());
+        assert_printer_messages(|p| p.telemetry_event(null), expected);
+
+        let array = json!([1, 2, 3]);
+        let expected = make_notification::<TelemetryEvent>(array.clone());
+        assert_printer_messages(|p| p.telemetry_event(array), expected);
+
+        let object = json!({});
+        let expected = make_notification::<TelemetryEvent>(object.clone());
+        assert_printer_messages(|p| p.telemetry_event(object), expected);
+
+        let anything_else = json!("hello");
+        let wrapped = Value::Array(vec![anything_else.clone()]);
+        let expected = make_notification::<TelemetryEvent>(wrapped);
+        assert_printer_messages(|p| p.telemetry_event(anything_else), expected);
+    }
+
+    #[test]
+    fn publish_diagnostics() {
+        let uri: Url = "file:///path/to/file".parse().unwrap();
+        let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
+
+        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
+        let expected = make_notification::<PublishDiagnostics>(params);
+
+        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
     }
 }
