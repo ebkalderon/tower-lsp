@@ -15,8 +15,8 @@
 //!
 //! impl LanguageServer for Backend {
 //!     type ShutdownFuture = BoxFuture<()>;
-//!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
+//!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!
 //!     fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
@@ -83,10 +83,10 @@ mod stdio;
 pub trait LanguageServer: Send + Sync + 'static {
     /// Response returned when a server shutdown is requested.
     type ShutdownFuture: Future<Item = (), Error = Error> + Send;
-    /// Response returned when a document highlight action is requested.
-    type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
     /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
+    /// Response returned when a document highlight action is requested.
+    type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
 
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -184,8 +184,8 @@ pub trait LanguageServer: Send + Sync + 'static {
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type ShutdownFuture = S::ShutdownFuture;
-    type HighlightFuture = S::HighlightFuture;
     type HoverFuture = S::HoverFuture;
+    type HighlightFuture = S::HighlightFuture;
 
     fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(params)
