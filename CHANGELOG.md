@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2019-09-05
+
+### Added
+
+* Add support for decoding the optional `Content-Type` field in messages.
+* Implement support for the following client-to-server messages:
+  * `workspace/didChangeWorkspaceFolders`
+  * `workspace/didChangeConfiguration`
+  * `workspace/didChangeWatchedFiles`
+  * `workspace/symbol`
+  * `workspace/executeCommand`
+* Implement support for the following server-to-client messages:
+  * `telemetry/event`
+  * `client/registerCapability`
+  * `client/unregisterCapability`
+  * `workspace/applyEdit`
+
+### Changed
+
+* Bump minimum Rust version to 1.34.0.
+* Rename `highlight()` to `document_highlight()` to better match the
+  specification.
+* Make all notification methods into provided methods (PR #34).
+* Change `LspService` request type from `String` to `Incoming` (PR #28).
+* Update `Server` to spawn services with `Incoming` request type.
+* Use `env_logger` to print log messages in examples.
+
 ### Fixed
 
 * Fix broken doc link to `textDocument/didChange` in `LanguageServer` trait.
@@ -50,6 +77,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ebkalderon/tower-lsp/releases/tag/v0.1.0
