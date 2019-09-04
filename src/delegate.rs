@@ -14,6 +14,7 @@ use lsp_types::notification::{Notification, *};
 use lsp_types::request::{RegisterCapability, Request, UnregisterCapability};
 use lsp_types::*;
 use serde::Serialize;
+use serde_json::Value;
 
 use super::LanguageServer;
 
@@ -106,8 +107,15 @@ impl Printer {
     /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
     pub fn telemetry_event<S: Serialize>(&self, data: S) {
         match serde_json::to_value(data) {
-            Ok(value) => self.send_message(make_notification::<TelemetryEvent>(value)),
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
+            Ok(value) => {
+                if !value.is_array() && !value.is_object() {
+                    let value = Value::Array(vec![value]);
+                    self.send_message(make_notification::<TelemetryEvent>(value));
+                } else {
+                    self.send_message(make_notification::<TelemetryEvent>(value));
+                }
+            }
         }
     }
 
