@@ -9,7 +9,7 @@ use futures::{Future, Poll, Sink, Stream};
 use jsonrpc_core::types::{request, Id, Version};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
-use lsp_types::request::{RegisterCapability, Request, UnregisterCapability};
+use lsp_types::request::{ApplyWorkspaceEdit, RegisterCapability, Request, UnregisterCapability};
 use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
@@ -113,6 +113,21 @@ impl Printer {
             id,
             UnregistrationParams { unregisterations },
         ))
+    }
+
+    /// Requests a workspace resource be edited on the client side.
+    ///
+    /// This corresponds to the [`workspace/applyEdit`] request.
+    ///
+    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
+    pub fn apply_edit(&self, edit: WorkspaceEdit) -> bool {
+        // FIXME: Check whether the request succeeded or failed and retrieve apply status.
+        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
+        self.send_message(make_request::<ApplyWorkspaceEdit>(
+            id,
+            ApplyWorkspaceEditParams { edit },
+        ));
+        true
     }
 
     /// Submits validation diagnostics for an open file with the given URI.
