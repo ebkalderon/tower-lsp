@@ -173,6 +173,7 @@ impl Service<Incoming> for LspService {
 mod tests {
     use jsonrpc_core::{BoxFuture, Result};
     use lsp_types::*;
+    use serde_json::Value;
 
     use super::*;
     use crate::Printer;
@@ -182,6 +183,8 @@ mod tests {
 
     impl LanguageServer for Mock {
         type ShutdownFuture = BoxFuture<()>;
+        type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
+        type ExecuteFuture = BoxFuture<Option<Value>>;
         type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
         type HoverFuture = BoxFuture<Option<Hover>>;
 
@@ -189,19 +192,17 @@ mod tests {
             Ok(InitializeResult::default())
         }
 
-        fn initialized(&self, _: &Printer, _: InitializedParams) {}
-
         fn shutdown(&self) -> Self::ShutdownFuture {
             Box::new(future::ok(()))
         }
 
-        fn did_open(&self, _: &Printer, _: DidOpenTextDocumentParams) {}
+        fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+            Box::new(future::ok(None))
+        }
 
-        fn did_change(&self, _: &Printer, _: DidChangeTextDocumentParams) {}
-
-        fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
-
-        fn did_close(&self, _: &Printer, _: DidCloseTextDocumentParams) {}
+        fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+            Box::new(future::ok(None))
+        }
 
         fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
             Box::new(future::ok(None))

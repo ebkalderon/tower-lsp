@@ -11,7 +11,11 @@ use jsonrpc_core::types::{ErrorCode, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
+use lsp_types::notification::{Notification, *};
+use lsp_types::request::{Request, *};
 use lsp_types::*;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
 
 use super::LanguageServer;
 
@@ -43,6 +47,23 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "shutdown")]
     fn shutdown(&self) -> BoxFuture<()>;
+
+    // Workspace
+
+    #[rpc(name = "workspace/didChangeWorkspaceFolders", raw_params)]
+    fn did_change_workspace_folders(&self, params: Params);
+
+    #[rpc(name = "workspace/DidChangeConfiguration", raw_params)]
+    fn did_change_configuration(&self, params: Params);
+
+    #[rpc(name = "workspace/didChangeWatchedFiles", raw_params)]
+    fn did_change_watched_files(&self, params: Params);
+
+    #[rpc(name = "workspace/symbol", raw_params)]
+    fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>>;
+
+    #[rpc(name = "workspace/executeCommand", raw_params)]
+    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>>;
 
     // Text synchronization
 
@@ -89,6 +110,42 @@ impl<T: LanguageServer> Delegate<T> {
 
         (delegate, messages)
     }
+
+    fn delegate_notification<N, F>(&self, params: Params, delegate: F)
+    where
+        N: Notification,
+        N::Params: DeserializeOwned,
+        F: Fn(&Printer, N::Params),
+    {
+        trace!("received `{}` notification: {:?}", N::METHOD, params);
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse::<N::Params>() {
+                Ok(params) => delegate(&self.printer, params),
+                Err(err) => error!("invalid parameters for `{}`: {:?}", N::METHOD, err),
+            }
+        }
+    }
+
+    fn delegate_request<R, F>(&self, params: Params, delegate: F) -> BoxFuture<R::Result>
+    where
+        R: Request,
+        R::Params: DeserializeOwned,
+        R::Result: Send + 'static,
+        F: Fn(R::Params) -> BoxFuture<R::Result>,
+    {
+        trace!("received `{}` request: {:?}", R::METHOD, params);
+        if self.initialized.load(Ordering::SeqCst) {
+            match params.parse() {
+                Ok(params) => delegate(params),
+                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
+                    "invalid parameters",
+                    err,
+                ))),
+            }
+        } else {
+            Box::new(future::err(not_initialized_error()))
+        }
+    }
 }
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
@@ -101,13 +158,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn initialized(&self, params: Params) {
-        trace!("received `initialized` notification: {:?}", params);
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<InitializedParams>() {
-                Ok(params) => self.server.initialized(&self.printer, params),
-                Err(err) => error!("invalid parameters for `initialized`: {:?}", err),
-            }
-        }
+        self.delegate_notification::<Initialized, _>(params, |p, params| {
+            self.server.initialized(p, params)
+        });
     }
 
     fn shutdown(&self) -> BoxFuture<()> {
@@ -119,83 +172,66 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
+    fn did_change_workspace_folders(&self, params: Params) {
+        self.delegate_notification::<DidChangeWorkspaceFolders, _>(params, |p, params| {
+            self.server.did_change_workspace_folders(p, params)
+        });
+    }
+
+    fn did_change_configuration(&self, params: Params) {
+        self.delegate_notification::<DidChangeConfiguration, _>(params, |p, params| {
+            self.server.did_change_configuration(p, params)
+        });
+    }
+
+    fn did_change_watched_files(&self, params: Params) {
+        self.delegate_notification::<DidChangeWatchedFiles, _>(params, |p, params| {
+            self.server.did_change_watched_files(p, params)
+        });
+    }
+
+    fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>> {
+        self.delegate_request::<WorkspaceSymbol, _>(params, |p| Box::new(self.server.symbol(p)))
+    }
+
+    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
+        self.delegate_request::<ExecuteCommand, _>(params, |p| {
+            Box::new(self.server.execute_command(&self.printer, p))
+        })
+    }
+
     fn did_open(&self, params: Params) {
-        trace!("received `textDocument/didOpen` notification: {:?}", params);
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<DidOpenTextDocumentParams>() {
-                Ok(params) => self.server.did_open(&self.printer, params),
-                Err(err) => error!("invalid parameters for `textDocument/didOpen`: {:?}", err),
-            }
-        }
+        self.delegate_notification::<DidOpenTextDocument, _>(params, |p, params| {
+            self.server.did_open(p, params)
+        });
     }
 
     fn did_change(&self, params: Params) {
-        trace!(
-            "received `textDocument/didChange` notification: {:?}",
-            params
-        );
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<DidChangeTextDocumentParams>() {
-                Ok(params) => self.server.did_change(&self.printer, params),
-                Err(err) => error!("invalid parameters for `textDocument/didChange`: {:?}", err),
-            }
-        }
+        self.delegate_notification::<DidChangeTextDocument, _>(params, |p, params| {
+            self.server.did_change(p, params)
+        });
     }
 
     fn did_save(&self, params: Params) {
-        trace!("received `textDocument/didSave` notification: {:?}", params);
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<DidSaveTextDocumentParams>() {
-                Ok(params) => self.server.did_save(&self.printer, params),
-                Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
-            }
-        }
+        self.delegate_notification::<DidSaveTextDocument, _>(params, |p, params| {
+            self.server.did_save(p, params)
+        });
     }
 
     fn did_close(&self, params: Params) {
-        trace!(
-            "received `textDocument/didClose` notification: {:?}",
-            params
-        );
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<DidCloseTextDocumentParams>() {
-                Ok(params) => self.server.did_close(&self.printer, params),
-                Err(err) => error!("invalid parameters for `textDocument/didClose`: {:?}", err),
-            }
-        }
+        self.delegate_notification::<DidCloseTextDocument, _>(params, |p, params| {
+            self.server.did_close(p, params)
+        });
     }
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
-        trace!("received `textDocument/hover` request: {:?}", params);
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<TextDocumentPositionParams>() {
-                Ok(params) => Box::new(self.server.hover(params)),
-                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                    "invalid parameters",
-                    err,
-                ))),
-            }
-        } else {
-            Box::new(future::err(not_initialized_error()))
-        }
+        self.delegate_request::<HoverRequest, _>(params, |p| Box::new(self.server.hover(p)))
     }
 
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
-        trace!(
-            "received `textDocument/documentHighlight` request: {:?}",
-            params
-        );
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<TextDocumentPositionParams>() {
-                Ok(params) => Box::new(self.server.document_highlight(params)),
-                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                    "invalid parameters",
-                    err,
-                ))),
-            }
-        } else {
-            Box::new(future::err(not_initialized_error()))
-        }
+        self.delegate_request::<DocumentHighlightRequest, _>(params, |p| {
+            Box::new(self.server.document_highlight(p))
+        })
     }
 }
 

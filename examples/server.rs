@@ -1,5 +1,6 @@
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
+use serde_json::Value;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
@@ -8,8 +9,10 @@ struct Backend;
 
 impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
-    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+    type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
+    type ExecuteFuture = BoxFuture<Option<Value>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
+    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
     fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
@@ -21,6 +24,28 @@ impl LanguageServer for Backend {
 
     fn shutdown(&self) -> Self::ShutdownFuture {
         Box::new(future::ok(()))
+    }
+
+    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
+        printer.log_message(MessageType::Info, "workspace folders changed!");
+    }
+
+    fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
+        printer.log_message(MessageType::Info, "configuration changed!");
+    }
+
+    fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
+        printer.log_message(MessageType::Info, "watched files have changed!");
+    }
+
+    fn execute_command(&self, printer: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        printer.log_message(MessageType::Info, "command executed!");
+        printer.apply_edit(WorkspaceEdit::default());
+        Box::new(future::ok(None))
     }
 
     fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
