@@ -30,22 +30,6 @@
 //!         Box::new(future::ok(()))
 //!     }
 //!
-//!     fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file opened!");
-//!     }
-//!
-//!     fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file changed!");
-//!     }
-//!
-//!     fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file saved!");
-//!     }
-//!
-//!     fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
-//!         printer.log_message(MessageType::Info, "file closed!");
-//!     }
-//!
 //!     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
 //!         Box::new(future::ok(None))
 //!     }
