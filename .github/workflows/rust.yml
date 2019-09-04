@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        rust-version: [1.33.0, beta, nightly]
+        rust-version: [1.34.0, beta, nightly]
 
     steps:
     - uses: hecrj/setup-rust-action@master
