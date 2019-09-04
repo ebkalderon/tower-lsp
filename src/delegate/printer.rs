@@ -68,6 +68,25 @@ impl Printer {
         }));
     }
 
+    /// Notifies the client to log a telemetry event.
+    ///
+    /// This corresponds to the [`telemetry/event`] notification.
+    ///
+    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
+    pub fn telemetry_event<S: Serialize>(&self, data: S) {
+        match serde_json::to_value(data) {
+            Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
+            Ok(value) => {
+                if !value.is_array() && !value.is_object() {
+                    let value = Value::Array(vec![value]);
+                    self.send_message(make_notification::<TelemetryEvent>(value));
+                } else {
+                    self.send_message(make_notification::<TelemetryEvent>(value));
+                }
+            }
+        }
+    }
+
     /// Register a new capability with the client.
     ///
     /// This corresponds to the [`client/registerCapability`] request.
@@ -94,25 +113,6 @@ impl Printer {
             id,
             UnregistrationParams { unregisterations },
         ))
-    }
-
-    /// Notifies the client to log a telemetry event.
-    ///
-    /// This corresponds to the [`telemetry/event`] notification.
-    ///
-    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
-    pub fn telemetry_event<S: Serialize>(&self, data: S) {
-        match serde_json::to_value(data) {
-            Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
-            Ok(value) => {
-                if !value.is_array() && !value.is_object() {
-                    let value = Value::Array(vec![value]);
-                    self.send_message(make_notification::<TelemetryEvent>(value));
-                } else {
-                    self.send_message(make_notification::<TelemetryEvent>(value));
-                }
-            }
-        }
     }
 
     /// Submits validation diagnostics for an open file with the given URI.
