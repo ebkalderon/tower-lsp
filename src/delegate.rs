@@ -10,7 +10,7 @@ use jsonrpc_core::types::{request, ErrorCode, Id, Params, Version};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
-use lsp_types::notification::{LogMessage, Notification, PublishDiagnostics, ShowMessage};
+use lsp_types::notification::{Notification, *};
 use lsp_types::request::{RegisterCapability, Request, UnregisterCapability};
 use lsp_types::*;
 use serde::Serialize;
@@ -108,6 +108,18 @@ impl Printer {
             id,
             UnregistrationParams { unregisterations },
         ))
+    }
+
+    /// Notifies the client to log a telemetry event.
+    ///
+    /// This corresponds to the [`telemetry/event`] notification.
+    ///
+    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
+    pub fn telemetry_event<S: Serialize>(&self, data: S) {
+        match serde_json::to_value(data) {
+            Ok(value) => self.send_message(make_notification::<TelemetryEvent>(value)),
+            Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
+        }
     }
 
     fn send_message(&self, message: String) {
