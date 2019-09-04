@@ -76,6 +76,7 @@
 pub extern crate lsp_types;
 
 pub use self::delegate::{MessageStream, Printer};
+pub use self::message::Incoming;
 pub use self::service::{ExitReceiver, ExitedError, LspService};
 pub use self::stdio::Server;
 
