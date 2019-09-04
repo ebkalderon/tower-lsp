@@ -43,6 +43,7 @@ impl LanguageServer for Backend {
     }
 
     fn execute_command(&self, printer: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        printer.log_message(MessageType::Info, "command executed!");
         printer.apply_edit(WorkspaceEdit::default());
         Box::new(future::ok(None))
     }
