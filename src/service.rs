@@ -9,7 +9,7 @@ use futures::future::{self, Future, Shared, SharedError, SharedItem};
 use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
-use log::{info, trace};
+use log::{debug, info, trace};
 use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
@@ -145,11 +145,12 @@ impl Service<Incoming> for LspService {
         if self.stopped.load(Ordering::SeqCst) {
             Box::new(future::err(ExitedError))
         } else {
-            if let Incoming::Response(_) = request {
+            if let Incoming::Response(r) = request {
                 // FIXME: Currently, we are dropping responses to requests created in `Printer`.
                 // We need some way to route them back to the `Printer`. See this issue for more:
                 //
                 // https://github.com/ebkalderon/tower-lsp/issues/13
+                debug!("dropping client response, as per GitHub issue #13: {:?}", r);
                 Box::new(future::ok(String::new()))
             } else {
                 Box::new(
