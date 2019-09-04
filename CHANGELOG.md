@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+* Allow JSON data for `telemetry/event` notification to be null.
+
 ## [0.3.0] - 2019-09-05
 
 ### Added
