@@ -14,6 +14,7 @@ use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
 use super::delegate::{Delegate, LanguageServerCore, MessageStream};
+use super::message::Incoming;
 use super::LanguageServer;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
@@ -127,7 +128,7 @@ impl LspService {
     }
 }
 
-impl Service<String> for LspService {
+impl Service<Incoming> for LspService {
     type Response = String;
     type Error = ExitedError;
     type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error> + Send>;
@@ -140,13 +141,13 @@ impl Service<String> for LspService {
         }
     }
 
-    fn call(&mut self, request: String) -> Self::Future {
+    fn call(&mut self, request: Incoming) -> Self::Future {
         if self.stopped.load(Ordering::SeqCst) {
             Box::new(future::err(ExitedError))
         } else {
             Box::new(
                 self.handler
-                    .handle_request(&request)
+                    .handle_request(&request.to_string())
                     .map_err(|_| unreachable!())
                     .map(move |result| {
                         result.unwrap_or_else(|| {
@@ -206,11 +207,11 @@ mod tests {
     fn exit_notification() {
         let (mut service, _) = LspService::new(Mock::default());
 
-        let initialized = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#.to_owned();
+        let initialized: Incoming = r#"{"jsonrpc":"2.0","method":"initialized"}"#.parse().unwrap();
         assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
         assert_eq!(service.call(initialized.clone()).wait(), Ok("".to_owned()));
 
-        let exit = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_owned();
+        let exit: Incoming = r#"{"jsonrpc":"2.0","method":"exit"}"#.parse().unwrap();
         assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
         assert_eq!(service.call(exit).wait(), Ok("".to_owned()));
 
