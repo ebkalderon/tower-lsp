@@ -4,8 +4,8 @@ use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use futures::sync::mpsc::{Receiver, Sender};
-use futures::{Future, Poll, Sink, Stream};
+use futures::sync::mpsc::Sender;
+use futures::{Future, Sink};
 use jsonrpc_core::types::{request, Id, Version};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
@@ -13,19 +13,6 @@ use lsp_types::request::{ApplyWorkspaceEdit, RegisterCapability, Request, Unregi
 use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
-
-/// Stream of notification messages produced by the language server.
-#[derive(Debug)]
-pub struct MessageStream(pub(super) Receiver<String>);
-
-impl Stream for MessageStream {
-    type Item = String;
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Option<String>, ()> {
-        self.0.poll()
-    }
-}
 
 /// Sends notifications from the language server to the client.
 #[derive(Debug)]
@@ -195,20 +182,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures::{future, sync::mpsc};
+    use futures::{future, sync::mpsc, Stream};
     use tokio::runtime::current_thread;
 
     use super::*;
 
     fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
         let (tx, rx) = mpsc::channel(1);
-        let messages = MessageStream(rx);
         let printer = Printer::new(tx, Arc::new(AtomicBool::new(true)));
 
         current_thread::block_on_all(
             future::lazy(move || {
                 f(printer);
-                messages.collect()
+                rx.collect()
             })
             .and_then(move |messages| {
                 assert_eq!(messages, vec![expected]);

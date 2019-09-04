@@ -1,11 +1,12 @@
 //! Type-safe wrapper for the JSON-RPC interface.
 
-pub use self::printer::{MessageStream, Printer};
+pub use self::printer::Printer;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use futures::{future, sync::mpsc};
+use futures::sync::mpsc::{self, Receiver};
+use futures::{future, Poll, Stream};
 use jsonrpc_core::types::{ErrorCode, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
@@ -15,6 +16,19 @@ use lsp_types::*;
 use super::LanguageServer;
 
 mod printer;
+
+/// Stream of notification messages produced by the language server.
+#[derive(Debug)]
+pub struct MessageStream(Receiver<String>);
+
+impl Stream for MessageStream {
+    type Item = String;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<String>, ()> {
+        self.0.poll()
+    }
+}
 
 /// JSON-RPC interface used by the Language Server Protocol.
 #[rpc(server)]
