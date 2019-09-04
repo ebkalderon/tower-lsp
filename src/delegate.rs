@@ -47,17 +47,6 @@ impl Printer {
         }
     }
 
-    /// Submits validation diagnostics for an open file with the given URI.
-    ///
-    /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
-    ///
-    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
-    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        self.send_message(make_notification::<PublishDiagnostics>(
-            PublishDiagnosticsParams::new(uri, diagnostics),
-        ));
-    }
-
     /// Notifies the client to log a particular message.
     ///
     /// This corresponds to the [`window/logMessage`] notification.
@@ -120,6 +109,17 @@ impl Printer {
             Ok(value) => self.send_message(make_notification::<TelemetryEvent>(value)),
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
         }
+    }
+
+    /// Submits validation diagnostics for an open file with the given URI.
+    ///
+    /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
+    ///
+    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
+    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        self.send_message(make_notification::<PublishDiagnostics>(
+            PublishDiagnosticsParams::new(uri, diagnostics),
+        ));
     }
 
     fn send_message(&self, message: String) {
