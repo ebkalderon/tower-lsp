@@ -30,6 +30,18 @@ impl LanguageServer for Backend {
         Box::new(future::ok(None))
     }
 
+    fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
+        printer.log_message(MessageType::Info, "workspace folders changed!");
+    }
+
+    fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
+        printer.log_message(MessageType::Info, "configuration changed!");
+    }
+
+    fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
+        printer.log_message(MessageType::Info, "watched files have changed!");
+    }
+
     fn execute_command(&self, printer: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
         printer.apply_edit(WorkspaceEdit::default());
         Box::new(future::ok(None))

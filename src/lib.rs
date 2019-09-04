@@ -130,6 +130,48 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
     fn shutdown(&self) -> Self::ShutdownFuture;
 
+    /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
+    /// server to inform about workspace folder configuration changes.
+    ///
+    /// The notification is sent by default if both of these boolean fields were set to `true` in
+    /// the [`initialize`] method:
+    ///
+    /// * `InitializeParams::capabilities::workspace::workspace_folders`
+    /// * `InitializeResult::capabilities::workspace::workspace_folders::supported`
+    ///
+    /// This notification is also sent if the server has registered itself to receive this
+    /// notification.
+    ///
+    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
+    /// [`initialize`]: #tymethod.initialize
+    fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
+        let _ = p;
+        let _ = params;
+    }
+
+    /// The [`workspace/didChangeConfiguration`] notification is sent from the client to the server
+    /// to signal the change of configuration settings.
+    ///
+    /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
+    fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
+        let _ = printer;
+        let _ = params;
+    }
+
+    /// The [`workspace/didChangeWatchedFiles`] notification is sent from the client to the server
+    /// when the client detects changes to files watched by the language client.
+    ///
+    /// It is recommended that servers register for these file events using the registration
+    /// mechanism. This can be done here or in the [`initialized`] method using
+    /// `Printer::register_capability()`.
+    ///
+    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
+    /// [`initialized`]: #tymethod.initialized
+    fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
+        let _ = printer;
+        let _ = params;
+    }
+
     /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
     /// symbols matching the given query string.
     ///
@@ -232,6 +274,18 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn shutdown(&self) -> Self::ShutdownFuture {
         (**self).shutdown()
+    }
+
+    fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
+        (**self).did_change_workspace_folders(p, params);
+    }
+
+    fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
+        (**self).did_change_configuration(printer, params);
+    }
+
+    fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
+        (**self).did_change_watched_files(printer, params);
     }
 
     fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture {
