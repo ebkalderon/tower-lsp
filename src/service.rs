@@ -145,17 +145,25 @@ impl Service<Incoming> for LspService {
         if self.stopped.load(Ordering::SeqCst) {
             Box::new(future::err(ExitedError))
         } else {
-            Box::new(
-                self.handler
-                    .handle_request(&request.to_string())
-                    .map_err(|_| unreachable!())
-                    .map(move |result| {
-                        result.unwrap_or_else(|| {
-                            trace!("request produced no response: {}", request);
-                            String::new()
-                        })
-                    }),
-            )
+            if let Incoming::Response(_) = request {
+                // FIXME: Currently, we are dropping responses to requests created in `Printer`.
+                // We need some way to route them back to the `Printer`. See this issue for more:
+                //
+                // https://github.com/ebkalderon/tower-lsp/issues/13
+                Box::new(future::ok(String::new()))
+            } else {
+                Box::new(
+                    self.handler
+                        .handle_request(&request.to_string())
+                        .map_err(|_| unreachable!())
+                        .map(move |result| {
+                            result.unwrap_or_else(|| {
+                                trace!("request produced no response: {}", request);
+                                String::new()
+                            })
+                        }),
+                )
+            }
         }
     }
 }
