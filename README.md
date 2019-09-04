@@ -52,8 +52,8 @@ impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
     type ExecuteFuture = BoxFuture<Option<Value>>;
-    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
+    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
     fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
