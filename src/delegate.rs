@@ -11,7 +11,7 @@ use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
 use lsp_types::notification::{LogMessage, Notification, PublishDiagnostics, ShowMessage};
-use lsp_types::request::Request;
+use lsp_types::request::{RegisterCapability, Request, UnregisterCapability};
 use lsp_types::*;
 use serde::Serialize;
 
@@ -80,6 +80,34 @@ impl Printer {
             typ,
             message: message.to_string(),
         }));
+    }
+
+    /// Register a new capability with the client.
+    ///
+    /// This corresponds to the [`client/registerCapability`] request.
+    ///
+    /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specification#client_registerCapability
+    pub fn register_capability(&self, registrations: Vec<Registration>) {
+        // FIXME: Check whether the request succeeded or failed.
+        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
+        self.send_message(make_request::<RegisterCapability>(
+            id,
+            RegistrationParams { registrations },
+        ))
+    }
+
+    /// Unregister a capability with the client.
+    ///
+    /// This corresponds to the [`client/unregisterCapability`] request.
+    ///
+    /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specification#client_unregisterCapability
+    pub fn unregister_capability(&self, unregisterations: Vec<Unregistration>) {
+        // FIXME: Check whether the request succeeded or failed.
+        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
+        self.send_message(make_request::<UnregisterCapability>(
+            id,
+            UnregistrationParams { unregisterations },
+        ))
     }
 
     fn send_message(&self, message: String) {
