@@ -64,7 +64,7 @@ impl Printer {
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
             Ok(value) => {
-                if !value.is_array() && !value.is_object() {
+                if !value.is_null() && !value.is_array() && !value.is_object() {
                     let value = Value::Array(vec![value]);
                     self.send_message(make_notification::<TelemetryEvent>(value));
                 } else {
