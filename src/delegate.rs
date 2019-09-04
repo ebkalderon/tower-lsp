@@ -1,16 +1,17 @@
 //! Type-safe wrapper for the JSON-RPC interface.
 
 use std::fmt::Display;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use futures::sync::mpsc::{self, Receiver, Sender};
 use futures::{future, Future, Poll, Sink, Stream};
-use jsonrpc_core::types::{request, ErrorCode, Params, Version};
+use jsonrpc_core::types::{request, ErrorCode, Id, Params, Version};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
 use lsp_types::notification::{LogMessage, Notification, PublishDiagnostics, ShowMessage};
+use lsp_types::request::Request;
 use lsp_types::*;
 use serde::Serialize;
 
@@ -34,6 +35,7 @@ impl Stream for MessageStream {
 pub struct Printer {
     buffer: Sender<String>,
     initialized: Arc<AtomicBool>,
+    request_id: AtomicU64,
 }
 
 impl Printer {
@@ -41,6 +43,7 @@ impl Printer {
         Printer {
             buffer,
             initialized,
+            request_id: AtomicU64::new(0),
         }
     }
 
@@ -92,6 +95,25 @@ impl Printer {
             trace!("server not initialized, supressing message: {}", message);
         }
     }
+}
+
+/// Constructs a JSON-RPC request from its corresponding LSP type.
+fn make_request<N>(id: u64, params: N::Params) -> String
+where
+    N: Request,
+    N::Params: Serialize,
+{
+    // Since these types come from the `lsp-types` crate and validity is enforced via the
+    // `Notification` trait, the `unwrap()` calls below should never fail.
+    let output = serde_json::to_string(&params).unwrap();
+    let params = serde_json::from_str(&output).unwrap();
+    serde_json::to_string(&request::MethodCall {
+        jsonrpc: Some(Version::V2),
+        id: Id::Num(id),
+        method: N::METHOD.to_owned(),
+        params,
+    })
+    .unwrap()
 }
 
 /// Constructs a JSON-RPC notification from its corresponding LSP type.
