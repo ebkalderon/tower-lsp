@@ -11,6 +11,7 @@ use tokio_io::{AsyncRead, AsyncWrite};
 use tower_service::Service;
 
 use super::codec::LanguageServerCodec;
+use super::message::Incoming;
 
 /// Server for processing requests and responses on `stdin` and `stdout`.
 #[derive(Debug)]
@@ -56,7 +57,7 @@ where
     /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
     pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send
     where
-        T: Service<String, Response = String> + Send + 'static,
+        T: Service<Incoming, Response = String> + Send + 'static,
         T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send,
     {
@@ -76,7 +77,8 @@ where
             tokio_executor::spawn(printer);
 
             framed_stdin
-                .map_err(|e| error!("failed to decode request: {}", e))
+                .map(Incoming::from)
+                .map_err(|e| error!("failed to decode message: {}", e))
                 .fold(service, move |mut service, line| {
                     let sender = sender.clone();
                     service
@@ -121,7 +123,7 @@ mod tests {
     #[derive(Debug)]
     struct MockService;
 
-    impl Service<String> for MockService {
+    impl Service<Incoming> for MockService {
         type Response = String;
         type Error = String;
         type Future = FutureResult<Self::Response, Self::Error>;
@@ -130,8 +132,8 @@ mod tests {
             Ok(Async::Ready(()))
         }
 
-        fn call(&mut self, request: String) -> Self::Future {
-            future::ok(request)
+        fn call(&mut self, request: Incoming) -> Self::Future {
+            future::ok(request.to_string())
         }
     }
 
