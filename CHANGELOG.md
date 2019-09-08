@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* Implement support for the following client-to-server message:
+  * `textDocument/completion`
+
 ## [0.3.1] - 2019-09-08
 
 ### Changed
