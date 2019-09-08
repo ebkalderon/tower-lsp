@@ -56,7 +56,7 @@ impl LanguageServer for Backend {
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
-    fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
     }
 
