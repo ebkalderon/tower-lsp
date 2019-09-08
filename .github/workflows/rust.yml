@@ -10,6 +10,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         rust-version: [1.34.0, beta, nightly]
+        continue-on-error: false
+        include:
+        - rust-version: nightly
+          continue-on-error: true
 
     steps:
     - uses: hecrj/setup-rust-action@master
@@ -19,29 +23,13 @@ jobs:
     - uses: actions/checkout@v1
 
     - name: Check formatting
-      if: matrix.rust-version != 'nightly'
+      continue-on-error: ${{ matrix.continue-on-error }}
       run: |
         rustup component add rustfmt
         cargo fmt --all -- --check
-    - name: Check formatting
-      if: matrix.rust-version == 'nightly'
-      continue-on-error: true
-      run: |
-        rustup component add rustfmt
-        cargo fmt --all -- --check
-
     - name: Build
-      if: matrix.rust-version != 'nightly'
+      continue-on-error: ${{ matrix.continue-on-error }}
       run: cargo build --all --verbose
-    - name: Build
-      if: matrix.rust-version == 'nightly'
-      continue-on-error: true
-      run: cargo build --all --verbose
-
     - name: Run tests
-      if: matrix.rust-version != 'nightly'
-      run: cargo test --all --verbose
-    - name: Run tests
-      if: matrix.rust-version == 'nightly'
-      continue-on-error: true
+      continue-on-error: ${{ matrix.continue-on-error }}
       run: cargo test --all --verbose
