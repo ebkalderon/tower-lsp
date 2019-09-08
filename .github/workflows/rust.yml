@@ -19,6 +19,7 @@ jobs:
     - uses: actions/checkout@v1
 
     - name: Check formatting
+      if: matrix.rust-version != 'nightly'
       run: |
         rustup component add rustfmt
         cargo fmt --all -- --check
@@ -30,6 +31,7 @@ jobs:
         cargo fmt --all -- --check
 
     - name: Build
+      if: matrix.rust-version != 'nightly'
       run: cargo build --all --verbose
     - name: Build
       if: matrix.rust-version == 'nightly'
@@ -37,8 +39,8 @@ jobs:
       run: cargo build --all --verbose
 
     - name: Run tests
+      if: matrix.rust-version != 'nightly'
       run: cargo test --all --verbose
-
     - name: Run tests
       if: matrix.rust-version == 'nightly'
       continue-on-error: true
