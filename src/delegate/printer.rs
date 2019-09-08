@@ -82,7 +82,7 @@ impl Printer {
     pub fn register_capability(&self, registrations: Vec<Registration>) {
         // FIXME: Check whether the request succeeded or failed.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message(make_request::<RegisterCapability>(
+        self.send_message_initialized(make_request::<RegisterCapability>(
             id,
             RegistrationParams { registrations },
         ))
@@ -96,7 +96,7 @@ impl Printer {
     pub fn unregister_capability(&self, unregisterations: Vec<Unregistration>) {
         // FIXME: Check whether the request succeeded or failed.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message(make_request::<UnregisterCapability>(
+        self.send_message_initialized(make_request::<UnregisterCapability>(
             id,
             UnregistrationParams { unregisterations },
         ))
@@ -111,7 +111,7 @@ impl Printer {
     pub fn apply_edit(&self, edit: WorkspaceEdit) -> bool {
         // FIXME: Check whether the request succeeded or failed and retrieve apply status.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message(make_request::<ApplyWorkspaceEdit>(
+        self.send_message_initialized(make_request::<ApplyWorkspaceEdit>(
             id,
             ApplyWorkspaceEditParams { edit },
         ));
@@ -124,20 +124,24 @@ impl Printer {
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        self.send_message(make_notification::<PublishDiagnostics>(
+        self.send_message_initialized(make_notification::<PublishDiagnostics>(
             PublishDiagnosticsParams::new(uri, diagnostics),
         ));
     }
 
     fn send_message(&self, message: String) {
+        tokio_executor::spawn(
+            self.buffer
+                .clone()
+                .send(message)
+                .map(|_| ())
+                .map_err(|_| error!("failed to send message")),
+        );
+    }
+
+    fn send_message_initialized(&self, message: String) {
         if self.initialized.load(Ordering::SeqCst) {
-            tokio_executor::spawn(
-                self.buffer
-                    .clone()
-                    .send(message)
-                    .map(|_| ())
-                    .map_err(|_| error!("failed to send message")),
-            );
+            self.send_message(message)
         } else {
             trace!("server not initialized, supressing message: {}", message);
         }
