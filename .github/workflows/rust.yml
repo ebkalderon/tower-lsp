@@ -18,10 +18,9 @@ jobs:
     - uses: hecrj/setup-rust-action@master
       with:
         rust-version: ${{ matrix.rust-version }}
-
     - uses: actions/checkout@v1
-
     - name: Check formatting
+      if: matrix.rust-version != 'nightly'
       continue-on-error: ${{ matrix.continue-on-error }}
       run: |
         rustup component add rustfmt
