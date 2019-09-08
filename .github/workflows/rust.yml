@@ -21,7 +21,6 @@ jobs:
     - uses: actions/checkout@v1
     - name: Check formatting
       if: matrix.rust-version != 'nightly'
-      continue-on-error: ${{ matrix.continue-on-error }}
       run: |
         rustup component add rustfmt
         cargo fmt --all -- --check
