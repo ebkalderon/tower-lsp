@@ -189,7 +189,7 @@ mod tests {
         type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
         type HoverFuture = BoxFuture<Option<Hover>>;
 
-        fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+        fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 

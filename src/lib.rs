@@ -22,7 +22,7 @@
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!
-//!     fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+//!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
 //!     }
 //!
@@ -114,7 +114,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
     /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    fn initialize(&self, params: InitializeParams) -> Result<InitializeResult>;
+    fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
@@ -280,8 +280,8 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type HoverFuture = S::HoverFuture;
     type HighlightFuture = S::HighlightFuture;
 
-    fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        (**self).initialize(params)
+    fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
+        (**self).initialize(printer, params)
     }
 
     fn initialized(&self, printer: &Printer, params: InitializedParams) {

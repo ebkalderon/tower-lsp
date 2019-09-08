@@ -155,7 +155,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         trace!("received `initialize` request: {:?}", params);
         let params: InitializeParams = params.parse()?;
-        let response = self.server.initialize(params)?;
+        let response = self.server.initialize(&self.printer, params)?;
         self.initialized.store(true, Ordering::SeqCst);
         Ok(response)
     }
