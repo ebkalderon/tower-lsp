@@ -80,8 +80,6 @@ use jsonrpc_core::{Error, Result};
 use lsp_types::*;
 use serde_json::Value;
 
-this should not compile
-
 mod codec;
 mod delegate;
 mod message;
