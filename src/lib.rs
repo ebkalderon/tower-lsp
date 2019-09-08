@@ -18,6 +18,7 @@
 //!     type ShutdownFuture = BoxFuture<()>;
 //!     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
 //!     type ExecuteFuture = BoxFuture<Option<Value>>;
+//!     type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!
@@ -38,6 +39,10 @@
 //!     }
 //!
 //!     fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
 //!         Box::new(future::ok(None))
 //!     }
 //!
@@ -99,6 +104,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     type SymbolFuture: Future<Item = Option<Vec<SymbolInformation>>, Error = Error> + Send;
     /// Response returned when an execute command action is requested.
     type ExecuteFuture: Future<Item = Option<Value>, Error = Error> + Send;
+    /// Response returned when a completion action is requested.
+    type CompletionFuture: Future<Item = Option<CompletionResponse>, Error = Error> + Send;
     /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
     /// Response returned when a document highlight action is requested.
@@ -233,6 +240,16 @@ pub trait LanguageServer: Send + Sync + 'static {
         let _ = params;
     }
 
+    /// The [`textDocument/completion`] request is sent from the client to the server to compute
+    /// completion items at a given cursor position.
+    ///
+    /// If computing full completion items is expensive, servers can additionally provide a handler
+    /// for the completion item resolve request (`completionItem/resolve`). This request is sent
+    /// when a completion item is selected in the user interface.
+    ///
+    /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_completion
+    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture;
+
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
     ///
@@ -259,6 +276,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type ShutdownFuture = S::ShutdownFuture;
     type SymbolFuture = S::SymbolFuture;
     type ExecuteFuture = S::ExecuteFuture;
+    type CompletionFuture = S::CompletionFuture;
     type HoverFuture = S::HoverFuture;
     type HighlightFuture = S::HighlightFuture;
 
@@ -292,6 +310,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture {
         (**self).execute_command(p, params)
+    }
+
+    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture {
+        (**self).completion(params)
     }
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {

@@ -11,6 +11,7 @@ impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
     type ExecuteFuture = BoxFuture<Option<Value>>;
+    type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
@@ -90,6 +91,10 @@ impl LanguageServer for Backend {
 
     fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
         printer.log_message(MessageType::Info, "file closed!");
+    }
+
+    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
+        Box::new(future::ok(None))
     }
 
     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {

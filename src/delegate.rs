@@ -81,6 +81,9 @@ pub trait LanguageServerCore {
 
     // Language features
 
+    #[rpc(name = "textDocument/completion", raw_params)]
+    fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>>;
+
     #[rpc(name = "textDocument/hover", raw_params)]
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>>;
 
@@ -222,6 +225,10 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         self.delegate_notification::<DidCloseTextDocument, _>(params, |p, params| {
             self.server.did_close(p, params)
         });
+    }
+
+    fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>> {
+        self.delegate_request::<Completion, _>(params, |p| Box::new(self.server.completion(p)))
     }
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
