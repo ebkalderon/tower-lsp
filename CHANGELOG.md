@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.1] - 2019-09-08
+
 ### Changed
 
 * Use more descriptive message in not initialized JSON-RPC error.
+* Initialize example server with available features so it can be used as a
+  working mock language server.
 
 ### Fixed
 
@@ -85,7 +89,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ebkalderon/tower-lsp/releases/tag/v0.1.0
