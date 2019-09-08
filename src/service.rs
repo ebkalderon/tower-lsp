@@ -185,6 +185,7 @@ mod tests {
         type ShutdownFuture = BoxFuture<()>;
         type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
         type ExecuteFuture = BoxFuture<Option<Value>>;
+        type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
         type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
         type HoverFuture = BoxFuture<Option<Hover>>;
 
@@ -201,6 +202,10 @@ mod tests {
         }
 
         fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
             Box::new(future::ok(None))
         }
 

@@ -52,6 +52,7 @@ impl LanguageServer for Backend {
     type ShutdownFuture = BoxFuture<()>;
     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
     type ExecuteFuture = BoxFuture<Option<Value>>;
+    type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
@@ -72,6 +73,10 @@ impl LanguageServer for Backend {
     }
 
     fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
         Box::new(future::ok(None))
     }
 
