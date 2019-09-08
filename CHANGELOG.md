@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-* Implement support for the following client-to-server message:
-  * `textDocument/completion`
+* Implement support for `textDocument/completion` request.
+
+### Changed
+
+* Expose `Printer` in `LanguageServer::initialize()`.
+
+### Fixed
+
+* Allow `window/logMessage`, `window/showMessage`, and `telemetry/event`
+  server-to-client notifications in `initialize` request (PR #48).
 
 ## [0.3.1] - 2019-09-08
 
