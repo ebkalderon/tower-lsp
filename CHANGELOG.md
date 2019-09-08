@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+* Use more descriptive message in not initialized JSON-RPC error.
+
 ### Fixed
 
 * Allow JSON data for `telemetry/event` notification to be null.
