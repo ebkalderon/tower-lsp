@@ -23,7 +23,7 @@ pub struct Printer {
 }
 
 impl Printer {
-    pub(super) fn new(buffer: Sender<String>, initialized: Arc<AtomicBool>) -> Self {
+    pub(super) const fn new(buffer: Sender<String>, initialized: Arc<AtomicBool>) -> Self {
         Printer {
             buffer,
             initialized,
