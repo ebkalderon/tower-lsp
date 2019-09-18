@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Rust ${{ matrix.rust-version }}
+    name: Rust ${{ matrix.rust-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
