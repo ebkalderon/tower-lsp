@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Retain error or success from future in `ExitReceiver::run_until_exit()`.
 * Remove `'static` bounds on some `Server` and `ExitReceiver` methods.
 
-[init]: https://microsoft.github.io/language-server-protocol/specification#initialize
+[init]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
 
 ## [0.1.0] - 2019-09-02
 
