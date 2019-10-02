@@ -244,8 +244,8 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
 
 /// Error response returned for every request received before the server is initialized.
 ///
-/// See [here](https://microsoft.github.io/language-server-protocol/specification#initialize) for
-/// reference.
+/// See [here](https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize)
+/// for reference.
 fn not_initialized_error() -> Error {
     Error {
         code: ErrorCode::ServerError(-32002),
