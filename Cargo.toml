@@ -15,7 +15,7 @@ keywords = ["language-server", "lsp", "tower"]
 [dependencies]
 bytes = "0.4.12"
 futures = "0.1.28"
-jsonrpc-core = "13.1"
+jsonrpc-core = "14.0"
 jsonrpc-derive = "13.1"
 log = "0.4.7"
 lsp-types = "0.61.0"
