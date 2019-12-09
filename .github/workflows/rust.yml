@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        rust-version: [1.34.0, beta, nightly]
+        rust-version: [1.36.0, beta, nightly]
         include:
         - rust-version: nightly
           continue-on-error: true
