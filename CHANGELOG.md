@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.1] - 2019-12-09
+
+### Changed
+
+* Update `jsonrpc-core` crate from 14.0 to 14.0.5.
+* Update `jsonrpc-derive` crate from 14.0 to 14.0.5.
+* Update `log` crate from 0.4.7 to 0.4.8.
+* Update `serde` crate from 1.0.99 to 1.0.103.
+* Update `tokio-executor` crate from 0.1.8 to 0.1.9.
+* Update `env_logger` crate from 0.7.0 to 0.7.1.
+
+### Fixed
+
+* Correctly handle LSP requests containing incomplete UTF-8 (PR #66).
+
 ## [0.4.0] - 2019-10-02
 
 ### Added
@@ -107,7 +122,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.2.0...v0.3.0
