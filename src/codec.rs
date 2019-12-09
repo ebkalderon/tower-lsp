@@ -9,7 +9,7 @@ use bytes::{BufMut, BytesMut};
 use nom::branch::alt;
 use nom::bytes::streaming::{is_not, tag};
 use nom::character::streaming::{char, crlf, digit1, space0};
-use nom::combinator::{map, map_res, opt};
+use nom::combinator::{map_res, opt};
 use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::{delimited, terminated, tuple};
@@ -100,9 +100,11 @@ impl Decoder for LanguageServerCodec {
             return Ok(None);
         }
 
-        let string = str::from_utf8(src)?;
-        let (message, len) = match parse_message(string) {
-            Ok((remaining, message)) => (message.to_string(), src.len() - remaining.len()),
+        let (message, len) = match parse_message(&src) {
+            Ok((remaining, message)) => (
+                str::from_utf8(message)?.to_string(),
+                src.len() - remaining.len(),
+            ),
             Err(Err::Incomplete(Needed::Size(min))) => {
                 self.remaining_msg_bytes = min;
                 return Ok(None);
@@ -124,7 +126,7 @@ impl Decoder for LanguageServerCodec {
     }
 }
 
-fn parse_message(input: &str) -> IResult<&str, String> {
+fn parse_message(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let content_len = delimited(tag("Content-Length: "), digit1, crlf);
 
     let utf8 = alt((tag("utf-8"), tag("utf8")));
@@ -132,10 +134,11 @@ fn parse_message(input: &str) -> IResult<&str, String> {
     let content_type = tuple((tag("Content-Type:"), is_not(";\r"), opt(charset), crlf));
 
     let header = terminated(terminated(content_len, opt(content_type)), crlf);
+    let header = map_res(header, |s: &[u8]| str::from_utf8(s));
     let length = map_res(header, |s: &str| s.parse::<usize>());
     let message = length_data(length);
 
-    map(message, |msg| msg.to_string())(input)
+    message(input)
 }
 
 #[cfg(test)]
