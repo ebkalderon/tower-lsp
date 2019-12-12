@@ -113,7 +113,7 @@ pub trait LanguageServer: Send + Sync + 'static {
 
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
-    /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialize
+    /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#initialize
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
@@ -122,7 +122,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The server can use the `initialized` notification for example to dynamically register
     /// capabilities with the client.
     ///
-    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#initialized
+    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#initialized
     fn initialized(&self, printer: &Printer, params: InitializedParams) {
         let _ = printer;
         let _ = params;
@@ -133,8 +133,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request is often later followed by an [`exit`] notification, which will cause the
     /// server to exit immediately.
     ///
-    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#shutdown
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#exit
+    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#shutdown
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
     fn shutdown(&self) -> Self::ShutdownFuture;
 
     /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
@@ -149,7 +149,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This notification is also sent if the server has registered itself to receive this
     /// notification.
     ///
-    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeWorkspaceFolders
+    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeWorkspaceFolders
     /// [`initialize`]: #tymethod.initialize
     fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
         let _ = p;
@@ -159,7 +159,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/didChangeConfiguration`] notification is sent from the client to the server
     /// to signal the change of configuration settings.
     ///
-    /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeConfiguration
+    /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeConfiguration
     fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
         let _ = printer;
         let _ = params;
@@ -172,7 +172,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// mechanism. This can be done here or in the [`initialized`] method using
     /// `Printer::register_capability()`.
     ///
-    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_didChangeConfiguration
+    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
     fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
         let _ = printer;
@@ -182,7 +182,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
     /// symbols matching the given query string.
     ///
-    /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_symbol
+    /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_symbol
     fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture;
 
     /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
@@ -191,7 +191,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
     /// the workspace using `Printer::apply_edit()` before returning from this function.
     ///
-    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_executeCommand
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_executeCommand
     fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture;
 
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
@@ -201,7 +201,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document’s truth using the document's URI. "Open" in this sense means it is managed by the
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
-    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_didOpen
+    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didOpen
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -213,7 +213,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This notification will contain a distinct version tag and a list of edits made to the
     /// document for the server to interpret.
     ///
-    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_didChange
+    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didChange
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -222,7 +222,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
     /// document was saved in the client.
     ///
-    /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_didSave
+    /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didSave
     fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -234,7 +234,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The document's truth now exists where the document's URI points to (e.g. if the document's
     /// URI is a file URI, the truth now exists on disk).
     ///
-    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_didClose
+    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didClose
     fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -247,7 +247,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// for the completion item resolve request (`completionItem/resolve`). This request is sent
     /// when a completion item is selected in the user interface.
     ///
-    /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_completion
+    /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_completion
     fn completion(&self, params: CompletionParams) -> Self::CompletionFuture;
 
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
@@ -256,7 +256,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// Such hover information typically includes type signature information and inline
     /// documentation for the symbol at the given text document position.
     ///
-    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_hover
+    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
     fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture;
 
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
@@ -268,7 +268,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request differs slightly from `textDocument/references` in that this one is allowed to
     /// be more fuzzy.
     ///
-    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_documentHighlight
+    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
     fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
 }
 

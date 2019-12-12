@@ -31,14 +31,14 @@ impl Error for ExitedError {}
 
 /// Future which never resolves until the [`exit`] notification is received.
 ///
-/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#exit
+/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
 #[derive(Clone, Debug)]
 pub struct ExitReceiver(Shared<oneshot::Receiver<()>>);
 
 impl ExitReceiver {
     /// Drives the future to completion, only canceling if the [`exit`] notification is received.
     ///
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#exit
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
     pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send
     where
         F: Future<Item = (), Error = ()> + Send,
@@ -122,7 +122,7 @@ impl LspService {
 
     /// Returns a close handle which signals when the [`exit`] notification has been received.
     ///
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#exit
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
     pub fn close_handle(&self) -> ExitReceiver {
         self.exit_rx.clone()
     }
