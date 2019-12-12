@@ -123,9 +123,9 @@ impl Printer {
     /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_publishDiagnostics
-    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+    pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
         self.send_message_initialized(make_notification::<PublishDiagnostics>(
-            PublishDiagnosticsParams::new(uri, diagnostics),
+            PublishDiagnosticsParams::new(uri, diags, version),
         ));
     }
 
@@ -257,9 +257,9 @@ mod tests {
         let uri: Url = "file:///path/to/file".parse().unwrap();
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
-        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone());
+        let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);
         let expected = make_notification::<PublishDiagnostics>(params);
 
-        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics), expected);
+        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected);
     }
 }
