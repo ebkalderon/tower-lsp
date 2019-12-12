@@ -35,7 +35,7 @@ impl Printer {
     ///
     /// This corresponds to the [`window/logMessage`] notification.
     ///
-    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#window_logMessage
+    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#window_logMessage
     pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_message(make_notification::<LogMessage>(LogMessageParams {
             typ,
@@ -47,7 +47,7 @@ impl Printer {
     ///
     /// This corresponds to the [`window/showMessage`] notification.
     ///
-    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#window_showMessage
+    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#window_showMessage
     pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_message(make_notification::<ShowMessage>(ShowMessageParams {
             typ,
@@ -59,7 +59,7 @@ impl Printer {
     ///
     /// This corresponds to the [`telemetry/event`] notification.
     ///
-    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#telemetry_event
+    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#telemetry_event
     pub fn telemetry_event<S: Serialize>(&self, data: S) {
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
@@ -78,7 +78,7 @@ impl Printer {
     ///
     /// This corresponds to the [`client/registerCapability`] request.
     ///
-    /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#client_registerCapability
+    /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#client_registerCapability
     pub fn register_capability(&self, registrations: Vec<Registration>) {
         // FIXME: Check whether the request succeeded or failed.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -92,7 +92,7 @@ impl Printer {
     ///
     /// This corresponds to the [`client/unregisterCapability`] request.
     ///
-    /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#client_unregisterCapability
+    /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#client_unregisterCapability
     pub fn unregister_capability(&self, unregisterations: Vec<Unregistration>) {
         // FIXME: Check whether the request succeeded or failed.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -107,7 +107,7 @@ impl Printer {
     ///
     /// This corresponds to the [`workspace/applyEdit`] request.
     ///
-    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#workspace_applyEdit
+    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_applyEdit
     pub fn apply_edit(&self, edit: WorkspaceEdit) -> bool {
         // FIXME: Check whether the request succeeded or failed and retrieve apply status.
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -122,7 +122,7 @@ impl Printer {
     ///
     /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
     ///
-    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-14/#textDocument_publishDiagnostics
+    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
         self.send_message_initialized(make_notification::<PublishDiagnostics>(
             PublishDiagnosticsParams::new(uri, diags, version),
