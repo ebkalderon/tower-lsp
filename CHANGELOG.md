@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* Implement support for the following client-to-server messages:
+  * `textDocument/declaration`
+  * `textDocument/definition`
+  * `textDocument/typeDefinition`
+
 ## [0.5.0] - 2019-12-12
 
 ### Added
