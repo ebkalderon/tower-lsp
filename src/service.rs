@@ -172,6 +172,7 @@ impl Service<Incoming> for LspService {
 #[cfg(test)]
 mod tests {
     use jsonrpc_core::{BoxFuture, Result};
+    use lsp_types::request::GotoDefinitionResponse;
     use lsp_types::*;
     use serde_json::Value;
 
@@ -186,8 +187,11 @@ mod tests {
         type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
         type ExecuteFuture = BoxFuture<Option<Value>>;
         type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
-        type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
         type HoverFuture = BoxFuture<Option<Hover>>;
+        type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+        type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+        type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+        type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
         fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
@@ -210,6 +214,21 @@ mod tests {
         }
 
         fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn goto_type_definition(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Self::TypeDefinitionFuture {
             Box::new(future::ok(None))
         }
 

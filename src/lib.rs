@@ -8,6 +8,7 @@
 //! # use futures::future;
 //! # use jsonrpc_core::{BoxFuture, Result};
 //! # use serde_json::Value;
+//! # use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 //! # use tower_lsp::lsp_types::*;
 //! # use tower_lsp::{LanguageServer, LspService, Printer, Server};
 //! #
@@ -20,6 +21,9 @@
 //!     type ExecuteFuture = BoxFuture<Option<Value>>;
 //!     type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
+//!     type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+//!     type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+//!     type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 //!
 //!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
@@ -47,6 +51,18 @@
 //!     }
 //!
 //!     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
 //!         Box::new(future::ok(None))
 //!     }
 //!
@@ -82,6 +98,7 @@ pub use self::stdio::Server;
 
 use futures::Future;
 use jsonrpc_core::{Error, Result};
+use lsp_types::request::GotoDefinitionResponse;
 use lsp_types::*;
 use serde_json::Value;
 
@@ -108,6 +125,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     type CompletionFuture: Future<Item = Option<CompletionResponse>, Error = Error> + Send;
     /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
+    /// Response returned when a goto declaration action is requested.
+    type DeclarationFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
+    /// Response returned when a goto definition action is requested.
+    type DefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
+    /// Response returned when a goto type definition action is requested.
+    type TypeDefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
     /// Response returned when a document highlight action is requested.
     type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
 
@@ -259,6 +282,57 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
     fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture;
 
+    /// The [`textDocument/declaration`] request asks the server for the declaration location of a
+    /// symbol at a given text document position.
+    ///
+    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
+    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
+    /// field to `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::definition::link_support
+    /// ```
+    ///
+    /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_declaration
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`initialize`]: #tymethod.initialize
+    fn goto_declaration(&self, params: TextDocumentPositionParams) -> Self::DeclarationFuture;
+
+    /// The [`textDocument/definition`] request asks the server for the definition location of a
+    /// symbol at a given text document position.
+    ///
+    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
+    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
+    /// field to `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::definition::link_support
+    /// ```
+    ///
+    /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_definition
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`initialize`]: #tymethod.initialize
+    fn goto_definition(&self, params: TextDocumentPositionParams) -> Self::DefinitionFuture;
+
+    /// The [`textDocument/typeDefinition`] request asks the server for the type definition location of
+    /// a symbol at a given text document position.
+    ///
+    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
+    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
+    /// field to `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::definition::link_support
+    /// ```
+    ///
+    /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_typeDefinition
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`initialize`]: #tymethod.initialize
+    fn goto_type_definition(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Self::TypeDefinitionFuture;
+
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
     ///
@@ -278,6 +352,9 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type ExecuteFuture = S::ExecuteFuture;
     type CompletionFuture = S::CompletionFuture;
     type HoverFuture = S::HoverFuture;
+    type DeclarationFuture = S::DeclarationFuture;
+    type DefinitionFuture = S::DefinitionFuture;
+    type TypeDefinitionFuture = S::TypeDefinitionFuture;
     type HighlightFuture = S::HighlightFuture;
 
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
@@ -334,6 +411,21 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture {
         (**self).hover(params)
+    }
+
+    fn goto_declaration(&self, params: TextDocumentPositionParams) -> Self::DeclarationFuture {
+        (**self).goto_declaration(params)
+    }
+
+    fn goto_definition(&self, params: TextDocumentPositionParams) -> Self::DefinitionFuture {
+        (**self).goto_definition(params)
+    }
+
+    fn goto_type_definition(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Self::TypeDefinitionFuture {
+        (**self).goto_type_definition(params)
     }
 
     fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {

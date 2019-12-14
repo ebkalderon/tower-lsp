@@ -1,6 +1,7 @@
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
 use serde_json::Value;
+use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
@@ -13,6 +14,9 @@ impl LanguageServer for Backend {
     type ExecuteFuture = BoxFuture<Option<Value>>;
     type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
     type HoverFuture = BoxFuture<Option<Hover>>;
+    type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+    type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+    type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
@@ -103,6 +107,18 @@ impl LanguageServer for Backend {
     }
 
     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
         Box::new(future::ok(None))
     }
 

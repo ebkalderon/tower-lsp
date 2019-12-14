@@ -87,6 +87,15 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/hover", raw_params)]
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>>;
 
+    #[rpc(name = "textDocument/declaration", raw_params)]
+    fn goto_declaration(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>>;
+
+    #[rpc(name = "textDocument/definition", raw_params)]
+    fn goto_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>>;
+
+    #[rpc(name = "textDocument/typeDefinition", raw_params)]
+    fn goto_type_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>>;
+
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }
@@ -233,6 +242,27 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
         self.delegate_request::<HoverRequest, _>(params, |p| Box::new(self.server.hover(p)))
+    }
+
+    fn goto_declaration(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
+        self.delegate_request::<GotoDeclaration, _>(params, |p| {
+            Box::new(self.server.goto_declaration(p))
+        })
+    }
+
+    fn goto_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
+        self.delegate_request::<GotoDefinition, _>(params, |p| {
+            Box::new(self.server.goto_definition(p))
+        })
+    }
+
+    fn goto_type_definition(
+        &self,
+        params: Params,
+    ) -> BoxFuture<Option<GotoTypeDefinitionResponse>> {
+        self.delegate_request::<GotoTypeDefinition, _>(params, |p| {
+            Box::new(self.server.goto_type_definition(p))
+        })
     }
 
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
