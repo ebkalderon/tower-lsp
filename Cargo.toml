@@ -13,7 +13,7 @@ categories = ["asynchronous"]
 keywords = ["language-server", "lsp", "tower"]
 
 [dependencies]
-bytes = "0.4.12"
+bytes = "0.5.3"
 futures = "0.1.28"
 jsonrpc-core = "14.0.5"
 jsonrpc-derive = "14.0.5"
