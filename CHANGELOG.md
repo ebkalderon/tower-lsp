@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/definition`
   * `textDocument/typeDefinition`
 
+### Changed
+
+* Update `lsp-types` crate from 0.63.1 to 0.68.0.
+
 ## [0.5.0] - 2019-12-12
 
 ### Added
