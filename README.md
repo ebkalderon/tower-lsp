@@ -36,6 +36,11 @@ consists of three parts:
 * A `Server` which spawns the `LspService` and processes requests and responses
   over stdin and stdout.
 
+_NOTE: This library currently relies on `futures` 0.1 and is not async/await
+ready. Support for `std::future::Future` and async/await is tracked in [#58]._
+
+[#58]: https://github.com/ebkalderon/tower-lsp/issues/58
+
 ## Example
 
 ```rust
