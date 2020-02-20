@@ -290,7 +290,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// field to `true` in the [`initialize`] method:
     ///
     /// ```text
-    /// InitializeParams::capabilities::text_document::definition::link_support
+    /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
     ///
     /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_declaration
@@ -322,7 +322,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// field to `true` in the [`initialize`] method:
     ///
     /// ```text
-    /// InitializeParams::capabilities::text_document::definition::link_support
+    /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
     ///
     /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_typeDefinition
