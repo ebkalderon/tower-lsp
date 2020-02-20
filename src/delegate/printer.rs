@@ -133,7 +133,7 @@ impl Printer {
     pub fn send_notification<N>(&self, params: N::Params)
     where
         N: Notification,
-        N::Params: Serialize
+        N::Params: Serialize,
     {
         self.send_message_initialized(make_notification::<N>(params));
     }
