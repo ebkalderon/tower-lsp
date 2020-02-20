@@ -1,24 +1,24 @@
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
+use lsp_types::notification::Notification;
+use lsp_types::request::GotoImplementationResponse;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
-use lsp_types::request::GotoImplementationResponse;
-use lsp_types::notification::Notification;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 struct CustomNotificationParams {
     title: String,
-    message: String
+    message: String,
 }
 
 impl CustomNotificationParams {
     fn new(title: impl Into<String>, message: impl Into<String>) -> Self {
         CustomNotificationParams {
             title: title.into(),
-            message: message.into()
+            message: message.into(),
         }
     }
 }
@@ -47,7 +47,6 @@ impl LanguageServer for Backend {
     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
     type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
 
-
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
@@ -69,7 +68,10 @@ impl LanguageServer for Backend {
                 document_highlight_provider: Some(true),
                 workspace_symbol_provider: Some(true),
                 execute_command_provider: Some(ExecuteCommandOptions {
-                    commands: vec!["dummy.do_something".to_string(), "custom.notification".to_string()],
+                    commands: vec![
+                        "dummy.do_something".to_string(),
+                        "custom.notification".to_string(),
+                    ],
                     work_done_progress_options: Default::default(),
                 }),
                 workspace: Some(WorkspaceCapability {
@@ -109,13 +111,20 @@ impl LanguageServer for Backend {
         printer.log_message(MessageType::Info, "watched files have changed!");
     }
 
-    fn execute_command(&self, printer: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture {
+    fn execute_command(
+        &self,
+        printer: &Printer,
+        params: ExecuteCommandParams,
+    ) -> Self::ExecuteFuture {
         if &params.command == "custom.notification" {
-            printer.send_notification::<CustomNotification>(
-                CustomNotificationParams::new("Hello", "Message")
-            );
+            printer.send_notification::<CustomNotification>(CustomNotificationParams::new(
+                "Hello", "Message",
+            ));
         }
-        printer.log_message(MessageType::Info, format!("command executed!: {:?}", params));
+        printer.log_message(
+            MessageType::Info,
+            format!("command executed!: {:?}", params),
+        );
         printer.apply_edit(WorkspaceEdit::default());
         Box::new(future::ok(None))
     }
