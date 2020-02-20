@@ -195,7 +195,6 @@ mod tests {
         type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
         type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
 
-
         fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
@@ -243,7 +242,10 @@ mod tests {
             Box::new(future::ok(None))
         }
 
-        fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
+        fn goto_implementation(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Self::GotoImplementationFuture {
             Box::new(future::ok(None))
         }
     }

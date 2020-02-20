@@ -147,7 +147,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// Response returned when a signature help action is requested.
     type SignatureHelpFuture: Future<Item = Option<SignatureHelp>, Error = Error> + Send;
     /// Response returned when a goto implementation action is requested.
-    type GotoImplementationFuture: Future<Item =Option<GotoImplementationResponse>, Error = Error> + Send;
+    type GotoImplementationFuture: Future<Item = Option<GotoImplementationResponse>, Error = Error>
+        + Send;
 
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -380,7 +381,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_implementation
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
-    fn goto_implementation(&self, params: TextDocumentPositionParams) -> Self::GotoImplementationFuture;
+    fn goto_implementation(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Self::GotoImplementationFuture;
 }
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
@@ -395,7 +399,6 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type HighlightFuture = S::HighlightFuture;
     type SignatureHelpFuture = S::SignatureHelpFuture;
     type GotoImplementationFuture = S::GotoImplementationFuture;
-
 
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(printer, params)
@@ -476,7 +479,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).signature_help(params)
     }
 
-    fn goto_implementation(&self, params: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
+    fn goto_implementation(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Self::GotoImplementationFuture {
         (**self).goto_implementation(params)
     }
 }

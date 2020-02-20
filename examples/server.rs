@@ -1,10 +1,10 @@
 use futures::future;
 use jsonrpc_core::{BoxFuture, Result};
+use lsp_types::request::GotoImplementationResponse;
 use serde_json::Value;
 use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
-use lsp_types::request::GotoImplementationResponse;
 
 #[derive(Debug, Default)]
 struct Backend;
@@ -21,7 +21,6 @@ impl LanguageServer for Backend {
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
     type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
-
 
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
