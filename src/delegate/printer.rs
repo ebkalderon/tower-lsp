@@ -129,6 +129,15 @@ impl Printer {
         ));
     }
 
+    /// Send a custom notification to the client
+    pub fn send_notification<N>(&self, params: N::Params)
+    where
+        N: Notification,
+        N::Params: Serialize
+    {
+        self.send_message_initialized(make_notification::<N>(params));
+    }
+
     fn send_message(&self, message: String) {
         tokio_executor::spawn(
             self.buffer
