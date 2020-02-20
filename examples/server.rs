@@ -4,6 +4,7 @@ use serde_json::Value;
 use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
+use lsp_types::request::GotoImplementationResponse;
 
 #[derive(Debug, Default)]
 struct Backend;
@@ -18,6 +19,9 @@ impl LanguageServer for Backend {
     type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
     type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+    type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
+    type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
+
 
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
@@ -123,6 +127,14 @@ impl LanguageServer for Backend {
     }
 
     fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+        Box::new(future::ok(None))
+    }
+
+    fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
         Box::new(future::ok(None))
     }
 }

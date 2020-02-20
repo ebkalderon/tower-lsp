@@ -98,6 +98,12 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
+
+    #[rpc(name = "textDocument/signatureHelp", raw_params)]
+    fn signature_help(&self, params: Params) -> BoxFuture<Option<SignatureHelp>>;
+
+    #[rpc(name = "textDocument/implementation", raw_params)]
+    fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -268,6 +274,18 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
         self.delegate_request::<DocumentHighlightRequest, _>(params, |p| {
             Box::new(self.server.document_highlight(p))
+        })
+    }
+
+    fn signature_help(&self, params: Params) -> BoxFuture<Option<SignatureHelp>> {
+        self.delegate_request::<SignatureHelpRequest, _>(params, |p| {
+            Box::new(self.server.signature_help(p))
+        })
+    }
+
+    fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>> {
+        self.delegate_request::<GotoImplementation, _>(params, |p| {
+            Box::new(self.server.goto_implementation(p))
         })
     }
 }

@@ -8,7 +8,7 @@
 //! # use futures::future;
 //! # use jsonrpc_core::{BoxFuture, Result};
 //! # use serde_json::Value;
-//! # use tower_lsp::lsp_types::request::GotoDefinitionResponse;
+//! # use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 //! # use tower_lsp::lsp_types::*;
 //! # use tower_lsp::{LanguageServer, LspService, Printer, Server};
 //! #
@@ -25,6 +25,9 @@
 //!     type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
 //!     type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+//!     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
+//!     type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
+//!
 //!
 //!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
@@ -69,6 +72,14 @@
 //!     fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
 //!         Box::new(future::ok(None))
 //!     }
+//!
+//!     fn signature_help(&self,params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
+//!     fn goto_implementation(&self,params: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
+//!         Box::new(future::ok(None))
+//!     }
 //! }
 //!
 //! fn main() {
@@ -98,7 +109,7 @@ pub use self::stdio::Server;
 
 use futures::Future;
 use jsonrpc_core::{Error, Result};
-use lsp_types::request::GotoDefinitionResponse;
+use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use lsp_types::*;
 use serde_json::Value;
 
@@ -133,6 +144,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     type TypeDefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
     /// Response returned when a document highlight action is requested.
     type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
+    /// Response returned when a signature help action is requested.
+    type SignatureHelpFuture: Future<Item = Option<SignatureHelp>, Error = Error> + Send;
+    /// Response returned when a goto implementation action is requested.
+    type GotoImplementationFuture: Future<Item =Option<GotoImplementationResponse>, Error = Error> + Send;
 
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -344,6 +359,28 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
     fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
+
+    /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
+    /// signature information at a given cursor position.
+    ///
+    /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_signatureHelp
+    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture;
+
+    /// The [`textDocument/implementation`] request is sent from the client to the server to resolve
+    /// the implementation location of a symbol at a given text document position.
+    ///
+    /// The result type [`GotoImplementationResponse::Link`] got introduced with version 3.14.0 and
+    /// requires client-side support. It can be returned if the client set the following
+    /// field to `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::implementation::link_support
+    /// ```
+    ///
+    /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_implementation
+    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
+    /// [`initialize`]: #tymethod.initialize
+    fn goto_implementation(&self, params: TextDocumentPositionParams) -> Self::GotoImplementationFuture;
 }
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
@@ -356,6 +393,9 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type DefinitionFuture = S::DefinitionFuture;
     type TypeDefinitionFuture = S::TypeDefinitionFuture;
     type HighlightFuture = S::HighlightFuture;
+    type SignatureHelpFuture = S::SignatureHelpFuture;
+    type GotoImplementationFuture = S::GotoImplementationFuture;
+
 
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(printer, params)
@@ -389,10 +429,6 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).execute_command(p, params)
     }
 
-    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture {
-        (**self).completion(params)
-    }
-
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         (**self).did_open(printer, params);
     }
@@ -407,6 +443,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         (**self).did_close(printer, params);
+    }
+
+    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture {
+        (**self).completion(params)
     }
 
     fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture {
@@ -430,5 +470,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
         (**self).document_highlight(params)
+    }
+
+    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+        (**self).signature_help(params)
+    }
+
+    fn goto_implementation(&self, params: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
+        (**self).goto_implementation(params)
     }
 }
