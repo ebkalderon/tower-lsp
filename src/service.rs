@@ -172,7 +172,7 @@ impl Service<Incoming> for LspService {
 #[cfg(test)]
 mod tests {
     use jsonrpc_core::{BoxFuture, Result};
-    use lsp_types::request::GotoDefinitionResponse;
+    use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
     use lsp_types::*;
     use serde_json::Value;
 
@@ -192,6 +192,9 @@ mod tests {
         type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
         type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
         type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+        type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
+        type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
+
 
         fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
@@ -233,6 +236,14 @@ mod tests {
         }
 
         fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+            Box::new(future::ok(None))
+        }
+
+        fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
             Box::new(future::ok(None))
         }
     }
