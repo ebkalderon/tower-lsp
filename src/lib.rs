@@ -21,12 +21,12 @@
 //!     type ExecuteFuture = BoxFuture<Option<Value>>;
 //!     type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
 //!     type HoverFuture = BoxFuture<Option<Hover>>;
+//!     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
 //!     type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
 //!     type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
 //!     type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+//!     type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
 //!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-//!     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-//!     type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
 //!
 //!
 //!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
@@ -57,6 +57,10 @@
 //!         Box::new(future::ok(None))
 //!     }
 //!
+//!     fn signature_help(&self,params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
 //!     fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
 //!         Box::new(future::ok(None))
 //!     }
@@ -69,15 +73,11 @@
 //!         Box::new(future::ok(None))
 //!     }
 //!
+//!     fn goto_implementation(&self,params: TextDocumentPositionParams) -> Self::ImplementationFuture {
+//!         Box::new(future::ok(None))
+//!     }
+//!
 //!     fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-//!         Box::new(future::ok(None))
-//!     }
-//!
-//!     fn signature_help(&self,params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-//!         Box::new(future::ok(None))
-//!     }
-//!
-//!     fn goto_implementation(&self,params: TextDocumentPositionParams) -> Self::GotoImplementationFuture {
 //!         Box::new(future::ok(None))
 //!     }
 //! }
@@ -136,19 +136,19 @@ pub trait LanguageServer: Send + Sync + 'static {
     type CompletionFuture: Future<Item = Option<CompletionResponse>, Error = Error> + Send;
     /// Response returned when a hover action is requested.
     type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
+    /// Response returned when a signature help action is requested.
+    type SignatureHelpFuture: Future<Item = Option<SignatureHelp>, Error = Error> + Send;
     /// Response returned when a goto declaration action is requested.
     type DeclarationFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
     /// Response returned when a goto definition action is requested.
     type DefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
     /// Response returned when a goto type definition action is requested.
     type TypeDefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
+    /// Response returned when a goto implementation action is requested.
+    type ImplementationFuture: Future<Item = Option<GotoImplementationResponse>, Error = Error>
+        + Send;
     /// Response returned when a document highlight action is requested.
     type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
-    /// Response returned when a signature help action is requested.
-    type SignatureHelpFuture: Future<Item = Option<SignatureHelp>, Error = Error> + Send;
-    /// Response returned when a goto implementation action is requested.
-    type GotoImplementationFuture: Future<Item = Option<GotoImplementationResponse>, Error = Error>
-        + Send;
 
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -298,6 +298,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
     fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture;
 
+    /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
+    /// signature information at a given cursor position.
+    ///
+    /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_signatureHelp
+    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture;
+
     /// The [`textDocument/declaration`] request asks the server for the declaration location of a
     /// symbol at a given text document position.
     ///
@@ -349,24 +355,6 @@ pub trait LanguageServer: Send + Sync + 'static {
         params: TextDocumentPositionParams,
     ) -> Self::TypeDefinitionFuture;
 
-    /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
-    /// resolve appropriate highlights for a given text document position.
-    ///
-    /// For programming languages, this usually highlights all textual references to the symbol
-    /// scoped to this file.
-    ///
-    /// This request differs slightly from `textDocument/references` in that this one is allowed to
-    /// be more fuzzy.
-    ///
-    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
-    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
-
-    /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
-    /// signature information at a given cursor position.
-    ///
-    /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_signatureHelp
-    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture;
-
     /// The [`textDocument/implementation`] request is sent from the client to the server to resolve
     /// the implementation location of a symbol at a given text document position.
     ///
@@ -381,10 +369,20 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_implementation
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
-    fn goto_implementation(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Self::GotoImplementationFuture;
+    fn goto_implementation(&self, params: TextDocumentPositionParams)
+        -> Self::ImplementationFuture;
+
+    /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
+    /// resolve appropriate highlights for a given text document position.
+    ///
+    /// For programming languages, this usually highlights all textual references to the symbol
+    /// scoped to this file.
+    ///
+    /// This request differs slightly from `textDocument/references` in that this one is allowed to
+    /// be more fuzzy.
+    ///
+    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
+    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
 }
 
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
@@ -393,12 +391,12 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     type ExecuteFuture = S::ExecuteFuture;
     type CompletionFuture = S::CompletionFuture;
     type HoverFuture = S::HoverFuture;
+    type SignatureHelpFuture = S::SignatureHelpFuture;
     type DeclarationFuture = S::DeclarationFuture;
     type DefinitionFuture = S::DefinitionFuture;
     type TypeDefinitionFuture = S::TypeDefinitionFuture;
+    type ImplementationFuture = S::ImplementationFuture;
     type HighlightFuture = S::HighlightFuture;
-    type SignatureHelpFuture = S::SignatureHelpFuture;
-    type GotoImplementationFuture = S::GotoImplementationFuture;
 
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(printer, params)
@@ -456,6 +454,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).hover(params)
     }
 
+    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+        (**self).signature_help(params)
+    }
+
     fn goto_declaration(&self, params: TextDocumentPositionParams) -> Self::DeclarationFuture {
         (**self).goto_declaration(params)
     }
@@ -471,18 +473,14 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).goto_type_definition(params)
     }
 
-    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
-        (**self).document_highlight(params)
-    }
-
-    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-        (**self).signature_help(params)
-    }
-
     fn goto_implementation(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Self::GotoImplementationFuture {
+    ) -> Self::ImplementationFuture {
         (**self).goto_implementation(params)
+    }
+
+    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
+        (**self).document_highlight(params)
     }
 }

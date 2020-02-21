@@ -188,12 +188,12 @@ mod tests {
         type ExecuteFuture = BoxFuture<Option<Value>>;
         type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
         type HoverFuture = BoxFuture<Option<Hover>>;
+        type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
         type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
         type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
         type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
+        type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
         type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-        type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-        type GotoImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
 
         fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
@@ -219,6 +219,10 @@ mod tests {
             Box::new(future::ok(None))
         }
 
+        fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
+            Box::new(future::ok(None))
+        }
+
         fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
             Box::new(future::ok(None))
         }
@@ -234,18 +238,11 @@ mod tests {
             Box::new(future::ok(None))
         }
 
+        fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::ImplementationFuture {
+            Box::new(future::ok(None))
+        }
+
         fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-            Box::new(future::ok(None))
-        }
-
-        fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-            Box::new(future::ok(None))
-        }
-
-        fn goto_implementation(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Self::GotoImplementationFuture {
             Box::new(future::ok(None))
         }
     }
