@@ -87,28 +87,12 @@ impl LanguageServer for Backend {
         })
     }
 
-    fn initialized(&self, printer: &Printer, _: InitializedParams) {
-        printer.log_message(MessageType::Info, "server initialized!");
-    }
-
     fn shutdown(&self) -> Self::ShutdownFuture {
         Box::new(future::ok(()))
     }
 
     fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
         Box::new(future::ok(None))
-    }
-
-    fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
-        printer.log_message(MessageType::Info, "workspace folders changed!");
-    }
-
-    fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
-        printer.log_message(MessageType::Info, "configuration changed!");
-    }
-
-    fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
-        printer.log_message(MessageType::Info, "watched files have changed!");
     }
 
     fn execute_command(
@@ -127,22 +111,6 @@ impl LanguageServer for Backend {
         );
         printer.apply_edit(WorkspaceEdit::default());
         Box::new(future::ok(None))
-    }
-
-    fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file opened!");
-    }
-
-    fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file changed!");
-    }
-
-    fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file saved!");
-    }
-
-    fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file closed!");
     }
 
     fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
