@@ -2,7 +2,6 @@ use jsonrpc_core::Result;
 use serde::Serialize;
 use serde_json::Value;
 use tower_lsp::lsp_types::notification::Notification;
-use tower_lsp::lsp_types::request::*;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
