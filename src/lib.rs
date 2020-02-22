@@ -77,7 +77,7 @@ pub use self::stdio::Server;
 pub use async_trait::async_trait;
 
 use jsonrpc_core::{Error, Result};
-use log::error;
+use log::{error, warn};
 use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use lsp_types::*;
 use serde_json::Value;
@@ -139,7 +139,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
         let _ = p;
         let _ = params;
-        error!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
+        warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
 
     /// The [`workspace/didChangeConfiguration`] notification is sent from the client to the server
@@ -149,7 +149,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
+        warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
     }
 
     /// The [`workspace/didChangeWatchedFiles`] notification is sent from the client to the server
@@ -164,7 +164,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
+        warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
     }
 
     /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
@@ -209,7 +209,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a textDocument/didOpen notification, but it is not implemented");
+        warn!("Got a textDocument/didOpen notification, but it is not implemented");
     }
 
     /// The [`textDocument/didChange`] notification is sent from the client to the server to signal
@@ -222,7 +222,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a textDocument/didChange notification, but it is not implemented");
+        warn!("Got a textDocument/didChange notification, but it is not implemented");
     }
 
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
@@ -232,7 +232,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a textDocument/didSave notification, but it is not implemented");
+        warn!("Got a textDocument/didSave notification, but it is not implemented");
     }
 
     /// The [`textDocument/didClose`] notification is sent from the client to the server when the
@@ -245,7 +245,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         let _ = printer;
         let _ = params;
-        error!("Got a textDocument/didClose notification, but it is not implemented");
+        warn!("Got a textDocument/didClose notification, but it is not implemented");
     }
 
     /// The [`textDocument/completion`] request is sent from the client to the server to compute
