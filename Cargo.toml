@@ -13,8 +13,9 @@ categories = ["asynchronous"]
 keywords = ["language-server", "lsp", "tower"]
 
 [dependencies]
-bytes = "0.4.12"
-futures = "0.1.28"
+async-trait = "0.1.24"
+bytes = "0.5.0"
+futures = { version = "0.3.2", features = ["compat"] }
 jsonrpc-core = "14.0.5"
 jsonrpc-derive = "14.0.5"
 log = "0.4.8"
@@ -22,11 +23,12 @@ lsp-types = "0.68.0"
 nom = "5.0.1"
 serde = { version = "1.0.103", features = ["derive"] }
 serde_json = "1.0.40"
-tokio-codec = "0.1.1"
-tokio-executor = "0.1.9"
-tokio-io = "0.1.12"
-tower-service = "0.2.0"
+tokio = { version = "0.2.11", features = ["rt-core"] }
+tokio-util = { version = "0.2.0", features = ["codec"] }
+tower-service = "0.3.0"
 
 [dev-dependencies]
 env_logger = "0.7.1"
-tokio = "0.1.22"
+tokio = { version = "0.2.11", features = ["io-std", "macros", "test-util"] }
+tokio-test = "0.2.0"
+tower-test = "0.3.0"

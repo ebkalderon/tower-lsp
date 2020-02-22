@@ -4,8 +4,8 @@ use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use futures::sync::mpsc::Sender;
-use futures::{Future, Sink};
+use futures::channel::mpsc::Sender;
+use futures::sink::SinkExt;
 use jsonrpc_core::types::{request, Id, Version};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
@@ -139,13 +139,12 @@ impl Printer {
     }
 
     fn send_message(&self, message: String) {
-        tokio_executor::spawn(
-            self.buffer
-                .clone()
-                .send(message)
-                .map(|_| ())
-                .map_err(|_| error!("failed to send message")),
-        );
+        let mut buffer = self.buffer.clone();
+        tokio::spawn(async move {
+            if buffer.send(message).await.is_err() {
+                error!("failed to send message")
+            }
+        });
     }
 
     fn send_message_initialized(&self, message: String) {
@@ -196,79 +195,72 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures::{future, sync::mpsc, Stream};
+    use futures::channel::mpsc;
+    use futures::stream::StreamExt;
     use serde_json::json;
-    use tokio::runtime::current_thread;
 
     use super::*;
 
-    fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
+    async fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
         let (tx, rx) = mpsc::channel(1);
-        let printer = Printer::new(tx, Arc::new(AtomicBool::new(true)));
 
-        current_thread::block_on_all(
-            future::lazy(move || {
-                f(printer);
-                rx.collect()
-            })
-            .and_then(move |messages| {
-                assert_eq!(messages, vec![expected]);
-                Ok(())
-            }),
-        )
-        .unwrap();
+        let printer = Printer::new(tx, Arc::new(AtomicBool::new(true)));
+        f(printer);
+
+        let messages: Vec<_> = rx.collect().await;
+        assert_eq!(messages, vec![expected]);
     }
 
-    #[test]
-    fn log_message() {
+    #[tokio::test]
+    async fn log_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
         let expected = make_notification::<LogMessage>(LogMessageParams {
             typ,
             message: message.clone(),
         });
 
-        assert_printer_messages(|p| p.log_message(typ, message), expected);
+        assert_printer_messages(|p| p.log_message(typ, message), expected).await;
     }
 
-    #[test]
-    fn show_message() {
+    #[tokio::test]
+    async fn show_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
         let expected = make_notification::<ShowMessage>(ShowMessageParams {
             typ,
             message: message.clone(),
         });
 
-        assert_printer_messages(|p| p.show_message(typ, message), expected);
+        assert_printer_messages(|p| p.show_message(typ, message), expected).await;
     }
 
-    #[test]
-    fn telemetry_event() {
+    #[tokio::test]
+    async fn telemetry_event() {
         let null = json!(null);
         let expected = make_notification::<TelemetryEvent>(null.clone());
-        assert_printer_messages(|p| p.telemetry_event(null), expected);
+        assert_printer_messages(|p| p.telemetry_event(null), expected).await;
 
         let array = json!([1, 2, 3]);
         let expected = make_notification::<TelemetryEvent>(array.clone());
-        assert_printer_messages(|p| p.telemetry_event(array), expected);
+        assert_printer_messages(|p| p.telemetry_event(array), expected).await;
 
         let object = json!({});
         let expected = make_notification::<TelemetryEvent>(object.clone());
-        assert_printer_messages(|p| p.telemetry_event(object), expected);
+        assert_printer_messages(|p| p.telemetry_event(object), expected).await;
 
         let anything_else = json!("hello");
         let wrapped = Value::Array(vec![anything_else.clone()]);
         let expected = make_notification::<TelemetryEvent>(wrapped);
-        assert_printer_messages(|p| p.telemetry_event(anything_else), expected);
+        assert_printer_messages(|p| p.telemetry_event(anything_else), expected).await;
     }
 
-    #[test]
-    fn publish_diagnostics() {
+    #[tokio::test]
+    async fn publish_diagnostics() {
         let uri: Url = "file:///path/to/file".parse().unwrap();
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);
         let expected = make_notification::<PublishDiagnostics>(params);
 
-        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected);
+        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected).await;
     }
 }

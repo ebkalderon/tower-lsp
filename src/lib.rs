@@ -5,8 +5,9 @@
 //! # Example
 //!
 //! ```rust
-//! # use futures::future;
-//! # use jsonrpc_core::{BoxFuture, Result};
+//! # use std::future::Future;
+//! #
+//! # use jsonrpc_core::Result;
 //! # use serde_json::Value;
 //! # use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 //! # use tower_lsp::lsp_types::*;
@@ -15,20 +16,8 @@
 //! #[derive(Debug, Default)]
 //! struct Backend;
 //!
+//! #[tower_lsp::async_trait]
 //! impl LanguageServer for Backend {
-//!     type ShutdownFuture = BoxFuture<()>;
-//!     type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
-//!     type ExecuteFuture = BoxFuture<Option<Value>>;
-//!     type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
-//!     type HoverFuture = BoxFuture<Option<Hover>>;
-//!     type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-//!     type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-//!     type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-//!     type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-//!     type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
-//!     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-//!
-//!
 //!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
 //!     }
@@ -37,52 +26,53 @@
 //!         printer.log_message(MessageType::Info, "server initialized!");
 //!     }
 //!
-//!     fn shutdown(&self) -> Self::ShutdownFuture {
-//!         Box::new(future::ok(()))
+//!     async fn shutdown(&self) -> Result<()> {
+//!         Ok(())
 //!     }
 //!
-//!     fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
-//!         Box::new(future::ok(None))
+//!     async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
-//!         Box::new(future::ok(None))
+//!     async fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Result<Option<Value>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
-//!         Box::new(future::ok(None))
+//!     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
-//!         Box::new(future::ok(None))
+//!     async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn signature_help(&self,params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-//!         Box::new(future::ok(None))
+//!     async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
-//!         Box::new(future::ok(None))
+//!     async fn goto_declaration(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
-//!         Box::new(future::ok(None))
+//!     async fn goto_definition(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
-//!         Box::new(future::ok(None))
+//!     async fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn goto_implementation(&self,params: TextDocumentPositionParams) -> Self::ImplementationFuture {
-//!         Box::new(future::ok(None))
+//!     async fn goto_implementation(&self, _: TextDocumentPositionParams) -> Result<Option<GotoImplementationResponse>> {
+//!         Ok(None)
 //!     }
 //!
-//!     fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-//!         Box::new(future::ok(None))
+//!     async fn document_highlight(&self, _: TextDocumentPositionParams) -> Result<Option<Vec<DocumentHighlight>>> {
+//!         Ok(None)
 //!     }
 //! }
 //!
-//! fn main() {
+//! #[tokio::main]
+//! async fn main() {
 //!     let stdin = tokio::io::stdin();
 //!     let stdout = tokio::io::stdout();
 //!
@@ -92,7 +82,7 @@
 //!         .interleave(messages)
 //!         .serve(service);
 //!
-//!     tokio::run(handle.run_until_exit(server));
+//!     handle.run_until_exit(server).await;
 //! }
 //! ```
 
@@ -106,9 +96,10 @@ pub use self::delegate::{MessageStream, Printer};
 pub use self::message::Incoming;
 pub use self::service::{ExitReceiver, ExitedError, LspService};
 pub use self::stdio::Server;
+/// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
+pub use async_trait::async_trait;
 
-use futures::Future;
-use jsonrpc_core::{Error, Result};
+use jsonrpc_core::Result;
 use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use lsp_types::*;
 use serde_json::Value;
@@ -125,31 +116,8 @@ mod stdio;
 /// safe and easily testable way without exposing the low-level implementation details.
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
+#[async_trait]
 pub trait LanguageServer: Send + Sync + 'static {
-    /// Response returned when a server shutdown is requested.
-    type ShutdownFuture: Future<Item = (), Error = Error> + Send;
-    /// Response returned when a workspace symbol action is requested.
-    type SymbolFuture: Future<Item = Option<Vec<SymbolInformation>>, Error = Error> + Send;
-    /// Response returned when an execute command action is requested.
-    type ExecuteFuture: Future<Item = Option<Value>, Error = Error> + Send;
-    /// Response returned when a completion action is requested.
-    type CompletionFuture: Future<Item = Option<CompletionResponse>, Error = Error> + Send;
-    /// Response returned when a hover action is requested.
-    type HoverFuture: Future<Item = Option<Hover>, Error = Error> + Send;
-    /// Response returned when a signature help action is requested.
-    type SignatureHelpFuture: Future<Item = Option<SignatureHelp>, Error = Error> + Send;
-    /// Response returned when a goto declaration action is requested.
-    type DeclarationFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
-    /// Response returned when a goto definition action is requested.
-    type DefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
-    /// Response returned when a goto type definition action is requested.
-    type TypeDefinitionFuture: Future<Item = Option<GotoDefinitionResponse>, Error = Error> + Send;
-    /// Response returned when a goto implementation action is requested.
-    type ImplementationFuture: Future<Item = Option<GotoImplementationResponse>, Error = Error>
-        + Send;
-    /// Response returned when a document highlight action is requested.
-    type HighlightFuture: Future<Item = Option<Vec<DocumentHighlight>>, Error = Error> + Send;
-
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
     /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#initialize
@@ -174,7 +142,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#shutdown
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
-    fn shutdown(&self) -> Self::ShutdownFuture;
+    async fn shutdown(&self) -> Result<()>;
 
     /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
     /// server to inform about workspace folder configuration changes.
@@ -222,7 +190,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// symbols matching the given query string.
     ///
     /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_symbol
-    fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture;
+    async fn symbol(&self, params: WorkspaceSymbolParams)
+        -> Result<Option<Vec<SymbolInformation>>>;
 
     /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
     /// command execution on the server.
@@ -231,7 +200,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// the workspace using `Printer::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_executeCommand
-    fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture;
+    async fn execute_command(
+        &self,
+        p: &Printer,
+        params: ExecuteCommandParams,
+    ) -> Result<Option<Value>>;
 
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
     /// that a new text document has been opened by the client.
@@ -287,7 +260,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// when a completion item is selected in the user interface.
     ///
     /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_completion
-    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture;
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>>;
 
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
@@ -296,13 +269,16 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// documentation for the symbol at the given text document position.
     ///
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
-    fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture;
+    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>>;
 
     /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
     /// signature information at a given cursor position.
     ///
     /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_signatureHelp
-    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture;
+    async fn signature_help(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<SignatureHelp>>;
 
     /// The [`textDocument/declaration`] request asks the server for the declaration location of a
     /// symbol at a given text document position.
@@ -318,7 +294,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_declaration
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
-    fn goto_declaration(&self, params: TextDocumentPositionParams) -> Self::DeclarationFuture;
+    async fn goto_declaration(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>>;
 
     /// The [`textDocument/definition`] request asks the server for the definition location of a
     /// symbol at a given text document position.
@@ -334,7 +313,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_definition
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
-    fn goto_definition(&self, params: TextDocumentPositionParams) -> Self::DefinitionFuture;
+    async fn goto_definition(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>>;
 
     /// The [`textDocument/typeDefinition`] request asks the server for the type definition location of
     /// a symbol at a given text document position.
@@ -350,10 +332,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_typeDefinition
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
-    fn goto_type_definition(
+    async fn goto_type_definition(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Self::TypeDefinitionFuture;
+    ) -> Result<Option<GotoDefinitionResponse>>;
 
     /// The [`textDocument/implementation`] request is sent from the client to the server to resolve
     /// the implementation location of a symbol at a given text document position.
@@ -369,8 +351,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_implementation
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
-    fn goto_implementation(&self, params: TextDocumentPositionParams)
-        -> Self::ImplementationFuture;
+    async fn goto_implementation(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoImplementationResponse>>;
 
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
@@ -382,22 +366,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// be more fuzzy.
     ///
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
-    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture;
+    async fn document_highlight(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>>;
 }
 
+#[async_trait]
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
-    type ShutdownFuture = S::ShutdownFuture;
-    type SymbolFuture = S::SymbolFuture;
-    type ExecuteFuture = S::ExecuteFuture;
-    type CompletionFuture = S::CompletionFuture;
-    type HoverFuture = S::HoverFuture;
-    type SignatureHelpFuture = S::SignatureHelpFuture;
-    type DeclarationFuture = S::DeclarationFuture;
-    type DefinitionFuture = S::DefinitionFuture;
-    type TypeDefinitionFuture = S::TypeDefinitionFuture;
-    type ImplementationFuture = S::ImplementationFuture;
-    type HighlightFuture = S::HighlightFuture;
-
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(printer, params)
     }
@@ -406,8 +382,8 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).initialized(printer, params);
     }
 
-    fn shutdown(&self) -> Self::ShutdownFuture {
-        (**self).shutdown()
+    async fn shutdown(&self) -> Result<()> {
+        (**self).shutdown().await
     }
 
     fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
@@ -422,12 +398,19 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).did_change_watched_files(printer, params);
     }
 
-    fn symbol(&self, params: WorkspaceSymbolParams) -> Self::SymbolFuture {
-        (**self).symbol(params)
+    async fn symbol(
+        &self,
+        params: WorkspaceSymbolParams,
+    ) -> Result<Option<Vec<SymbolInformation>>> {
+        (**self).symbol(params).await
     }
 
-    fn execute_command(&self, p: &Printer, params: ExecuteCommandParams) -> Self::ExecuteFuture {
-        (**self).execute_command(p, params)
+    async fn execute_command(
+        &self,
+        p: &Printer,
+        params: ExecuteCommandParams,
+    ) -> Result<Option<Value>> {
+        (**self).execute_command(p, params).await
     }
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
@@ -446,41 +429,53 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).did_close(printer, params);
     }
 
-    fn completion(&self, params: CompletionParams) -> Self::CompletionFuture {
-        (**self).completion(params)
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        (**self).completion(params).await
     }
 
-    fn hover(&self, params: TextDocumentPositionParams) -> Self::HoverFuture {
-        (**self).hover(params)
+    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
+        (**self).hover(params).await
     }
 
-    fn signature_help(&self, params: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-        (**self).signature_help(params)
-    }
-
-    fn goto_declaration(&self, params: TextDocumentPositionParams) -> Self::DeclarationFuture {
-        (**self).goto_declaration(params)
-    }
-
-    fn goto_definition(&self, params: TextDocumentPositionParams) -> Self::DefinitionFuture {
-        (**self).goto_definition(params)
-    }
-
-    fn goto_type_definition(
+    async fn signature_help(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Self::TypeDefinitionFuture {
-        (**self).goto_type_definition(params)
+    ) -> Result<Option<SignatureHelp>> {
+        (**self).signature_help(params).await
     }
 
-    fn goto_implementation(
+    async fn goto_declaration(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Self::ImplementationFuture {
-        (**self).goto_implementation(params)
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        (**self).goto_declaration(params).await
     }
 
-    fn document_highlight(&self, params: TextDocumentPositionParams) -> Self::HighlightFuture {
-        (**self).document_highlight(params)
+    async fn goto_definition(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        (**self).goto_definition(params).await
+    }
+
+    async fn goto_type_definition(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        (**self).goto_type_definition(params).await
+    }
+
+    async fn goto_implementation(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<GotoImplementationResponse>> {
+        (**self).goto_implementation(params).await
+    }
+
+    async fn document_highlight(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        (**self).document_highlight(params).await
     }
 }

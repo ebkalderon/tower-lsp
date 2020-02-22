@@ -5,7 +5,8 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::io::{Error as IoError, Write};
 use std::str::{self, Utf8Error};
 
-use bytes::{BufMut, BytesMut};
+use bytes::buf::ext::BufMutExt;
+use bytes::{Buf, BytesMut};
 use nom::branch::alt;
 use nom::bytes::streaming::{is_not, tag};
 use nom::character::streaming::{char, crlf, digit1, space0};
@@ -14,7 +15,7 @@ use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::{delimited, terminated, tuple};
 use nom::{Err, IResult, Needed};
-use tokio_codec::{Decoder, Encoder};
+use tokio_util::codec::{Decoder, Encoder};
 
 /// Errors that can occur when processing an LSP request.
 #[derive(Debug)]
@@ -155,9 +156,9 @@ mod tests {
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::new();
         codec.encode(decoded.clone(), &mut buffer).unwrap();
-        assert_eq!(buffer, BytesMut::from(encoded.clone()));
+        assert_eq!(buffer, BytesMut::from(encoded.as_str()));
 
-        let mut buffer = BytesMut::from(encoded);
+        let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
         assert_eq!(message, Some(decoded));
     }
@@ -178,7 +179,7 @@ mod tests {
         let encoded = format!("{}\r\n{}\r\n\r\n{}", content_len, content_type, decoded);
 
         let mut codec = LanguageServerCodec::default();
-        let mut buffer = BytesMut::from(encoded);
+        let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
         assert_eq!(message, Some(decoded));
     }
