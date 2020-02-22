@@ -78,10 +78,6 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-        Ok(None)
-    }
-
     async fn execute_command(
         &self,
         printer: &Printer,
@@ -96,53 +92,6 @@ impl LanguageServer for Backend {
             MessageType::Info,
             format!("command executed!: {:?}", params),
         );
-        Ok(None)
-    }
-
-    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        Ok(None)
-    }
-
-    async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
-        Ok(None)
-    }
-
-    async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
-        Ok(None)
-    }
-
-    async fn goto_declaration(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_definition(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_type_definition(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_implementation(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoImplementationResponse>> {
-        Ok(None)
-    }
-
-    async fn document_highlight(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>> {
         Ok(None)
     }
 }
