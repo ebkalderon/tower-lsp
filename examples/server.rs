@@ -1,6 +1,6 @@
 use jsonrpc_core::Result;
 use serde_json::Value;
-use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
+use tower_lsp::lsp_types::request::*;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
