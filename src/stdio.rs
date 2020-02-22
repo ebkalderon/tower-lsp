@@ -1,13 +1,16 @@
 //! Asynchronous `tower` server with an stdio transport.
 
 use std::error::Error;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use futures::future::{Empty, IntoStream};
-use futures::sync::mpsc;
-use futures::{future, Future, Poll, Sink, Stream};
+use futures::channel::mpsc;
+use futures::future::FutureExt;
+use futures::sink::SinkExt;
+use futures::stream::{self, Empty, Stream, StreamExt};
 use log::error;
-use tokio_codec::{FramedRead, FramedWrite};
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio_util::codec::{FramedRead, FramedWrite};
 use tower_service::Service;
 
 use super::codec::LanguageServerCodec;
@@ -23,8 +26,8 @@ pub struct Server<I, O, S = Nothing> {
 
 impl<I, O> Server<I, O, Nothing>
 where
-    I: AsyncRead + Send + 'static,
-    O: AsyncWrite + Send + 'static,
+    I: AsyncRead + Send + Unpin,
+    O: AsyncWrite + Send + Unpin + 'static,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
@@ -38,14 +41,14 @@ where
 
 impl<I, O, S> Server<I, O, S>
 where
-    I: AsyncRead + Send + 'static,
-    O: AsyncWrite + Send + 'static,
-    S: Stream<Item = String, Error = ()> + Send + 'static,
+    I: AsyncRead + Send + Unpin,
+    O: AsyncWrite + Send + Unpin + 'static,
+    S: Stream<Item = String> + Send + 'static,
 {
     /// Interleaves the given stream of messages into `stdout` together with the responses.
     pub fn interleave<T>(self, stream: T) -> Server<I, O, T>
     where
-        T: Stream<Item = String, Error = ()> + Send + 'static,
+        T: Stream<Item = String> + Send + 'static,
     {
         Server {
             stdin: self.stdin,
@@ -55,59 +58,58 @@ where
     }
 
     /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
-    pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send
+    pub async fn serve<T>(self, mut service: T)
     where
         T: Service<Incoming, Response = String> + Send + 'static,
         T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send,
     {
-        let (sender, receiver) = mpsc::channel(1);
+        let (mut sender, receiver) = mpsc::channel(1);
 
-        let framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
+        let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
         let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
-        let interleave = self.interleave;
+        let interleave = self.interleave.fuse();
 
-        future::lazy(move || {
-            let printer = receiver
-                .select(interleave)
-                .map_err(|_| error!("failed to log message"))
-                .forward(framed_stdout.sink_map_err(|e| error!("failed to encode response: {}", e)))
-                .map(|_| ());
+        let printer = stream::select(receiver, interleave)
+            .map(Ok)
+            .forward(framed_stdout.sink_map_err(|e| error!("failed to encode response: {}", e)))
+            .map(|_| ());
 
-            tokio_executor::spawn(printer);
+        tokio::spawn(printer);
 
-            framed_stdin
-                .map(Incoming::from)
-                .map_err(|e| error!("failed to decode message: {}", e))
-                .fold(service, move |mut service, line| {
-                    let sender = sender.clone();
-                    service
-                        .call(line)
-                        .map_err(|e| error!("{}", e.into()))
-                        .and_then(move |resp| sender.send(resp).map_err(|_| unreachable!()))
-                        .then(move |_| Ok(service))
-                })
-                .map(|_| ())
-        })
+        while let Some(line) = framed_stdin.next().await {
+            let request = match line.map(Incoming::from) {
+                Ok(request) => request,
+                Err(err) => {
+                    error!("failed to decode message: {}", err);
+                    continue;
+                }
+            };
+
+            match service.call(request).await {
+                Ok(resp) => sender.send(resp).await.unwrap(),
+                Err(err) => error!("{}", err.into()),
+            }
+        }
     }
 }
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct Nothing(IntoStream<Empty<String, ()>>);
+pub struct Nothing(Empty<String>);
 
 impl Nothing {
     fn new() -> Self {
-        Nothing(future::empty().into_stream())
+        Nothing(stream::empty())
     }
 }
 
 impl Stream for Nothing {
     type Item = String;
-    type Error = ();
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.0.poll()
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let stream = &mut self.as_mut().0;
+        Pin::new(stream).poll_next(cx)
     }
 }
 
@@ -115,8 +117,8 @@ impl Stream for Nothing {
 mod tests {
     use std::io::Cursor;
 
-    use futures::{future::FutureResult, stream, Async};
-    use tokio::runtime::current_thread;
+    use futures::future::Ready;
+    use futures::{future, stream};
 
     use super::*;
 
@@ -126,10 +128,10 @@ mod tests {
     impl Service<Incoming> for MockService {
         type Response = String;
         type Error = String;
-        type Future = FutureResult<Self::Response, Self::Error>;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
 
-        fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-            Ok(Async::Ready(()))
+        fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
         }
 
         fn call(&mut self, request: Incoming) -> Self::Future {
@@ -146,29 +148,31 @@ mod tests {
         )
     }
 
-    // FIXME: Cannot inspect the input/output after serving because the server currently requires
-    // the `stdin` and `stdout` handles to be `'static`, thereby requiring owned values and
-    // disallowing `&` or `&mut` handles. This could potentially be fixed once async/await is
-    // ready, or perhaps if we write a mock stdio type that is cloneable and has internal
-    // synchronization.
+    // FIXME: Cannot inspect the output after serving because the server currently requires that
+    // `stdout` be `'static`, thereby requiring owned values and disallowing `&mut` handles. This
+    // could be fixed by spawning the `printer` in `Server::serve()` using a `LocalSet` once it
+    // gains the ability to spawn non-`'static` futures. See the following issue for details:
+    //
+    // https://github.com/tokio-rs/tokio/issues/2013
 
-    #[test]
-    fn serves_on_stdio() {
-        let (stdin, stdout) = mock_stdio();
-        let server = Server::new(stdin, stdout).serve(MockService);
-        current_thread::block_on_all(server).expect("failed to decode/encode message");
+    #[tokio::test]
+    async fn serves_on_stdio() {
+        let (mut stdin, stdout) = mock_stdio();
+        Server::new(&mut stdin, stdout).serve(MockService).await;
+        assert_eq!(stdin.position(), 62);
     }
 
-    #[test]
-    fn interleaves_messages() {
+    #[tokio::test]
+    async fn interleaves_messages() {
         let message = r#"{"jsonrpc":"2.0","method":"initialized"}"#.to_owned();
-        let messages = stream::iter_ok(vec![message]);
+        let messages = stream::iter(vec![message]);
 
-        let (stdin, stdout) = mock_stdio();
-        let server = Server::new(stdin, stdout)
+        let (mut stdin, stdout) = mock_stdio();
+        Server::new(&mut stdin, stdout)
             .interleave(messages)
-            .serve(MockService);
+            .serve(MockService)
+            .await;
 
-        current_thread::block_on_all(server).expect("failed to decode/encode message");
+        assert_eq!(stdin.position(), 62);
     }
 }

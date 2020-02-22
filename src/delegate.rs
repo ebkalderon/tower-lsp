@@ -2,11 +2,14 @@
 
 pub use self::printer::Printer;
 
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
-use futures::sync::mpsc::{self, Receiver};
-use futures::{future, Poll, Stream};
+use futures::channel::mpsc::{self, Receiver};
+use futures::future::{self, FutureExt, TryFutureExt};
+use futures::Stream;
 use jsonrpc_core::types::{ErrorCode, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
@@ -27,10 +30,10 @@ pub struct MessageStream(Receiver<String>);
 
 impl Stream for MessageStream {
     type Item = String;
-    type Error = ();
 
-    fn poll(&mut self) -> Poll<Option<String>, ()> {
-        self.0.poll()
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let recv = &mut self.as_mut().0;
+        Pin::new(recv).poll_next(cx)
     }
 }
 
@@ -109,8 +112,13 @@ pub trait LanguageServerCore {
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
 #[derive(Debug)]
 pub struct Delegate<T> {
-    server: T,
-    printer: Printer,
+    // FIXME: Remove `Arc` from `server` and `printer` once we switch to `jsonrpsee`.
+    // These are currently necessary to resolve lifetime interaction issues between `async-trait`,
+    // `jsonrpc-core`, and `.compat()`.
+    //
+    // https://github.com/ebkalderon/tower-lsp/issues/58
+    server: Arc<T>,
+    printer: Arc<Printer>,
     initialized: Arc<AtomicBool>,
 }
 
@@ -121,8 +129,8 @@ impl<T: LanguageServer> Delegate<T> {
         let messages = MessageStream(rx);
         let initialized = Arc::new(AtomicBool::new(false));
         let delegate = Delegate {
-            server,
-            printer: Printer::new(tx, initialized.clone()),
+            server: Arc::new(server),
+            printer: Arc::new(Printer::new(tx, initialized.clone())),
             initialized,
         };
 
@@ -149,19 +157,22 @@ impl<T: LanguageServer> Delegate<T> {
         R: Request,
         R::Params: DeserializeOwned,
         R::Result: Send + 'static,
-        F: Fn(R::Params) -> BoxFuture<R::Result>,
+        F: FnOnce(R::Params) -> BoxFuture<R::Result>,
     {
         trace!("received `{}` request: {:?}", R::METHOD, params);
         if self.initialized.load(Ordering::SeqCst) {
             match params.parse() {
                 Ok(params) => delegate(params),
-                Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                    "invalid parameters",
-                    err,
-                ))),
+                Err(err) => Box::new(
+                    future::err(Error::invalid_params_with_details(
+                        "invalid parameters",
+                        err,
+                    ))
+                    .compat(),
+                ),
             }
         } else {
-            Box::new(future::err(not_initialized_error()))
+            Box::new(future::err(not_initialized_error()).compat())
         }
     }
 }
@@ -184,9 +195,10 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn shutdown(&self) -> BoxFuture<()> {
         trace!("received `shutdown` request");
         if self.initialized.load(Ordering::SeqCst) {
-            Box::new(self.server.shutdown())
+            let server = self.server.clone();
+            Box::new(async move { server.shutdown().await }.boxed().compat())
         } else {
-            Box::new(future::err(not_initialized_error()))
+            Box::new(future::err(not_initialized_error()).compat())
         }
     }
 
@@ -209,18 +221,27 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>> {
-        self.delegate_request::<WorkspaceSymbol, _>(params, |p| Box::new(self.server.symbol(p)))
+        let server = self.server.clone();
+        self.delegate_request::<WorkspaceSymbol, _>(params, move |p| {
+            Box::new(async move { server.symbol(p).await }.boxed().compat())
+        })
     }
 
     fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
-        self.delegate_request::<ExecuteCommand, _>(params, |p| {
-            Box::new(self.server.execute_command(&self.printer, p))
+        let server = self.server.clone();
+        let printer = self.printer.clone();
+        self.delegate_request::<ExecuteCommand, _>(params, move |p| {
+            Box::new(
+                async move { server.execute_command(&printer, p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
     fn did_open(&self, params: Params) {
         self.delegate_notification::<DidOpenTextDocument, _>(params, |p, params| {
-            self.server.did_open(p, params)
+            self.server.clone().did_open(p, params)
         });
     }
 
@@ -243,28 +264,49 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>> {
-        self.delegate_request::<Completion, _>(params, |p| Box::new(self.server.completion(p)))
+        let server = self.server.clone();
+        self.delegate_request::<Completion, _>(params, move |p| {
+            Box::new(async move { server.completion(p).await }.boxed().compat())
+        })
     }
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
-        self.delegate_request::<HoverRequest, _>(params, |p| Box::new(self.server.hover(p)))
+        let server = self.server.clone();
+        self.delegate_request::<HoverRequest, _>(params, move |p| {
+            Box::new(async move { server.hover(p).await }.boxed().compat())
+        })
     }
 
     fn signature_help(&self, params: Params) -> BoxFuture<Option<SignatureHelp>> {
-        self.delegate_request::<SignatureHelpRequest, _>(params, |p| {
-            Box::new(self.server.signature_help(p))
+        let server = self.server.clone();
+        self.delegate_request::<SignatureHelpRequest, _>(params, move |p| {
+            Box::new(
+                async move { server.signature_help(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
     fn goto_declaration(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        self.delegate_request::<GotoDeclaration, _>(params, |p| {
-            Box::new(self.server.goto_declaration(p))
+        let server = self.server.clone();
+        self.delegate_request::<GotoDeclaration, _>(params, move |p| {
+            Box::new(
+                async move { server.goto_declaration(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
     fn goto_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        self.delegate_request::<GotoDefinition, _>(params, |p| {
-            Box::new(self.server.goto_definition(p))
+        let server = self.server.clone();
+        self.delegate_request::<GotoDefinition, _>(params, move |p| {
+            Box::new(
+                async move { server.goto_definition(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
@@ -272,20 +314,35 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         &self,
         params: Params,
     ) -> BoxFuture<Option<GotoTypeDefinitionResponse>> {
-        self.delegate_request::<GotoTypeDefinition, _>(params, |p| {
-            Box::new(self.server.goto_type_definition(p))
+        let server = self.server.clone();
+        self.delegate_request::<GotoTypeDefinition, _>(params, move |p| {
+            Box::new(
+                async move { server.goto_type_definition(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
     fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>> {
-        self.delegate_request::<GotoImplementation, _>(params, |p| {
-            Box::new(self.server.goto_implementation(p))
+        let server = self.server.clone();
+        self.delegate_request::<GotoImplementation, _>(params, move |p| {
+            Box::new(
+                async move { server.goto_implementation(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
-        self.delegate_request::<DocumentHighlightRequest, _>(params, |p| {
-            Box::new(self.server.document_highlight(p))
+        let server = self.server.clone();
+        self.delegate_request::<DocumentHighlightRequest, _>(params, move |p| {
+            Box::new(
+                async move { server.document_highlight(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 }

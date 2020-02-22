@@ -2,12 +2,16 @@
 
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
 
-use futures::future::{self, Future, Shared, SharedError, SharedItem};
-use futures::sync::oneshot::{self, Canceled};
-use futures::{Async, Poll};
+use futures::channel::oneshot::{self, Canceled};
+use futures::compat::Future01CompatExt;
+use futures::future::{FutureExt, Shared, TryFutureExt};
+use futures::{future, select};
 use jsonrpc_core::IoHandler;
 use log::{debug, info, trace};
 use lsp_types::notification::{Exit, Notification};
@@ -39,24 +43,23 @@ impl ExitReceiver {
     /// Drives the future to completion, only canceling if the [`exit`] notification is received.
     ///
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
-    pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send
+    pub async fn run_until_exit<F>(self, future: F)
     where
-        F: Future<Item = (), Error = ()> + Send,
+        F: Future<Output = ()> + Send,
     {
-        self.0
-            .then(|_| Ok(()))
-            .select(future)
-            .map(|item| item.0)
-            .map_err(|err| err.0)
+        select! {
+            a = self.0.fuse() => (),
+            b = future.fuse() => (),
+        }
     }
 }
 
 impl Future for ExitReceiver {
-    type Item = SharedItem<()>;
-    type Error = SharedError<Canceled>;
+    type Output = Result<(), Canceled>;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.0.poll()
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let recv = &mut self.as_mut().0;
+        Pin::new(recv).poll(cx)
     }
 }
 
@@ -131,19 +134,19 @@ impl LspService {
 impl Service<Incoming> for LspService {
     type Response = String;
     type Error = ExitedError;
-    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error> + Send>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+    fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         if self.stopped.load(Ordering::SeqCst) {
-            Ok(Async::NotReady)
+            Poll::Pending
         } else {
-            Ok(Async::Ready(()))
+            Poll::Ready(Ok(()))
         }
     }
 
     fn call(&mut self, request: Incoming) -> Self::Future {
         if self.stopped.load(Ordering::SeqCst) {
-            Box::new(future::err(ExitedError))
+            Box::pin(future::err(ExitedError))
         } else {
             if let Incoming::Response(r) = request {
                 // FIXME: Currently, we are dropping responses to requests created in `Printer`.
@@ -151,13 +154,14 @@ impl Service<Incoming> for LspService {
                 //
                 // https://github.com/ebkalderon/tower-lsp/issues/13
                 debug!("dropping client response, as per GitHub issue #13: {:?}", r);
-                Box::new(future::ok(String::new()))
+                Box::pin(future::ok(String::new()))
             } else {
-                Box::new(
+                Box::pin(
                     self.handler
                         .handle_request(&request.to_string())
+                        .compat()
                         .map_err(|_| unreachable!())
-                        .map(move |result| {
+                        .map_ok(move |result| {
                             result.unwrap_or_else(|| {
                                 trace!("request produced no response: {}", request);
                                 String::new()
@@ -171,10 +175,13 @@ impl Service<Incoming> for LspService {
 
 #[cfg(test)]
 mod tests {
-    use jsonrpc_core::{BoxFuture, Result};
+    use async_trait::async_trait;
+    use jsonrpc_core::Result;
     use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
     use lsp_types::*;
     use serde_json::Value;
+    use tokio_test::{assert_pending, assert_ready_ok};
+    use tower_test::mock::Spawn;
 
     use super::*;
     use crate::Printer;
@@ -182,84 +189,93 @@ mod tests {
     #[derive(Debug, Default)]
     struct Mock;
 
+    #[async_trait]
     impl LanguageServer for Mock {
-        type ShutdownFuture = BoxFuture<()>;
-        type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
-        type ExecuteFuture = BoxFuture<Option<Value>>;
-        type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
-        type HoverFuture = BoxFuture<Option<Hover>>;
-        type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-        type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-        type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-        type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-        type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
-        type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-
         fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 
-        fn shutdown(&self) -> Self::ShutdownFuture {
-            Box::new(future::ok(()))
+        async fn shutdown(&self) -> Result<()> {
+            Ok(())
         }
 
-        fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
-            Box::new(future::ok(None))
+        async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
+            Ok(None)
         }
 
-        fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
-            Box::new(future::ok(None))
+        async fn execute_command(
+            &self,
+            _: &Printer,
+            _: ExecuteCommandParams,
+        ) -> Result<Option<Value>> {
+            Ok(None)
         }
 
-        fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
-            Box::new(future::ok(None))
+        async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+            Ok(None)
         }
 
-        fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
-            Box::new(future::ok(None))
+        async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
+            Ok(None)
         }
 
-        fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-            Box::new(future::ok(None))
-        }
-
-        fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
-            Box::new(future::ok(None))
-        }
-
-        fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
-            Box::new(future::ok(None))
-        }
-
-        fn goto_type_definition(
+        async fn signature_help(
             &self,
             _: TextDocumentPositionParams,
-        ) -> Self::TypeDefinitionFuture {
-            Box::new(future::ok(None))
+        ) -> Result<Option<SignatureHelp>> {
+            Ok(None)
         }
 
-        fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::ImplementationFuture {
-            Box::new(future::ok(None))
+        async fn goto_declaration(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Result<Option<GotoDefinitionResponse>> {
+            Ok(None)
         }
 
-        fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-            Box::new(future::ok(None))
+        async fn goto_definition(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Result<Option<GotoDefinitionResponse>> {
+            Ok(None)
+        }
+
+        async fn goto_type_definition(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Result<Option<GotoDefinitionResponse>> {
+            Ok(None)
+        }
+
+        async fn goto_implementation(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Result<Option<GotoImplementationResponse>> {
+            Ok(None)
+        }
+
+        async fn document_highlight(
+            &self,
+            _: TextDocumentPositionParams,
+        ) -> Result<Option<Vec<DocumentHighlight>>> {
+            Ok(None)
         }
     }
 
-    #[test]
-    fn exit_notification() {
-        let (mut service, _) = LspService::new(Mock::default());
+    #[tokio::test]
+    async fn exit_notification() {
+        let (service, _) = LspService::new(Mock::default());
+        let mut service = Spawn::new(service);
 
         let initialized: Incoming = r#"{"jsonrpc":"2.0","method":"initialized"}"#.parse().unwrap();
-        assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
-        assert_eq!(service.call(initialized.clone()).wait(), Ok("".to_owned()));
+        assert_ready_ok!(service.poll_ready());
+        assert_eq!(service.call(initialized.clone()).await, Ok("".to_owned()));
 
         let exit: Incoming = r#"{"jsonrpc":"2.0","method":"exit"}"#.parse().unwrap();
-        assert_eq!(service.poll_ready(), Ok(Async::Ready(())));
-        assert_eq!(service.call(exit).wait(), Ok("".to_owned()));
+        assert_ready_ok!(service.poll_ready());
+        assert_eq!(service.call(exit).await, Ok("".to_owned()));
 
-        assert_eq!(service.poll_ready(), Ok(Async::NotReady));
-        assert_eq!(service.call(initialized).wait(), Err(ExitedError));
+        assert_pending!(service.poll_ready());
+        assert_eq!(service.call(initialized).await, Err(ExitedError));
     }
 }

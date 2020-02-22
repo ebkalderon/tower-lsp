@@ -1,14 +1,12 @@
-use futures::future;
-use jsonrpc_core::{BoxFuture, Result};
-use lsp_types::notification::Notification;
-use lsp_types::request::GotoImplementationResponse;
+use jsonrpc_core::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tower_lsp::lsp_types::request::GotoDefinitionResponse;
+use tower_lsp::lsp_types::notification::Notification;
+use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CustomNotificationParams {
     title: String,
     message: String,
@@ -24,7 +22,7 @@ impl CustomNotificationParams {
 }
 
 #[derive(Debug)]
-struct CustomNotification {}
+enum CustomNotification {}
 
 impl Notification for CustomNotification {
     type Params = CustomNotificationParams;
@@ -34,19 +32,8 @@ impl Notification for CustomNotification {
 #[derive(Debug, Default)]
 struct Backend;
 
+#[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    type ShutdownFuture = BoxFuture<()>;
-    type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
-    type ExecuteFuture = BoxFuture<Option<Value>>;
-    type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
-    type HoverFuture = BoxFuture<Option<Hover>>;
-    type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-    type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
-    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
@@ -87,19 +74,19 @@ impl LanguageServer for Backend {
         })
     }
 
-    fn shutdown(&self) -> Self::ShutdownFuture {
-        Box::new(future::ok(()))
+    async fn shutdown(&self) -> Result<()> {
+        Ok(())
     }
 
-    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
-        Box::new(future::ok(None))
+    async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
+        Ok(None)
     }
 
-    fn execute_command(
+    async fn execute_command(
         &self,
         printer: &Printer,
         params: ExecuteCommandParams,
-    ) -> Self::ExecuteFuture {
+    ) -> Result<Option<Value>> {
         if &params.command == "custom.notification" {
             printer.send_notification::<CustomNotification>(CustomNotificationParams::new(
                 "Hello", "Message",
@@ -109,44 +96,59 @@ impl LanguageServer for Backend {
             MessageType::Info,
             format!("command executed!: {:?}", params),
         );
-        printer.apply_edit(WorkspaceEdit::default());
-        Box::new(future::ok(None))
+        Ok(None)
     }
 
-    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
-        Box::new(future::ok(None))
+    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+        Ok(None)
     }
 
-    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
-        Box::new(future::ok(None))
+    async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
+        Ok(None)
     }
 
-    fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-        Box::new(future::ok(None))
+    async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
+        Ok(None)
     }
 
-    fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
-        Box::new(future::ok(None))
+    async fn goto_declaration(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
-        Box::new(future::ok(None))
+    async fn goto_definition(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
-        Box::new(future::ok(None))
+    async fn goto_type_definition(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::ImplementationFuture {
-        Box::new(future::ok(None))
+    async fn goto_implementation(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoImplementationResponse>> {
+        Ok(None)
     }
 
-    fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-        Box::new(future::ok(None))
+    async fn document_highlight(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        Ok(None)
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
     let stdin = tokio::io::stdin();
@@ -158,5 +160,5 @@ fn main() {
         .interleave(messages)
         .serve(service);
 
-    tokio::run(handle.run_until_exit(server));
+    handle.run_until_exit(server).await;
 }

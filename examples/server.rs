@@ -1,5 +1,4 @@
-use futures::future;
-use jsonrpc_core::{BoxFuture, Result};
+use jsonrpc_core::Result;
 use serde_json::Value;
 use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use tower_lsp::lsp_types::*;
@@ -8,19 +7,8 @@ use tower_lsp::{LanguageServer, LspService, Printer, Server};
 #[derive(Debug, Default)]
 struct Backend;
 
+#[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    type ShutdownFuture = BoxFuture<()>;
-    type SymbolFuture = BoxFuture<Option<Vec<SymbolInformation>>>;
-    type ExecuteFuture = BoxFuture<Option<Value>>;
-    type CompletionFuture = BoxFuture<Option<CompletionResponse>>;
-    type HoverFuture = BoxFuture<Option<Hover>>;
-    type SignatureHelpFuture = BoxFuture<Option<SignatureHelp>>;
-    type DeclarationFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type DefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type TypeDefinitionFuture = BoxFuture<Option<GotoDefinitionResponse>>;
-    type ImplementationFuture = BoxFuture<Option<GotoImplementationResponse>>;
-    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-
     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
@@ -62,12 +50,12 @@ impl LanguageServer for Backend {
         printer.log_message(MessageType::Info, "server initialized!");
     }
 
-    fn shutdown(&self) -> Self::ShutdownFuture {
-        Box::new(future::ok(()))
+    async fn shutdown(&self) -> Result<()> {
+        Ok(())
     }
 
-    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
-        Box::new(future::ok(None))
+    async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
+        Ok(None)
     }
 
     fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
@@ -82,10 +70,14 @@ impl LanguageServer for Backend {
         printer.log_message(MessageType::Info, "watched files have changed!");
     }
 
-    fn execute_command(&self, printer: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+    async fn execute_command(
+        &self,
+        printer: &Printer,
+        _: ExecuteCommandParams,
+    ) -> Result<Option<Value>> {
         printer.log_message(MessageType::Info, "command executed!");
         printer.apply_edit(WorkspaceEdit::default());
-        Box::new(future::ok(None))
+        Ok(None)
     }
 
     fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
@@ -104,40 +96,56 @@ impl LanguageServer for Backend {
         printer.log_message(MessageType::Info, "file closed!");
     }
 
-    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
-        Box::new(future::ok(None))
+    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+        Ok(None)
     }
 
-    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
-        Box::new(future::ok(None))
+    async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
+        Ok(None)
     }
 
-    fn signature_help(&self, _: TextDocumentPositionParams) -> Self::SignatureHelpFuture {
-        Box::new(future::ok(None))
+    async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
+        Ok(None)
     }
 
-    fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
-        Box::new(future::ok(None))
+    async fn goto_declaration(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
-        Box::new(future::ok(None))
+    async fn goto_definition(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
-        Box::new(future::ok(None))
+    async fn goto_type_definition(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        Ok(None)
     }
 
-    fn goto_implementation(&self, _: TextDocumentPositionParams) -> Self::ImplementationFuture {
-        Box::new(future::ok(None))
+    async fn goto_implementation(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<GotoImplementationResponse>> {
+        Ok(None)
     }
 
-    fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-        Box::new(future::ok(None))
+    async fn document_highlight(
+        &self,
+        _: TextDocumentPositionParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        Ok(None)
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
     let stdin = tokio::io::stdin();
@@ -149,5 +157,5 @@ fn main() {
         .interleave(messages)
         .serve(service);
 
-    tokio::run(handle.run_until_exit(server));
+    handle.run_until_exit(server).await;
 }
