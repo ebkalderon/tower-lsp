@@ -129,7 +129,7 @@ impl Printer {
         ));
     }
 
-    /// Send a custom notification to the client
+    /// Sends a custom notification to the client.
     pub fn send_notification<N>(&self, params: N::Params)
     where
         N: Notification,
