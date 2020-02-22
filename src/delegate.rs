@@ -112,9 +112,9 @@ pub trait LanguageServerCore {
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
 #[derive(Debug)]
 pub struct Delegate<T> {
-    // FIXME: Remove `Arc` from `server` and `printer` once we switch to `jsonrpsee`.
-    // These are currently necessary to resolve lifetime interaction issues between `async-trait`,
-    // `jsonrpc-core`, and `.compat()`.
+    // FIXME: Investigate whether `Arc` from `server` and `printer` can be removed once we switch
+    // to `jsonrpsee`. These are currently necessary to resolve lifetime interaction issues between
+    // `async-trait`, `jsonrpc-core`, and `.compat()`.
     //
     // https://github.com/ebkalderon/tower-lsp/issues/58
     server: Arc<T>,
