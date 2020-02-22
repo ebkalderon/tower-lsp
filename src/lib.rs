@@ -99,7 +99,8 @@ pub use self::stdio::Server;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
-use jsonrpc_core::Result;
+use jsonrpc_core::{Error, Result};
+use log::error;
 use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use lsp_types::*;
 use serde_json::Value;
@@ -161,6 +162,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
         let _ = p;
         let _ = params;
+        error!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
 
     /// The [`workspace/didChangeConfiguration`] notification is sent from the client to the server
@@ -170,6 +172,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
     }
 
     /// The [`workspace/didChangeWatchedFiles`] notification is sent from the client to the server
@@ -184,14 +187,21 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
     }
 
     /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
     /// symbols matching the given query string.
     ///
     /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_symbol
-    async fn symbol(&self, params: WorkspaceSymbolParams)
-        -> Result<Option<Vec<SymbolInformation>>>;
+    async fn symbol(
+        &self,
+        params: WorkspaceSymbolParams,
+    ) -> Result<Option<Vec<SymbolInformation>>> {
+        let _ = params;
+        error!("Got a workspace/symbol request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
     /// command execution on the server.
@@ -204,7 +214,12 @@ pub trait LanguageServer: Send + Sync + 'static {
         &self,
         p: &Printer,
         params: ExecuteCommandParams,
-    ) -> Result<Option<Value>>;
+    ) -> Result<Option<Value>> {
+        let _ = p;
+        let _ = params;
+        error!("Got a workspace/executeCommand request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
     /// that a new text document has been opened by the client.
@@ -217,6 +232,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a textDocument/didOpen notification, but it is not implemented");
     }
 
     /// The [`textDocument/didChange`] notification is sent from the client to the server to signal
@@ -229,6 +245,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a textDocument/didChange notification, but it is not implemented");
     }
 
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
@@ -238,6 +255,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a textDocument/didSave notification, but it is not implemented");
     }
 
     /// The [`textDocument/didClose`] notification is sent from the client to the server when the
@@ -250,6 +268,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         let _ = printer;
         let _ = params;
+        error!("Got a textDocument/didClose notification, but it is not implemented");
     }
 
     /// The [`textDocument/completion`] request is sent from the client to the server to compute
@@ -260,7 +279,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// when a completion item is selected in the user interface.
     ///
     /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_completion
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>>;
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let _ = params;
+        error!("Got a textDocument/completion request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
@@ -269,7 +292,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// documentation for the symbol at the given text document position.
     ///
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
-    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>>;
+    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
+        let _ = params;
+        error!("Got a textDocument/hover request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
     /// signature information at a given cursor position.
@@ -278,7 +305,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn signature_help(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<SignatureHelp>>;
+    ) -> Result<Option<SignatureHelp>> {
+        let _ = params;
+        error!("Got a textDocument/signatureHelp request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/declaration`] request asks the server for the declaration location of a
     /// symbol at a given text document position.
@@ -297,7 +328,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn goto_declaration(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>>;
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let _ = params;
+        error!("Got a textDocument/declaration request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/definition`] request asks the server for the definition location of a
     /// symbol at a given text document position.
@@ -316,7 +351,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn goto_definition(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>>;
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let _ = params;
+        error!("Got a textDocument/definition request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/typeDefinition`] request asks the server for the type definition location of
     /// a symbol at a given text document position.
@@ -335,7 +374,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn goto_type_definition(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>>;
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let _ = params;
+        error!("Got a textDocument/typeDefinition request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/implementation`] request is sent from the client to the server to resolve
     /// the implementation location of a symbol at a given text document position.
@@ -354,7 +397,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn goto_implementation(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoImplementationResponse>>;
+    ) -> Result<Option<GotoImplementationResponse>> {
+        let _ = params;
+        error!("Got a textDocument/implementation request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
@@ -369,7 +416,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn document_highlight(
         &self,
         params: TextDocumentPositionParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>>;
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        let _ = params;
+        error!("Got a textDocument/documentHighlight request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
