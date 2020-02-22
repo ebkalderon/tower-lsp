@@ -1,6 +1,5 @@
 use jsonrpc_core::Result;
 use serde_json::Value;
-use tower_lsp::lsp_types::request::*;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
@@ -54,10 +53,6 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-        Ok(None)
-    }
-
     fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
         printer.log_message(MessageType::Info, "workspace folders changed!");
     }
@@ -94,53 +89,6 @@ impl LanguageServer for Backend {
 
     fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
         printer.log_message(MessageType::Info, "file closed!");
-    }
-
-    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        Ok(None)
-    }
-
-    async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
-        Ok(None)
-    }
-
-    async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
-        Ok(None)
-    }
-
-    async fn goto_declaration(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_definition(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_type_definition(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        Ok(None)
-    }
-
-    async fn goto_implementation(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<GotoImplementationResponse>> {
-        Ok(None)
-    }
-
-    async fn document_highlight(
-        &self,
-        _: TextDocumentPositionParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>> {
-        Ok(None)
     }
 }
 

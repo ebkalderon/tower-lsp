@@ -30,45 +30,22 @@
 //!         Ok(())
 //!     }
 //!
-//!     async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Result<Option<Value>> {
-//!         Ok(None)
-//!     }
-//!
 //!     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-//!         Ok(None)
+//!         Ok(Some(CompletionResponse::Array(vec![
+//!             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
+//!             CompletionItem::new_simple("Bye".to_string(), "More detail".to_string())
+//!         ])))
 //!     }
 //!
 //!     async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
-//!         Ok(None)
+//!         Ok(Some(Hover {
+//!             contents: HoverContents::Scalar(
+//!                 MarkedString::String("You're hovering!".to_string())
+//!             ),
+//!             range: None
+//!         }))
 //!     }
 //!
-//!     async fn signature_help(&self, _: TextDocumentPositionParams) -> Result<Option<SignatureHelp>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn goto_declaration(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn goto_definition(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Result<Option<GotoDefinitionResponse>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn goto_implementation(&self, _: TextDocumentPositionParams) -> Result<Option<GotoImplementationResponse>> {
-//!         Ok(None)
-//!     }
-//!
-//!     async fn document_highlight(&self, _: TextDocumentPositionParams) -> Result<Option<Vec<DocumentHighlight>>> {
-//!         Ok(None)
-//!     }
 //! }
 //!
 //! #[tokio::main]
