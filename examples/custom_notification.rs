@@ -1,12 +1,12 @@
 use jsonrpc_core::Result;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Printer, Server};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize)]
 struct CustomNotificationParams {
     title: String,
     message: String,
