@@ -180,7 +180,6 @@ mod tests {
     use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
     use lsp_types::*;
     use serde_json::Value;
-    use tokio_test::{assert_pending, assert_ready_ok};
     use tower_test::mock::Spawn;
 
     use super::*;
@@ -268,14 +267,14 @@ mod tests {
         let mut service = Spawn::new(service);
 
         let initialized: Incoming = r#"{"jsonrpc":"2.0","method":"initialized"}"#.parse().unwrap();
-        assert_ready_ok!(service.poll_ready());
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
         assert_eq!(service.call(initialized.clone()).await, Ok("".to_owned()));
 
         let exit: Incoming = r#"{"jsonrpc":"2.0","method":"exit"}"#.parse().unwrap();
-        assert_ready_ok!(service.poll_ready());
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
         assert_eq!(service.call(exit).await, Ok("".to_owned()));
 
-        assert_pending!(service.poll_ready());
+        assert_eq!(service.poll_ready(), Poll::Pending);
         assert_eq!(service.call(initialized).await, Err(ExitedError));
     }
 }
