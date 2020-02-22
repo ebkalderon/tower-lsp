@@ -71,7 +71,7 @@ impl Future for ExitReceiver {
 /// This implements [`tower_service::Service`] in order to remain independent from the underlying
 /// transport and to facilitate further abstraction with middleware.
 ///
-/// [`tower_service::Service`]: https://docs.rs/tower-service/0.2.0/tower_service/trait.Service.html
+/// [`tower_service::Service`]: https://docs.rs/tower-service/0.3.0/tower_service/trait.Service.html
 #[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
