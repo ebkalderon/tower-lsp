@@ -27,7 +27,7 @@ pub struct Server<I, O, S = Nothing> {
 impl<I, O> Server<I, O, Nothing>
 where
     I: AsyncRead + Send + Unpin,
-    O: AsyncWrite + Send + Unpin + 'static,
+    O: AsyncWrite + Send + 'static,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
@@ -42,7 +42,7 @@ where
 impl<I, O, S> Server<I, O, S>
 where
     I: AsyncRead + Send + Unpin,
-    O: AsyncWrite + Send + Unpin + 'static,
+    O: AsyncWrite + Send + 'static,
     S: Stream<Item = String> + Send + 'static,
 {
     /// Interleaves the given stream of messages into `stdout` together with the responses.
