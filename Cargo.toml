@@ -30,5 +30,4 @@ tower-service = "0.3.0"
 [dev-dependencies]
 env_logger = "0.7.1"
 tokio = { version = "0.2.11", features = ["io-std", "macros", "test-util"] }
-tokio-test = "0.2.0"
 tower-test = "0.3.0"
