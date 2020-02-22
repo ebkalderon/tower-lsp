@@ -90,6 +90,13 @@ impl LanguageServer for Backend {
     fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
         printer.log_message(MessageType::Info, "file closed!");
     }
+
+    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+        Ok(Some(CompletionResponse::Array(vec![
+            CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
+            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
+        ])))
+    }
 }
 
 #[tokio::main]
