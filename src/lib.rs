@@ -261,6 +261,16 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`completionItem/resolve`] request is sent from the client to the server to resolve
+    /// additional information for a given completion item.
+    ///
+    /// [`completionItem/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#completionItem_resolve
+    async fn resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
+        let _ = params;
+        error!("Got a completionItem/resolve request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
     ///
@@ -458,6 +468,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         (**self).completion(params).await
+    }
+
+    async fn resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
+        (**self).resolve(params).await
     }
 
     async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
