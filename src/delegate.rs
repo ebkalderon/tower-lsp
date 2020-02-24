@@ -87,6 +87,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/completion", raw_params)]
     fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>>;
 
+    #[rpc(name = "completionItem/resolve", raw_params)]
+    fn resolve(&self, params: Params) -> BoxFuture<CompletionItem>;
+
     #[rpc(name = "textDocument/hover", raw_params)]
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>>;
 
@@ -267,6 +270,13 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         let server = self.server.clone();
         self.delegate_request::<Completion, _>(params, move |p| {
             Box::new(async move { server.completion(p).await }.boxed().compat())
+        })
+    }
+
+    fn resolve(&self, params: Params) -> BoxFuture<CompletionItem> {
+        let server = self.server.clone();
+        self.delegate_request::<ResolveCompletionItem, _>(params, move |p| {
+            Box::new(async move { server.resolve(p).await }.boxed().compat())
         })
     }
 
