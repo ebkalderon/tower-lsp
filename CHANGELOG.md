@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.7.0] - 2020-02-24
+
+### Added
+
+* Add default implementations to all non-required `LanguageServer` methods.
+* Add support for emitting custom notifications to clients (PR #99).
+* Implement support for the following client-to-server messages:
+  * `textDocument/signatureHelp`
+  * `textDocument/implementation`
+
+### Changed
+
+* Bump minimum supported Rust version to 1.39.0.
+* Convert to `std::future` and async/await (PR #101).
+* Update `futures` crate from 0.1.28 to 0.3.
+* Update `lsp-types` crate from 0.68.0 to 0.70.
+* Update `tokio` crate from 0.1.12 to 0.2.
+* Update `tower-service` crate from 0.2.0 to 0.3.
+
+### Fixed
+
+* Fix some incorrect links in doc comments.
+
 ## [0.6.0] - 2020-01-07
 
 ### Added
@@ -145,7 +168,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.0...v0.4.1
