@@ -110,6 +110,9 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
+
+    #[rpc(name = "textDocument/codeAction", raw_params)]
+    fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -357,6 +360,13 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
                     .boxed()
                     .compat(),
             )
+        })
+    }
+
+    fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>> {
+        let server = self.server.clone();
+        self.delegate_request::<CodeActionRequest, _>(params, move |p| {
+            Box::new(async move { server.code_action(p).await }.boxed().compat())
         })
     }
 }

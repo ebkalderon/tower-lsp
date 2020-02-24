@@ -407,6 +407,39 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/documentHighlight request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/codeAction`] request is sent from the client to the server to compute
+    /// commands for a given text document and range. These commands are typically code fixes to
+    /// either fix problems or to beautify/refactor code. The result of a [`textDocument/codeAction`]
+    /// request is an array of `Command` literals which are typically presented in the user interface.
+    /// To ensure that a server is useful in many clients the commands specified in a code actions
+    /// should be handled by the server and not by the client (see [`workspace/executeCommand`] and
+    /// `ServerCapabilities::execute_command_provider`). If the client supports providing edits
+    /// with a code action then the mode should be used.
+    ///
+    /// When the command is selected the server should be contacted again
+    /// (via the [`workspace/executeCommand`]) request to execute the command.
+    ///
+    /// Since version 3.8.0: support for `CodeAction` literals to enable the following scenarios:
+    ///
+    /// - the ability to directly return a workspace edit from the code action request.
+    /// This avoids having another server roundtrip to execute an actual code action.
+    /// However server providers should be aware that if the code action is expensive to compute or
+    /// the edits are huge it might still be beneficial if the result is simply a command and the
+    /// actual edit is only computed when needed.
+    ///
+    /// - the ability to group code actions using a kind. Clients are allowed to ignore that
+    /// information. However it allows them to better group code action for example into
+    /// corresponding menus (e.g. all refactor code actions into a refactor menu).
+    ///
+    /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_codeAction
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_executeCommand
+    ///
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let _ = params;
+        error!("Got a textDocument/codeAction request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -518,5 +551,9 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         params: TextDocumentPositionParams,
     ) -> Result<Option<Vec<DocumentHighlight>>> {
         (**self).document_highlight(params).await
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        (**self).code_action(params).await
     }
 }
