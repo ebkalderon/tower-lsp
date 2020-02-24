@@ -113,6 +113,12 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/codeAction", raw_params)]
     fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>>;
+
+    #[rpc(name = "textDocument/codeLens", raw_params)]
+    fn code_lens(&self, params: Params) -> BoxFuture<Option<Vec<CodeLens>>>;
+
+    #[rpc(name = "codeLens/resolve", raw_params)]
+    fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -367,6 +373,24 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         let server = self.server.clone();
         self.delegate_request::<CodeActionRequest, _>(params, move |p| {
             Box::new(async move { server.code_action(p).await }.boxed().compat())
+        })
+    }
+
+    fn code_lens(&self, params: Params) -> BoxFuture<Option<Vec<CodeLens>>> {
+        let server = self.server.clone();
+        self.delegate_request::<CodeLensRequest, _>(params, move |p| {
+            Box::new(async move { server.code_lens(p).await }.boxed().compat())
+        })
+    }
+
+    fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens> {
+        let server = self.server.clone();
+        self.delegate_request::<CodeLensResolve, _>(params, move |p| {
+            Box::new(
+                async move { server.code_lens_resolve(p).await }
+                    .boxed()
+                    .compat(),
+            )
         })
     }
 }
