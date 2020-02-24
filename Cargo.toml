@@ -19,7 +19,7 @@ futures = { version = "0.3", features = ["compat"] }
 jsonrpc-core = "14.0"
 jsonrpc-derive = "14.0"
 log = "0.4"
-lsp-types = "0.68"
+lsp-types = "0.70"
 nom = "5.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
