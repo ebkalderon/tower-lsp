@@ -440,6 +440,26 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/codeAction request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/codeLens`] request is sent from the client to the server to compute code
+    /// lenses for a given text document.
+    ///
+    /// [`textDocument/codeLens`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_codeLens
+    async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
+        let _ = params;
+        error!("Got a textDocument/codeLens request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`codeLens/resolve`] request is sent from the client to the server to resolve the
+    /// command for a given code lens item.
+    ///
+    /// [`codeLens/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#codeLens_resolve
+    async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
+        let _ = params;
+        error!("Got a codeLens/resolve request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
