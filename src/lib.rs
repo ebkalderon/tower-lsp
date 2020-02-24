@@ -576,4 +576,12 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         (**self).code_action(params).await
     }
+
+    async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
+        (**self).code_lens(params).await
+    }
+
+    async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
+        (**self).code_lens_resolve(params).await
+    }
 }
