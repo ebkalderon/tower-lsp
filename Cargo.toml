@@ -20,7 +20,7 @@ jsonrpc-core = "14.0"
 jsonrpc-derive = "14.0"
 log = "0.4"
 lsp-types = "0.70"
-nom = "5.1"
+nom = { version = "5.1", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "0.2", features = ["rt-core"] }
