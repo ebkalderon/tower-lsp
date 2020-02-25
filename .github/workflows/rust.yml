@@ -20,7 +20,7 @@ jobs:
         rust-version: ${{ matrix.rust-version }}
     - uses: actions/checkout@v1
     - name: Check formatting
-      if: matrix.rust-version != 'nightly'
+      if: matrix.rust-version == 'beta'
       run: |
         rustup component add rustfmt
         cargo fmt --all -- --check
