@@ -75,6 +75,7 @@ pub use self::stdio::Server;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
+use auto_impl::auto_impl;
 use jsonrpc_core::{Error, Result};
 use log::{error, warn};
 use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
@@ -94,6 +95,7 @@ mod stdio;
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
 #[async_trait]
+#[auto_impl(Box)]
 pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -459,129 +461,5 @@ pub trait LanguageServer: Send + Sync + 'static {
         let _ = params;
         error!("Got a codeLens/resolve request, but it is not implemented");
         Err(Error::method_not_found())
-    }
-}
-
-#[async_trait]
-impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
-    fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
-        (**self).initialize(printer, params)
-    }
-
-    fn initialized(&self, printer: &Printer, params: InitializedParams) {
-        (**self).initialized(printer, params);
-    }
-
-    async fn shutdown(&self) -> Result<()> {
-        (**self).shutdown().await
-    }
-
-    fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
-        (**self).did_change_workspace_folders(p, params);
-    }
-
-    fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
-        (**self).did_change_configuration(printer, params);
-    }
-
-    fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
-        (**self).did_change_watched_files(printer, params);
-    }
-
-    async fn symbol(
-        &self,
-        params: WorkspaceSymbolParams,
-    ) -> Result<Option<Vec<SymbolInformation>>> {
-        (**self).symbol(params).await
-    }
-
-    async fn execute_command(
-        &self,
-        p: &Printer,
-        params: ExecuteCommandParams,
-    ) -> Result<Option<Value>> {
-        (**self).execute_command(p, params).await
-    }
-
-    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
-        (**self).did_open(printer, params);
-    }
-
-    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
-        (**self).did_change(printer, params);
-    }
-
-    fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
-        (**self).did_save(printer, params);
-    }
-
-    fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
-        (**self).did_close(printer, params);
-    }
-
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        (**self).completion(params).await
-    }
-
-    async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
-        (**self).completion_resolve(params).await
-    }
-
-    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
-        (**self).hover(params).await
-    }
-
-    async fn signature_help(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<SignatureHelp>> {
-        (**self).signature_help(params).await
-    }
-
-    async fn goto_declaration(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        (**self).goto_declaration(params).await
-    }
-
-    async fn goto_definition(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        (**self).goto_definition(params).await
-    }
-
-    async fn goto_type_definition(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
-        (**self).goto_type_definition(params).await
-    }
-
-    async fn goto_implementation(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<GotoImplementationResponse>> {
-        (**self).goto_implementation(params).await
-    }
-
-    async fn document_highlight(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>> {
-        (**self).document_highlight(params).await
-    }
-
-    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
-        (**self).code_action(params).await
-    }
-
-    async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
-        (**self).code_lens(params).await
-    }
-
-    async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
-        (**self).code_lens_resolve(params).await
     }
 }
