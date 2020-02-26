@@ -177,9 +177,7 @@ impl Service<Incoming> for LspService {
 mod tests {
     use async_trait::async_trait;
     use jsonrpc_core::Result;
-    use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
     use lsp_types::*;
-    use serde_json::Value;
     use tower_test::mock::Spawn;
 
     use super::*;
@@ -196,68 +194,6 @@ mod tests {
 
         async fn shutdown(&self) -> Result<()> {
             Ok(())
-        }
-
-        async fn symbol(&self, _: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-            Ok(None)
-        }
-
-        async fn execute_command(
-            &self,
-            _: &Printer,
-            _: ExecuteCommandParams,
-        ) -> Result<Option<Value>> {
-            Ok(None)
-        }
-
-        async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-            Ok(None)
-        }
-
-        async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
-            Ok(None)
-        }
-
-        async fn signature_help(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<SignatureHelp>> {
-            Ok(None)
-        }
-
-        async fn goto_declaration(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<GotoDefinitionResponse>> {
-            Ok(None)
-        }
-
-        async fn goto_definition(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<GotoDefinitionResponse>> {
-            Ok(None)
-        }
-
-        async fn goto_type_definition(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<GotoDefinitionResponse>> {
-            Ok(None)
-        }
-
-        async fn goto_implementation(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<GotoImplementationResponse>> {
-            Ok(None)
-        }
-
-        async fn document_highlight(
-            &self,
-            _: TextDocumentPositionParams,
-        ) -> Result<Option<Vec<DocumentHighlight>>> {
-            Ok(None)
         }
     }
 
