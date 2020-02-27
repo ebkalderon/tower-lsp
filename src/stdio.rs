@@ -60,7 +60,7 @@ where
     /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
     pub async fn serve<T>(self, mut service: T)
     where
-        T: Service<Incoming, Response = String> + Send + 'static,
+        T: Service<Incoming, Response = Option<String>> + Send + 'static,
         T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send,
     {
@@ -87,7 +87,8 @@ where
             };
 
             match service.call(request).await {
-                Ok(resp) => sender.send(resp).await.unwrap(),
+                Ok(Some(resp)) => sender.send(resp).await.unwrap(),
+                Ok(None) => {}
                 Err(err) => error!("{}", err.into()),
             }
         }
@@ -126,7 +127,7 @@ mod tests {
     struct MockService;
 
     impl Service<Incoming> for MockService {
-        type Response = String;
+        type Response = Option<String>;
         type Error = String;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -135,7 +136,7 @@ mod tests {
         }
 
         fn call(&mut self, request: Incoming) -> Self::Future {
-            future::ok(request.to_string())
+            future::ok(Some(request.to_string()))
         }
     }
 

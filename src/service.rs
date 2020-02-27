@@ -132,7 +132,7 @@ impl LspService {
 }
 
 impl Service<Incoming> for LspService {
-    type Response = String;
+    type Response = Option<String>;
     type Error = ExitedError;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
@@ -154,18 +154,17 @@ impl Service<Incoming> for LspService {
                 //
                 // https://github.com/ebkalderon/tower-lsp/issues/13
                 debug!("dropping client response, as per GitHub issue #13: {:?}", r);
-                Box::pin(future::ok(String::new()))
+                Box::pin(future::ok(None))
             } else {
                 Box::pin(
                     self.handler
                         .handle_request(&request.to_string())
                         .compat()
                         .map_err(|_| unreachable!())
-                        .map_ok(move |result| {
-                            result.unwrap_or_else(|| {
+                        .inspect_ok(move |result| {
+                            if result.is_some() {
                                 trace!("request produced no response: {}", request);
-                                String::new()
-                            })
+                            }
                         }),
                 )
             }
@@ -204,11 +203,11 @@ mod tests {
 
         let initialized: Incoming = r#"{"jsonrpc":"2.0","method":"initialized"}"#.parse().unwrap();
         assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
-        assert_eq!(service.call(initialized.clone()).await, Ok("".to_owned()));
+        assert_eq!(service.call(initialized.clone()).await, Ok(None));
 
         let exit: Incoming = r#"{"jsonrpc":"2.0","method":"exit"}"#.parse().unwrap();
         assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
-        assert_eq!(service.call(exit).await, Ok("".to_owned()));
+        assert_eq!(service.call(exit).await, Ok(None));
 
         assert_eq!(service.poll_ready(), Poll::Pending);
         assert_eq!(service.call(initialized).await, Err(ExitedError));
