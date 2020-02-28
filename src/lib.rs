@@ -397,6 +397,29 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/documentSymbol`] request is sent from the client to the server to
+    /// retrieve all symbols found in a given text document.
+    ///
+    /// The returned result is either:
+    ///
+    /// * [`DocumentSymbolResponse::Flat`] which is a flat list of all symbols found in a given
+    ///   text document. Then neither the symbol’s location range nor the symbol’s container name
+    ///   should be used to infer a hierarchy.
+    /// * [`DocumentSymbolResponse::Nested`] which is a hierarchy of symbols found in a given text
+    ///   document.
+    ///
+    /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentSymbol
+    /// [`DocumentSymbolResponse::Flat`]: https://docs.rs/lsp-types/0.70.2/lsp_types/enum.DocumentSymbolResponse.html#variant.Flat
+    /// [`DocumentSymbolResponse::Nested`]: https://docs.rs/lsp-types/0.70.2/lsp_types/enum.DocumentSymbolResponse.html#variant.Nested
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        let _ = params;
+        error!("Got a textDocument/documentSymbol request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
     ///
@@ -576,6 +599,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         params: TextDocumentPositionParams,
     ) -> Result<Option<GotoImplementationResponse>> {
         (**self).goto_implementation(params).await
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        (**self).document_symbol(params).await
     }
 
     async fn document_highlight(
