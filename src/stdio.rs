@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc;
-use futures::future::FutureExt;
+use futures::future::{self, FutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{self, Empty, Stream, StreamExt};
 use log::error;
@@ -86,12 +86,25 @@ where
                 }
             };
 
+            if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
+                error!("{}", display_sources(err.into().as_ref()));
+                return;
+            }
+
             match service.call(request).await {
                 Ok(Some(resp)) => sender.send(resp).await.unwrap(),
                 Ok(None) => {}
-                Err(err) => error!("{}", err.into()),
+                Err(err) => error!("{}", display_sources(err.into().as_ref())),
             }
         }
+    }
+}
+
+fn display_sources(error: &dyn Error) -> String {
+    if let Some(source) = error.source() {
+        format!("{}: {}", error, display_sources(source))
+    } else {
+        error.to_string()
     }
 }
 
