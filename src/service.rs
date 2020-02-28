@@ -11,7 +11,7 @@ use std::task::{Context, Poll};
 use futures::compat::Future01CompatExt;
 use futures::future::{self, TryFutureExt};
 use jsonrpc_core::IoHandler;
-use log::{debug, info, trace};
+use log::{debug, info};
 use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
@@ -111,12 +111,7 @@ impl Service<Incoming> for LspService {
                     self.handler
                         .handle_request(&request.to_string())
                         .compat()
-                        .map_err(|_| unreachable!())
-                        .inspect_ok(move |result| {
-                            if result.is_some() {
-                                trace!("request produced no response: {}", request);
-                            }
-                        }),
+                        .map_err(|_| unreachable!()),
                 )
             }
         }
