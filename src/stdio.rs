@@ -92,7 +92,7 @@ where
             }
 
             match service.call(request).await {
-                Ok(Some(resp)) => sender.send(resp).await.unwrap(),
+                Ok(Some(res)) => sender.send(res).await.unwrap(),
                 Ok(None) => {}
                 Err(err) => error!("{}", display_sources(err.into().as_ref())),
             }
