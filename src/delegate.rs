@@ -112,6 +112,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/implementation", raw_params)]
     fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>>;
 
+    #[rpc(name = "textDocument/documentSymbol", raw_params)]
+    fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>>;
+
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 
@@ -339,6 +342,13 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         let server = self.server.clone();
         self.delegate_request::<GotoImplementation, _, _>(params, move |p| async move {
             server.goto_implementation(p).await
+        })
+    }
+
+    fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>> {
+        let server = self.server.clone();
+        self.delegate_request::<DocumentSymbolRequest, _, _>(params, move |p| async move {
+            server.document_symbol(p).await
         })
     }
 
