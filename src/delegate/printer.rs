@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use futures::channel::mpsc::Sender;
 use futures::sink::SinkExt;
-use jsonrpc_core::types::{request, Id, Version};
+use jsonrpc_core::types::{Id, Version};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{ApplyWorkspaceEdit, RegisterCapability, Request, UnregisterCapability};
@@ -162,14 +162,20 @@ where
     N: Request,
     N::Params: Serialize,
 {
+    #[derive(Serialize)]
+    struct RawRequest<T> {
+        jsonrpc: Version,
+        method: &'static str,
+        params: T,
+        id: Id,
+    }
+
     // Since these types come from the `lsp-types` crate and validity is enforced via the
-    // `Request` trait, the `unwrap()` calls below should never fail.
-    let output = serde_json::to_string(&params).unwrap();
-    let params = serde_json::from_str(&output).unwrap();
-    serde_json::to_string(&request::MethodCall {
-        jsonrpc: Some(Version::V2),
+    // `Request` trait, the `unwrap()` call below should never fail.
+    serde_json::to_string(&RawRequest {
+        jsonrpc: Version::V2,
         id: Id::Num(id),
-        method: N::METHOD.to_owned(),
+        method: N::METHOD,
         params,
     })
     .unwrap()
@@ -181,13 +187,18 @@ where
     N: Notification,
     N::Params: Serialize,
 {
+    #[derive(Serialize)]
+    struct RawNotification<T> {
+        jsonrpc: Version,
+        method: &'static str,
+        params: T,
+    }
+
     // Since these types come from the `lsp-types` crate and validity is enforced via the
-    // `Notification` trait, the `unwrap()` calls below should never fail.
-    let output = serde_json::to_string(&params).unwrap();
-    let params = serde_json::from_str(&output).unwrap();
-    serde_json::to_string(&request::Notification {
-        jsonrpc: Some(Version::V2),
-        method: N::METHOD.to_owned(),
+    // `Notification` trait, the `unwrap()` call below should never fail.
+    serde_json::to_string(&RawNotification {
+        jsonrpc: Version::V2,
+        method: N::METHOD,
         params,
     })
     .unwrap()
