@@ -82,6 +82,9 @@ impl Encoder for LanguageServerCodec {
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         if !item.is_empty() {
+            // The magic constant 30 below is an approximation intended to fit at least the
+            // `Content-Length: ` and `\r\n\r\n` byte constants (20 bytes) plus 10 bytes extra to
+            // accommodate for a variable number of length digits.
             dst.reserve(item.len() + 30);
             let mut writer = dst.writer();
             write!(writer, "Content-Length: {}\r\n\r\n{}", item.len(), item)?;
