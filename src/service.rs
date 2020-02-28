@@ -138,7 +138,7 @@ impl Service<Incoming> for LspService {
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         if self.stopped.load(Ordering::SeqCst) {
-            Poll::Pending
+            Poll::Ready(Err(ExitedError))
         } else {
             Poll::Ready(Ok(()))
         }
@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
         assert_eq!(service.call(exit).await, Ok(None));
 
-        assert_eq!(service.poll_ready(), Poll::Pending);
+        assert_eq!(service.poll_ready(), Poll::Ready(Err(ExitedError)));
         assert_eq!(service.call(initialized).await, Err(ExitedError));
     }
 }
