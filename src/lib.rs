@@ -95,7 +95,7 @@ mod stdio;
 pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
-    /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#initialize
+    /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
     fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
@@ -104,7 +104,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The server can use the `initialized` notification for example to dynamically register
     /// capabilities with the client.
     ///
-    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#initialized
+    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialized
     fn initialized(&self, printer: &Printer, params: InitializedParams) {
         let _ = printer;
         let _ = params;
@@ -115,8 +115,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request is often later followed by an [`exit`] notification, which will cause the
     /// server to exit immediately.
     ///
-    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#shutdown
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
+    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#shutdown
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#exit
     async fn shutdown(&self) -> Result<()>;
 
     /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
@@ -131,7 +131,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This notification is also sent if the server has registered itself to receive this
     /// notification.
     ///
-    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeWorkspaceFolders
+    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeWorkspaceFolders
     /// [`initialize`]: #tymethod.initialize
     fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
         let _ = p;
@@ -142,7 +142,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/didChangeConfiguration`] notification is sent from the client to the server
     /// to signal the change of configuration settings.
     ///
-    /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeConfiguration
+    /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
         let _ = printer;
         let _ = params;
@@ -156,7 +156,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// mechanism. This can be done here or in the [`initialized`] method using
     /// `Printer::register_capability()`.
     ///
-    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_didChangeConfiguration
+    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
     fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
         let _ = printer;
@@ -167,7 +167,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/symbol`] request is sent from the client to the server to list project-wide
     /// symbols matching the given query string.
     ///
-    /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_symbol
+    /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_symbol
     async fn symbol(
         &self,
         params: WorkspaceSymbolParams,
@@ -183,7 +183,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
     /// the workspace using `Printer::apply_edit()` before returning from this function.
     ///
-    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_executeCommand
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
     async fn execute_command(
         &self,
         p: &Printer,
@@ -202,7 +202,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document’s truth using the document's URI. "Open" in this sense means it is managed by the
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
-    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didOpen
+    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didOpen
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -215,7 +215,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This notification will contain a distinct version tag and a list of edits made to the
     /// document for the server to interpret.
     ///
-    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didChange
+    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didChange
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -225,7 +225,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/willSave`] notification is sent from the client to the server before the
     /// document is actually saved.
     ///
-    /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_willSave
+    /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_willSave
     fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -235,7 +235,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
     /// document was saved in the client.
     ///
-    /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didSave
+    /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didSave
     fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -248,7 +248,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The document's truth now exists where the document's URI points to (e.g. if the document's
     /// URI is a file URI, the truth now exists on disk).
     ///
-    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_didClose
+    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didClose
     fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         let _ = printer;
         let _ = params;
@@ -262,7 +262,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// for the completion item resolve request (`completionItem/resolve`). This request is sent
     /// when a completion item is selected in the user interface.
     ///
-    /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_completion
+    /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let _ = params;
         error!("Got a textDocument/completion request, but it is not implemented");
@@ -272,7 +272,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`completionItem/resolve`] request is sent from the client to the server to resolve
     /// additional information for a given completion item.
     ///
-    /// [`completionItem/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#completionItem_resolve
+    /// [`completionItem/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#completionItem_resolve
     async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
         let _ = params;
         error!("Got a completionItem/resolve request, but it is not implemented");
@@ -285,7 +285,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// Such hover information typically includes type signature information and inline
     /// documentation for the symbol at the given text document position.
     ///
-    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_hover
+    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
     async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
         let _ = params;
         error!("Got a textDocument/hover request, but it is not implemented");
@@ -295,7 +295,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
     /// signature information at a given cursor position.
     ///
-    /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_signatureHelp
+    /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_signatureHelp
     async fn signature_help(
         &self,
         params: TextDocumentPositionParams,
@@ -316,7 +316,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
     ///
-    /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_declaration
+    /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_declaration
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_declaration(
@@ -339,7 +339,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::definition::link_support
     /// ```
     ///
-    /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_definition
+    /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_definition
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_definition(
@@ -362,7 +362,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
     ///
-    /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_typeDefinition
+    /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_typeDefinition
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_type_definition(
@@ -385,7 +385,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::implementation::link_support
     /// ```
     ///
-    /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_implementation
+    /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_implementation
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
     async fn goto_implementation(
@@ -429,7 +429,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request differs slightly from `textDocument/references` in that this one is allowed to
     /// be more fuzzy.
     ///
-    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_documentHighlight
+    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight
     async fn document_highlight(
         &self,
         params: TextDocumentPositionParams,
@@ -463,8 +463,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// information. However it allows them to better group code action for example into
     /// corresponding menus (e.g. all refactor code actions into a refactor menu).
     ///
-    /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_codeAction
-    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#workspace_executeCommand
+    /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeAction
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
     ///
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let _ = params;
@@ -475,7 +475,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/codeLens`] request is sent from the client to the server to compute code
     /// lenses for a given text document.
     ///
-    /// [`textDocument/codeLens`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_codeLens
+    /// [`textDocument/codeLens`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeLens
     async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
         let _ = params;
         error!("Got a textDocument/codeLens request, but it is not implemented");
@@ -485,7 +485,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`codeLens/resolve`] request is sent from the client to the server to resolve the
     /// command for a given code lens item.
     ///
-    /// [`codeLens/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#codeLens_resolve
+    /// [`codeLens/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#codeLens_resolve
     async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
         let _ = params;
         error!("Got a codeLens/resolve request, but it is not implemented");
