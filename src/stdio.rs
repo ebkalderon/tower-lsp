@@ -78,8 +78,8 @@ where
         tokio::spawn(printer);
 
         while let Some(line) = framed_stdin.next().await {
-            let request = match line.map(Incoming::from) {
-                Ok(request) => request,
+            let request = match line {
+                Ok(req) => Incoming::from(req),
                 Err(err) => {
                     error!("failed to decode message: {}", err);
                     continue;
