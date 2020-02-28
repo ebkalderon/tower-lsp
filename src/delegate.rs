@@ -126,6 +126,9 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "codeLens/resolve", raw_params)]
     fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens>;
+
+    #[rpc(name = "textDocument/formatting", raw_params)]
+    fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -377,6 +380,13 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         let server = self.server.clone();
         self.delegate_request::<CodeLensResolve, _, _>(params, move |p| async move {
             server.code_lens_resolve(p).await
+        })
+    }
+
+    fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>> {
+        let server = self.server.clone();
+        self.delegate_request::<Formatting, _, _>(params, move |p| async move {
+            server.formatting(p).await
         })
     }
 }
