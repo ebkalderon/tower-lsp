@@ -77,6 +77,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/didChange", raw_params)]
     fn did_change(&self, params: Params);
 
+    #[rpc(name = "textDocument/willSave", raw_params)]
+    fn will_save(&self, params: Params);
+
     #[rpc(name = "textDocument/didSave", raw_params)]
     fn did_save(&self, params: Params);
 
@@ -259,6 +262,12 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn did_change(&self, params: Params) {
         self.delegate_notification::<DidChangeTextDocument, _>(params, |p, params| {
             self.server.did_change(p, params)
+        });
+    }
+
+    fn will_save(&self, params: Params) {
+        self.delegate_notification::<WillSaveTextDocument, _>(params, |p, params| {
+            self.server.will_save(p, params)
         });
     }
 
