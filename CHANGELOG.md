@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-02-28
+
+### Added
+
+* Implement support for the following client-to-server messages:
+  * `textDocument/willSave`
+  * `completionItem/resolve`
+  * `textDocument/documentSymbol`
+  * `textDocument/codeAction`
+  * `textDocument/codeLens`
+  * `codeLens/resolve`
+  * `textDocument/formatting`
+
+### Changed
+
+* `LspService::call()` stops serving requests after `exit` notification,
+  meaning there is no longer a need for `ExitReceiver::run_until_exit` and the
+  `Server::serve()` async method can now be awaited directly (PR #117).
+* Return `Option<String>` as service response type (PR #116).
+* Disable unused `nom` features for a hopefully lighter build (PR #112).
+* Link to current version of LSP specification in doc comments (PR #122).
+
+### Fixed
+
+* Correctly handle backpressure using `Service::poll_ready()` (PR #117).
+
+### Removed
+
+* Remove `ExitReceiver` type and `LspService::close_handle()` method (PR #117).
+
 ## [0.7.0] - 2020-02-24
 
 ### Added
@@ -168,7 +198,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.4.1...v0.5.0
