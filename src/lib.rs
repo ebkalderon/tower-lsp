@@ -222,6 +222,16 @@ pub trait LanguageServer: Send + Sync + 'static {
         warn!("Got a textDocument/didChange notification, but it is not implemented");
     }
 
+    /// The [`textDocument/willSave`] notification is sent from the client to the server before the
+    /// document is actually saved.
+    ///
+    /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#textDocument_willSave
+    fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
+        let _ = printer;
+        let _ = params;
+        warn!("Got a textDocument/willSave notification, but it is not implemented");
+    }
+
     /// The [`textDocument/didSave`] notification is sent from the client to the server when the
     /// document was saved in the client.
     ///
@@ -507,6 +517,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         (**self).did_change(printer, params);
+    }
+
+    fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
+        (**self).will_save(printer, params);
     }
 
     fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
