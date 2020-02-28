@@ -53,12 +53,10 @@
 //!     let stdout = tokio::io::stdout();
 //!
 //!     let (service, messages) = LspService::new(Backend::default());
-//!     let handle = service.close_handle();
-//!     let server = Server::new(stdin, stdout)
+//!     Server::new(stdin, stdout)
 //!         .interleave(messages)
-//!         .serve(service);
-//!
-//!     handle.run_until_exit(server).await;
+//!         .serve(service)
+//!         .await;
 //! }
 //! ```
 
@@ -70,7 +68,7 @@ pub extern crate lsp_types;
 
 pub use self::delegate::{MessageStream, Printer};
 pub use self::message::Incoming;
-pub use self::service::{ExitReceiver, ExitedError, LspService};
+pub use self::service::{ExitedError, LspService};
 pub use self::stdio::Server;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;

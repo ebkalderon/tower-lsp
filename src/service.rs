@@ -5,13 +5,11 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use futures::channel::oneshot::{self, Canceled};
 use futures::compat::Future01CompatExt;
-use futures::future::{FutureExt, Shared, TryFutureExt};
-use futures::{future, select};
+use futures::future::{self, TryFutureExt};
 use jsonrpc_core::IoHandler;
 use log::{debug, info, trace};
 use lsp_types::notification::{Exit, Notification};
@@ -22,6 +20,7 @@ use super::message::Incoming;
 use super::LanguageServer;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
+///
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExitedError;
 
@@ -33,36 +32,6 @@ impl Display for ExitedError {
 
 impl Error for ExitedError {}
 
-/// Future which never resolves until the [`exit`] notification is received.
-///
-/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
-#[derive(Clone, Debug)]
-pub struct ExitReceiver(Shared<oneshot::Receiver<()>>);
-
-impl ExitReceiver {
-    /// Drives the future to completion, only canceling if the [`exit`] notification is received.
-    ///
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
-    pub async fn run_until_exit<F>(self, future: F)
-    where
-        F: Future<Output = ()> + Send,
-    {
-        select! {
-            a = self.0.fuse() => (),
-            b = future.fuse() => (),
-        }
-    }
-}
-
-impl Future for ExitReceiver {
-    type Output = Result<(), Canceled>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let recv = &mut self.as_mut().0;
-        Pin::new(recv).poll(cx)
-    }
-}
-
 /// Service abstraction for the Language Server Protocol.
 ///
 /// This service takes a JSON-RPC request as input and produces a JSON-RPC response as output. If
@@ -72,10 +41,13 @@ impl Future for ExitReceiver {
 /// transport and to facilitate further abstraction with middleware.
 ///
 /// [`tower_service::Service`]: https://docs.rs/tower-service/0.3.0/tower_service/trait.Service.html
+///
+/// The service shuts down and stops serving requests after the [`exit`] notification is received.
+///
+/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
 #[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
-    exit_rx: ExitReceiver,
     stopped: Arc<AtomicBool>,
 }
 
@@ -100,34 +72,14 @@ impl LspService {
         let mut handler = handler.into();
         handler.extend_with(delegate.to_delegate());
 
-        let (tx, rx) = oneshot::channel();
-        let exit_tx = Mutex::new(Some(tx));
-        let exit_rx = ExitReceiver(rx.shared());
-
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_arc = stopped.clone();
         handler.add_notification(Exit::METHOD, move |_| {
-            if let Some(tx) = exit_tx.lock().unwrap_or_else(|tx| tx.into_inner()).take() {
-                info!("exit notification received, shutting down");
-                stopped_arc.store(true, Ordering::SeqCst);
-                tx.send(()).unwrap();
-            }
+            info!("exit notification received, shutting down");
+            stopped_arc.store(true, Ordering::SeqCst);
         });
 
-        let service = LspService {
-            handler,
-            exit_rx,
-            stopped,
-        };
-
-        (service, messages)
-    }
-
-    /// Returns a close handle which signals when the [`exit`] notification has been received.
-    ///
-    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
-    pub fn close_handle(&self) -> ExitReceiver {
-        self.exit_rx.clone()
+        (LspService { handler, stopped }, messages)
     }
 }
 
