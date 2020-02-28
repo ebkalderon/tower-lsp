@@ -103,10 +103,8 @@ async fn main() {
     let stdout = tokio::io::stdout();
 
     let (service, messages) = LspService::new(Backend::default());
-    let handle = service.close_handle();
-    let server = Server::new(stdin, stdout)
+    Server::new(stdin, stdout)
         .interleave(messages)
-        .serve(service);
-
-    handle.run_until_exit(server).await;
+        .serve(service)
+        .await;
 }
