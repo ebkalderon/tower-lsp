@@ -14,7 +14,7 @@ use futures::Stream;
 use jsonrpc_core::types::{ErrorCode, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
-use log::error;
+use log::{error, info};
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{Request, *};
 use lsp_types::*;
@@ -203,6 +203,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         let params: InitializeParams = params.parse()?;
         let response = self.server.initialize(&self.printer, params)?;
+        info!("language server initialized");
         self.initialized.store(true, Ordering::SeqCst);
         Ok(response)
     }
