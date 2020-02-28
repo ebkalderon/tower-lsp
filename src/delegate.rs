@@ -14,7 +14,7 @@ use futures::Stream;
 use jsonrpc_core::types::{ErrorCode, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
-use log::{error, trace};
+use log::error;
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{Request, *};
 use lsp_types::*;
@@ -165,7 +165,6 @@ impl<T: LanguageServer> Delegate<T> {
         N::Params: DeserializeOwned,
         F: Fn(&Printer, N::Params),
     {
-        trace!("received `{}` notification: {:?}", N::METHOD, params);
         if self.initialized.load(Ordering::SeqCst) {
             match params.parse::<N::Params>() {
                 Ok(params) => delegate(&self.printer, params),
@@ -182,7 +181,6 @@ impl<T: LanguageServer> Delegate<T> {
         F: FnOnce(R::Params) -> F2 + Send + 'static,
         F2: Future<Output = RpcResult<R::Result>> + Send + 'static,
     {
-        trace!("received `{}` request: {:?}", R::METHOD, params);
         if self.initialized.load(Ordering::SeqCst) {
             let fut = async move {
                 match params.parse() {
@@ -203,7 +201,6 @@ impl<T: LanguageServer> Delegate<T> {
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
-        trace!("received `initialize` request: {:?}", params);
         let params: InitializeParams = params.parse()?;
         let response = self.server.initialize(&self.printer, params)?;
         self.initialized.store(true, Ordering::SeqCst);
@@ -217,7 +214,6 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn shutdown(&self) -> BoxFuture<()> {
-        trace!("received `shutdown` request");
         if self.initialized.load(Ordering::SeqCst) {
             let server = self.server.clone();
             Box::new(async move { server.shutdown().await }.boxed().compat())
