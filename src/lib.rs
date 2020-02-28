@@ -491,6 +491,16 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a codeLens/resolve request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/formatting`] request is sent from the client to the server to format a
+    /// whole document.
+    ///
+    /// [`textDocument/formatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_formatting
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        let _ = params;
+        error!("Got a textDocument/formatting request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -625,5 +635,9 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
         (**self).code_lens_resolve(params).await
+    }
+
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        (**self).formatting(params).await
     }
 }
