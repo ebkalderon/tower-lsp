@@ -44,7 +44,7 @@ impl Error for ExitedError {}
 ///
 /// The service shuts down and stops serving requests after the [`exit`] notification is received.
 ///
-/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-3-15/#exit
+/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#exit
 #[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
