@@ -82,10 +82,9 @@ impl Encoder for LanguageServerCodec {
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         if !item.is_empty() {
-            // The magic constant 30 below is an approximation intended to fit at least the
-            // `Content-Length: ` and `\r\n\r\n` byte constants (20 bytes) plus 10 bytes extra to
-            // accommodate for a variable number of length digits.
-            dst.reserve(item.len() + 30);
+            // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
+            // the length of the message, and the message body.
+            dst.reserve(item.len() + number_of_digits(item.len()) + 20);
             let mut writer = dst.writer();
             write!(writer, "Content-Length: {}\r\n\r\n{}", item.len(), item)?;
             writer.flush()?;
@@ -93,6 +92,18 @@ impl Encoder for LanguageServerCodec {
 
         Ok(())
     }
+}
+
+#[inline]
+fn number_of_digits(mut n: usize) -> usize {
+    let mut num_digits = 0;
+
+    while n > 0 {
+        n /= 10;
+        num_digits += 1;
+    }
+
+    num_digits
 }
 
 impl Decoder for LanguageServerCodec {
