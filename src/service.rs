@@ -20,7 +20,6 @@ use super::message::Incoming;
 use super::LanguageServer;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
-///
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExitedError;
 
