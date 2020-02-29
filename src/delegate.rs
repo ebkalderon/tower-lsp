@@ -173,18 +173,19 @@ impl<T: LanguageServer> Delegate<T> {
         }
     }
 
-    fn delegate_request<R, F, F2>(&self, params: Params, delegate: F) -> BoxFuture<R::Result>
+    fn delegate_request<R, F, Fut>(&self, params: Params, delegate: F) -> BoxFuture<R::Result>
     where
         R: Request,
         R::Params: DeserializeOwned + Send,
         R::Result: Send + 'static,
-        F: FnOnce(R::Params) -> F2 + Send + 'static,
-        F2: Future<Output = RpcResult<R::Result>> + Send + 'static,
+        F: FnOnce(Arc<T>, R::Params) -> Fut + Send + 'static,
+        Fut: Future<Output = RpcResult<R::Result>> + Send,
     {
         if self.initialized.load(Ordering::SeqCst) {
+            let server = self.server.clone();
             let fut = async move {
                 match params.parse() {
-                    Ok(params) => delegate(params).await,
+                    Ok(params) => delegate(server, params).await,
                     Err(err) => Err(Error::invalid_params_with_details(
                         "invalid parameters",
                         err,
@@ -242,16 +243,14 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>> {
-        let server = self.server.clone();
-        self.delegate_request::<WorkspaceSymbol, _, _>(params, move |p| async move {
+        self.delegate_request::<WorkspaceSymbol, _, _>(params, |server, p| async move {
             server.symbol(p).await
         })
     }
 
     fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
-        let server = self.server.clone();
         let printer = self.printer.clone();
-        self.delegate_request::<ExecuteCommand, _, _>(params, move |p| async move {
+        self.delegate_request::<ExecuteCommand, _, _>(params, |server, p| async move {
             server.execute_command(&printer, p).await
         })
     }
@@ -287,43 +286,37 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     }
 
     fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<Completion, _, _>(params, move |p| async move {
+        self.delegate_request::<Completion, _, _>(params, |server, p| async move {
             server.completion(p).await
         })
     }
 
     fn completion_resolve(&self, params: Params) -> BoxFuture<CompletionItem> {
-        let server = self.server.clone();
-        self.delegate_request::<ResolveCompletionItem, _, _>(params, move |p| async move {
+        self.delegate_request::<ResolveCompletionItem, _, _>(params, |server, p| async move {
             server.completion_resolve(p).await
         })
     }
 
     fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
-        let server = self.server.clone();
-        self.delegate_request::<HoverRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<HoverRequest, _, _>(params, |server, p| async move {
             server.hover(p).await
         })
     }
 
     fn signature_help(&self, params: Params) -> BoxFuture<Option<SignatureHelp>> {
-        let server = self.server.clone();
-        self.delegate_request::<SignatureHelpRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<SignatureHelpRequest, _, _>(params, |server, p| async move {
             server.signature_help(p).await
         })
     }
 
     fn goto_declaration(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<GotoDeclaration, _, _>(params, move |p| async move {
+        self.delegate_request::<GotoDeclaration, _, _>(params, |server, p| async move {
             server.goto_declaration(p).await
         })
     }
 
     fn goto_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<GotoDefinition, _, _>(params, move |p| async move {
+        self.delegate_request::<GotoDefinition, _, _>(params, |server, p| async move {
             server.goto_definition(p).await
         })
     }
@@ -332,57 +325,49 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         &self,
         params: Params,
     ) -> BoxFuture<Option<GotoTypeDefinitionResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<GotoTypeDefinition, _, _>(params, move |p| async move {
+        self.delegate_request::<GotoTypeDefinition, _, _>(params, |server, p| async move {
             server.goto_type_definition(p).await
         })
     }
 
     fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<GotoImplementation, _, _>(params, move |p| async move {
+        self.delegate_request::<GotoImplementation, _, _>(params, |server, p| async move {
             server.goto_implementation(p).await
         })
     }
 
     fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<DocumentSymbolRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<DocumentSymbolRequest, _, _>(params, |server, p| async move {
             server.document_symbol(p).await
         })
     }
 
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
-        let server = self.server.clone();
-        self.delegate_request::<DocumentHighlightRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<DocumentHighlightRequest, _, _>(params, |server, p| async move {
             server.document_highlight(p).await
         })
     }
 
     fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>> {
-        let server = self.server.clone();
-        self.delegate_request::<CodeActionRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<CodeActionRequest, _, _>(params, |server, p| async move {
             server.code_action(p).await
         })
     }
 
     fn code_lens(&self, params: Params) -> BoxFuture<Option<Vec<CodeLens>>> {
-        let server = self.server.clone();
-        self.delegate_request::<CodeLensRequest, _, _>(params, move |p| async move {
+        self.delegate_request::<CodeLensRequest, _, _>(params, |server, p| async move {
             server.code_lens(p).await
         })
     }
 
     fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens> {
-        let server = self.server.clone();
-        self.delegate_request::<CodeLensResolve, _, _>(params, move |p| async move {
+        self.delegate_request::<CodeLensResolve, _, _>(params, |server, p| async move {
             server.code_lens_resolve(p).await
         })
     }
 
     fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>> {
-        let server = self.server.clone();
-        self.delegate_request::<Formatting, _, _>(params, move |p| async move {
+        self.delegate_request::<Formatting, _, _>(params, |server, p| async move {
             server.formatting(p).await
         })
     }
