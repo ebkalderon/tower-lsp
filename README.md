@@ -52,7 +52,7 @@ impl LanguageServer for Backend {
         Ok(InitializeResult::default())
     }
 
-    fn initialized(&self, printer: &Printer, _: InitializedParams) {
+    async fn initialized(&self, printer: &Printer, _: InitializedParams) {
         printer.log_message(MessageType::Info, "server initialized!");
     }
 

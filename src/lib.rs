@@ -22,7 +22,7 @@
 //!         Ok(InitializeResult::default())
 //!     }
 //!
-//!     fn initialized(&self, printer: &Printer, _: InitializedParams) {
+//!     async fn initialized(&self, printer: &Printer, _: InitializedParams) {
 //!         printer.log_message(MessageType::Info, "server initialized!");
 //!     }
 //!
@@ -105,7 +105,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialized
-    fn initialized(&self, printer: &Printer, params: InitializedParams) {
+    async fn initialized(&self, printer: &Printer, params: InitializedParams) {
         let _ = printer;
         let _ = params;
     }
@@ -133,8 +133,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeWorkspaceFolders
     /// [`initialize`]: #tymethod.initialize
-    fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
-        let _ = p;
+    async fn did_change_workspace_folders(
+        &self,
+        printer: &Printer,
+        params: DidChangeWorkspaceFoldersParams,
+    ) {
+        let _ = printer;
         let _ = params;
         warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
@@ -143,7 +147,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// to signal the change of configuration settings.
     ///
     /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
-    fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
+    async fn did_change_configuration(
+        &self,
+        printer: &Printer,
+        params: DidChangeConfigurationParams,
+    ) {
         let _ = printer;
         let _ = params;
         warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
@@ -158,7 +166,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
-    fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(
+        &self,
+        printer: &Printer,
+        params: DidChangeWatchedFilesParams,
+    ) {
         let _ = printer;
         let _ = params;
         warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
@@ -203,7 +215,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didOpen
-    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
+    async fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let _ = printer;
         let _ = params;
         warn!("Got a textDocument/didOpen notification, but it is not implemented");
@@ -216,7 +228,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document for the server to interpret.
     ///
     /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didChange
-    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
+    async fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let _ = printer;
         let _ = params;
         warn!("Got a textDocument/didChange notification, but it is not implemented");
@@ -226,7 +238,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document is actually saved.
     ///
     /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_willSave
-    fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
+    async fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
         warn!("Got a textDocument/willSave notification, but it is not implemented");
@@ -236,7 +248,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document was saved in the client.
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didSave
-    fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
+    async fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
         let _ = printer;
         let _ = params;
         warn!("Got a textDocument/didSave notification, but it is not implemented");
@@ -249,7 +261,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// URI is a file URI, the truth now exists on disk).
     ///
     /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didClose
-    fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
+    async fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
         let _ = printer;
         let _ = params;
         warn!("Got a textDocument/didClose notification, but it is not implemented");
@@ -509,24 +521,36 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).initialize(printer, params)
     }
 
-    fn initialized(&self, printer: &Printer, params: InitializedParams) {
-        (**self).initialized(printer, params);
+    async fn initialized(&self, printer: &Printer, params: InitializedParams) {
+        (**self).initialized(printer, params).await;
     }
 
     async fn shutdown(&self) -> Result<()> {
         (**self).shutdown().await
     }
 
-    fn did_change_workspace_folders(&self, p: &Printer, params: DidChangeWorkspaceFoldersParams) {
-        (**self).did_change_workspace_folders(p, params);
+    async fn did_change_workspace_folders(
+        &self,
+        printer: &Printer,
+        params: DidChangeWorkspaceFoldersParams,
+    ) {
+        (**self).did_change_workspace_folders(printer, params).await;
     }
 
-    fn did_change_configuration(&self, printer: &Printer, params: DidChangeConfigurationParams) {
-        (**self).did_change_configuration(printer, params);
+    async fn did_change_configuration(
+        &self,
+        printer: &Printer,
+        params: DidChangeConfigurationParams,
+    ) {
+        (**self).did_change_configuration(printer, params).await;
     }
 
-    fn did_change_watched_files(&self, printer: &Printer, params: DidChangeWatchedFilesParams) {
-        (**self).did_change_watched_files(printer, params);
+    async fn did_change_watched_files(
+        &self,
+        printer: &Printer,
+        params: DidChangeWatchedFilesParams,
+    ) {
+        (**self).did_change_watched_files(printer, params).await;
     }
 
     async fn symbol(
@@ -544,24 +568,24 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).execute_command(p, params).await
     }
 
-    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
-        (**self).did_open(printer, params);
+    async fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
+        (**self).did_open(printer, params).await;
     }
 
-    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
-        (**self).did_change(printer, params);
+    async fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
+        (**self).did_change(printer, params).await;
     }
 
-    fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
-        (**self).will_save(printer, params);
+    async fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
+        (**self).will_save(printer, params).await;
     }
 
-    fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
-        (**self).did_save(printer, params);
+    async fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
+        (**self).did_save(printer, params).await;
     }
 
-    fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
-        (**self).did_close(printer, params);
+    async fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
+        (**self).did_close(printer, params).await;
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {

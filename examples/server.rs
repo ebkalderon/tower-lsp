@@ -45,7 +45,7 @@ impl LanguageServer for Backend {
         })
     }
 
-    fn initialized(&self, printer: &Printer, _: InitializedParams) {
+    async fn initialized(&self, printer: &Printer, _: InitializedParams) {
         printer.log_message(MessageType::Info, "server initialized!");
     }
 
@@ -53,15 +53,19 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    fn did_change_workspace_folders(&self, printer: &Printer, _: DidChangeWorkspaceFoldersParams) {
+    async fn did_change_workspace_folders(
+        &self,
+        printer: &Printer,
+        _: DidChangeWorkspaceFoldersParams,
+    ) {
         printer.log_message(MessageType::Info, "workspace folders changed!");
     }
 
-    fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
+    async fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
         printer.log_message(MessageType::Info, "configuration changed!");
     }
 
-    fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
         printer.log_message(MessageType::Info, "watched files have changed!");
     }
 
@@ -75,19 +79,19 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
+    async fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
         printer.log_message(MessageType::Info, "file opened!");
     }
 
-    fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
+    async fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
         printer.log_message(MessageType::Info, "file changed!");
     }
 
-    fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
+    async fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
         printer.log_message(MessageType::Info, "file saved!");
     }
 
-    fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
+    async fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
         printer.log_message(MessageType::Info, "file closed!");
     }
 

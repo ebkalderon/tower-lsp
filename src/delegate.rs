@@ -2,7 +2,6 @@
 
 pub use self::printer::Printer;
 
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -18,7 +17,6 @@ use log::{error, info};
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{Request, *};
 use lsp_types::*;
-use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use super::LanguageServer;
@@ -158,34 +156,80 @@ impl<T: LanguageServer> Delegate<T> {
 
         (delegate, messages)
     }
+}
 
-    fn delegate_notification<N, F>(&self, params: Params, delegate: F)
-    where
-        N: Notification,
-        N::Params: DeserializeOwned,
-        F: Fn(&Printer, N::Params),
-    {
-        if self.initialized.load(Ordering::SeqCst) {
-            match params.parse::<N::Params>() {
-                Ok(params) => delegate(&self.printer, params),
-                Err(err) => error!("invalid parameters for `{}`: {:?}", N::METHOD, err),
+macro_rules! delegate_notification {
+    ($name:ident as $notif:ty) => {
+        fn $name(&self, params: Params) {
+            if self.initialized.load(Ordering::SeqCst) {
+                match params.parse() {
+                    Err(err) => error!("invalid parameters for `{}`: {:?}", <$notif>::METHOD, err),
+                    Ok(params) => {
+                        let server = self.server.clone();
+                        let printer = self.printer.clone();
+                        tokio::spawn(async move { server.$name(&printer, params).await });
+                    }
+                }
             }
+        }
+    };
+}
+
+macro_rules! delegate_request {
+    ($name:ident as $request:ty) => {
+        fn $name(&self, params: Params) -> BoxFuture<<$request as Request>::Result> {
+            if self.initialized.load(Ordering::SeqCst) {
+                let server = self.server.clone();
+                let fut = async move {
+                    match params.parse() {
+                        Ok(params) => server.$name(params).await,
+                        Err(err) => Err(Error::invalid_params_with_details(
+                            "invalid parameters",
+                            err,
+                        )),
+                    }
+                };
+
+                Box::new(fut.boxed().compat())
+            } else {
+                Box::new(future::err(not_initialized_error()).compat())
+            }
+        }
+    };
+}
+
+impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
+    fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
+        let params: InitializeParams = params.parse()?;
+        let response = self.server.initialize(&self.printer, params)?;
+        info!("language server initialized");
+        self.initialized.store(true, Ordering::SeqCst);
+        Ok(response)
+    }
+
+    delegate_notification!(initialized as Initialized);
+
+    fn shutdown(&self) -> BoxFuture<()> {
+        if self.initialized.load(Ordering::SeqCst) {
+            let server = self.server.clone();
+            Box::new(async move { server.shutdown().await }.boxed().compat())
+        } else {
+            Box::new(future::err(not_initialized_error()).compat())
         }
     }
 
-    fn delegate_request<R, F, Fut>(&self, params: Params, delegate: F) -> BoxFuture<R::Result>
-    where
-        R: Request,
-        R::Params: DeserializeOwned + Send,
-        R::Result: Send + 'static,
-        F: FnOnce(Arc<T>, R::Params) -> Fut + Send + 'static,
-        Fut: Future<Output = RpcResult<R::Result>> + Send,
-    {
+    delegate_notification!(did_change_workspace_folders as DidChangeWorkspaceFolders);
+    delegate_notification!(did_change_configuration as DidChangeConfiguration);
+    delegate_notification!(did_change_watched_files as DidChangeWatchedFiles);
+    delegate_request!(symbol as WorkspaceSymbol);
+
+    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
         if self.initialized.load(Ordering::SeqCst) {
             let server = self.server.clone();
+            let printer = self.printer.clone();
             let fut = async move {
                 match params.parse() {
-                    Ok(params) => delegate(server, params).await,
+                    Ok(params) => server.execute_command(&printer, params).await,
                     Err(err) => Err(Error::invalid_params_with_details(
                         "invalid parameters",
                         err,
@@ -198,179 +242,27 @@ impl<T: LanguageServer> Delegate<T> {
             Box::new(future::err(not_initialized_error()).compat())
         }
     }
-}
 
-impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
-    fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
-        let params: InitializeParams = params.parse()?;
-        let response = self.server.initialize(&self.printer, params)?;
-        info!("language server initialized");
-        self.initialized.store(true, Ordering::SeqCst);
-        Ok(response)
-    }
+    delegate_notification!(did_open as DidOpenTextDocument);
+    delegate_notification!(did_change as DidChangeTextDocument);
+    delegate_notification!(will_save as WillSaveTextDocument);
+    delegate_notification!(did_save as DidSaveTextDocument);
+    delegate_notification!(did_close as DidCloseTextDocument);
 
-    fn initialized(&self, params: Params) {
-        self.delegate_notification::<Initialized, _>(params, |p, params| {
-            self.server.initialized(p, params)
-        });
-    }
-
-    fn shutdown(&self) -> BoxFuture<()> {
-        if self.initialized.load(Ordering::SeqCst) {
-            let server = self.server.clone();
-            Box::new(async move { server.shutdown().await }.boxed().compat())
-        } else {
-            Box::new(future::err(not_initialized_error()).compat())
-        }
-    }
-
-    fn did_change_workspace_folders(&self, params: Params) {
-        self.delegate_notification::<DidChangeWorkspaceFolders, _>(params, |p, params| {
-            self.server.did_change_workspace_folders(p, params)
-        });
-    }
-
-    fn did_change_configuration(&self, params: Params) {
-        self.delegate_notification::<DidChangeConfiguration, _>(params, |p, params| {
-            self.server.did_change_configuration(p, params)
-        });
-    }
-
-    fn did_change_watched_files(&self, params: Params) {
-        self.delegate_notification::<DidChangeWatchedFiles, _>(params, |p, params| {
-            self.server.did_change_watched_files(p, params)
-        });
-    }
-
-    fn symbol(&self, params: Params) -> BoxFuture<Option<Vec<SymbolInformation>>> {
-        self.delegate_request::<WorkspaceSymbol, _, _>(params, |server, p| async move {
-            server.symbol(p).await
-        })
-    }
-
-    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
-        let printer = self.printer.clone();
-        self.delegate_request::<ExecuteCommand, _, _>(params, |server, p| async move {
-            server.execute_command(&printer, p).await
-        })
-    }
-
-    fn did_open(&self, params: Params) {
-        self.delegate_notification::<DidOpenTextDocument, _>(params, |p, params| {
-            self.server.clone().did_open(p, params)
-        });
-    }
-
-    fn did_change(&self, params: Params) {
-        self.delegate_notification::<DidChangeTextDocument, _>(params, |p, params| {
-            self.server.did_change(p, params)
-        });
-    }
-
-    fn will_save(&self, params: Params) {
-        self.delegate_notification::<WillSaveTextDocument, _>(params, |p, params| {
-            self.server.will_save(p, params)
-        });
-    }
-
-    fn did_save(&self, params: Params) {
-        self.delegate_notification::<DidSaveTextDocument, _>(params, |p, params| {
-            self.server.did_save(p, params)
-        });
-    }
-
-    fn did_close(&self, params: Params) {
-        self.delegate_notification::<DidCloseTextDocument, _>(params, |p, params| {
-            self.server.did_close(p, params)
-        });
-    }
-
-    fn completion(&self, params: Params) -> BoxFuture<Option<CompletionResponse>> {
-        self.delegate_request::<Completion, _, _>(params, |server, p| async move {
-            server.completion(p).await
-        })
-    }
-
-    fn completion_resolve(&self, params: Params) -> BoxFuture<CompletionItem> {
-        self.delegate_request::<ResolveCompletionItem, _, _>(params, |server, p| async move {
-            server.completion_resolve(p).await
-        })
-    }
-
-    fn hover(&self, params: Params) -> BoxFuture<Option<Hover>> {
-        self.delegate_request::<HoverRequest, _, _>(params, |server, p| async move {
-            server.hover(p).await
-        })
-    }
-
-    fn signature_help(&self, params: Params) -> BoxFuture<Option<SignatureHelp>> {
-        self.delegate_request::<SignatureHelpRequest, _, _>(params, |server, p| async move {
-            server.signature_help(p).await
-        })
-    }
-
-    fn goto_declaration(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        self.delegate_request::<GotoDeclaration, _, _>(params, |server, p| async move {
-            server.goto_declaration(p).await
-        })
-    }
-
-    fn goto_definition(&self, params: Params) -> BoxFuture<Option<GotoDefinitionResponse>> {
-        self.delegate_request::<GotoDefinition, _, _>(params, |server, p| async move {
-            server.goto_definition(p).await
-        })
-    }
-
-    fn goto_type_definition(
-        &self,
-        params: Params,
-    ) -> BoxFuture<Option<GotoTypeDefinitionResponse>> {
-        self.delegate_request::<GotoTypeDefinition, _, _>(params, |server, p| async move {
-            server.goto_type_definition(p).await
-        })
-    }
-
-    fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>> {
-        self.delegate_request::<GotoImplementation, _, _>(params, |server, p| async move {
-            server.goto_implementation(p).await
-        })
-    }
-
-    fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>> {
-        self.delegate_request::<DocumentSymbolRequest, _, _>(params, |server, p| async move {
-            server.document_symbol(p).await
-        })
-    }
-
-    fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
-        self.delegate_request::<DocumentHighlightRequest, _, _>(params, |server, p| async move {
-            server.document_highlight(p).await
-        })
-    }
-
-    fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>> {
-        self.delegate_request::<CodeActionRequest, _, _>(params, |server, p| async move {
-            server.code_action(p).await
-        })
-    }
-
-    fn code_lens(&self, params: Params) -> BoxFuture<Option<Vec<CodeLens>>> {
-        self.delegate_request::<CodeLensRequest, _, _>(params, |server, p| async move {
-            server.code_lens(p).await
-        })
-    }
-
-    fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens> {
-        self.delegate_request::<CodeLensResolve, _, _>(params, |server, p| async move {
-            server.code_lens_resolve(p).await
-        })
-    }
-
-    fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>> {
-        self.delegate_request::<Formatting, _, _>(params, |server, p| async move {
-            server.formatting(p).await
-        })
-    }
+    delegate_request!(completion as Completion);
+    delegate_request!(completion_resolve as ResolveCompletionItem);
+    delegate_request!(hover as HoverRequest);
+    delegate_request!(signature_help as SignatureHelpRequest);
+    delegate_request!(goto_declaration as GotoDeclaration);
+    delegate_request!(goto_definition as GotoDefinition);
+    delegate_request!(goto_type_definition as GotoTypeDefinition);
+    delegate_request!(goto_implementation as GotoImplementation);
+    delegate_request!(document_symbol as DocumentSymbolRequest);
+    delegate_request!(document_highlight as DocumentHighlightRequest);
+    delegate_request!(code_action as CodeActionRequest);
+    delegate_request!(code_lens as CodeLensRequest);
+    delegate_request!(code_lens_resolve as CodeLensResolve);
+    delegate_request!(formatting as Formatting);
 }
 
 /// Error response returned for every request received before the server is initialized.
