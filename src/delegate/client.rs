@@ -128,7 +128,7 @@ impl Client {
         }
     }
 
-    /// Register a new capability with the client.
+    /// Registers a new capability with the client.
     ///
     /// This corresponds to the [`client/registerCapability`] request.
     ///
@@ -145,7 +145,7 @@ impl Client {
             .await
     }
 
-    /// Unregister a capability with the client.
+    /// Unregisters a capability with the client.
     ///
     /// This corresponds to the [`client/unregisterCapability`] request.
     ///
