@@ -36,13 +36,13 @@ impl Client {
 
         let pending = pending_requests.clone();
         tokio::spawn(async move {
-            loop {
-                while let Some(response) = receiver.next().await {
-                    if let Id::Num(ref id) = response.id() {
+            while let Some(response) = receiver.next().await {
+                match response.id() {
+                    Id::Num(ref id) if pending.contains_key(id) => {
                         pending.insert(*id, Some(response));
-                    } else {
-                        error!("received response from client with non-numeric ID");
                     }
+                    Id::Num(_) => error!("received response from client with no matching request"),
+                    _ => error!("received response from client with non-numeric ID"),
                 }
             }
         });
