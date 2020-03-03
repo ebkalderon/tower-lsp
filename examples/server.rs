@@ -1,14 +1,14 @@
 use jsonrpc_core::Result;
 use serde_json::Value;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{LanguageServer, LspService, Printer, Server};
+use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 #[derive(Debug, Default)]
 struct Backend;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -45,8 +45,8 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn initialized(&self, printer: &Printer, _: InitializedParams) {
-        printer.log_message(MessageType::Info, "server initialized!");
+    async fn initialized(&self, client: &Client, _: InitializedParams) {
+        client.log_message(MessageType::Info, "server initialized!");
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -55,44 +55,49 @@ impl LanguageServer for Backend {
 
     async fn did_change_workspace_folders(
         &self,
-        printer: &Printer,
+        client: &Client,
         _: DidChangeWorkspaceFoldersParams,
     ) {
-        printer.log_message(MessageType::Info, "workspace folders changed!");
+        client.log_message(MessageType::Info, "workspace folders changed!");
     }
 
-    async fn did_change_configuration(&self, printer: &Printer, _: DidChangeConfigurationParams) {
-        printer.log_message(MessageType::Info, "configuration changed!");
+    async fn did_change_configuration(&self, client: &Client, _: DidChangeConfigurationParams) {
+        client.log_message(MessageType::Info, "configuration changed!");
     }
 
-    async fn did_change_watched_files(&self, printer: &Printer, _: DidChangeWatchedFilesParams) {
-        printer.log_message(MessageType::Info, "watched files have changed!");
+    async fn did_change_watched_files(&self, client: &Client, _: DidChangeWatchedFilesParams) {
+        client.log_message(MessageType::Info, "watched files have changed!");
     }
 
     async fn execute_command(
         &self,
-        printer: &Printer,
+        client: &Client,
         _: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
-        printer.log_message(MessageType::Info, "command executed!");
-        printer.apply_edit(WorkspaceEdit::default());
+        client.log_message(MessageType::Info, "command executed!");
+        match client.apply_edit(WorkspaceEdit::default()).await {
+            Ok(res) if res.applied => client.log_message(MessageType::Info, "edit applied"),
+            Ok(_) => client.log_message(MessageType::Info, "edit applied"),
+            Err(err) => client.log_message(MessageType::Error, err),
+        }
+
         Ok(None)
     }
 
-    async fn did_open(&self, printer: &Printer, _: DidOpenTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file opened!");
+    async fn did_open(&self, client: &Client, _: DidOpenTextDocumentParams) {
+        client.log_message(MessageType::Info, "file opened!");
     }
 
-    async fn did_change(&self, printer: &Printer, _: DidChangeTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file changed!");
+    async fn did_change(&self, client: &Client, _: DidChangeTextDocumentParams) {
+        client.log_message(MessageType::Info, "file changed!");
     }
 
-    async fn did_save(&self, printer: &Printer, _: DidSaveTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file saved!");
+    async fn did_save(&self, client: &Client, _: DidSaveTextDocumentParams) {
+        client.log_message(MessageType::Info, "file saved!");
     }
 
-    async fn did_close(&self, printer: &Printer, _: DidCloseTextDocumentParams) {
-        printer.log_message(MessageType::Info, "file closed!");
+    async fn did_close(&self, client: &Client, _: DidCloseTextDocumentParams) {
+        client.log_message(MessageType::Info, "file closed!");
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {

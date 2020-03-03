@@ -133,14 +133,14 @@ mod tests {
     use tower_test::mock::Spawn;
 
     use super::*;
-    use crate::Printer;
+    use crate::Client;
 
     #[derive(Debug, Default)]
     struct Mock;
 
     #[async_trait]
     impl LanguageServer for Mock {
-        fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+        fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 
