@@ -41,7 +41,7 @@ impl Client {
                     if let Id::Num(ref id) = response.id() {
                         pending.insert(*id, Some(response));
                     } else {
-                        error!("expected numeric ID from client",);
+                        error!("received response from client with non-numeric ID");
                     }
                 }
             }
@@ -285,14 +285,14 @@ mod tests {
     use super::*;
 
     async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: String) {
-        let (req_tx, req_rx) = mpsc::channel(1);
-        let (res_tx, res_rx) = mpsc::channel(1);
+        let (request_tx, request_rx) = mpsc::channel(1);
+        let (response_tx, response_rx) = mpsc::channel(1);
 
-        let client = Client::new(req_tx, res_rx, Arc::new(AtomicBool::new(true)));
+        let client = Client::new(request_tx, response_rx, Arc::new(AtomicBool::new(true)));
         f(client);
-        drop(res_tx);
+        drop(response_tx);
 
-        let messages: Vec<_> = req_rx.collect().await;
+        let messages: Vec<_> = request_rx.collect().await;
         assert_eq!(messages, vec![expected]);
     }
 
