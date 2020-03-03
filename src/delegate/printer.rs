@@ -20,17 +20,38 @@ use serde_json::Value;
 /// Sends notifications from the language server to the client.
 #[derive(Debug)]
 pub struct Printer {
-    router: Router,
+    sender: Sender<String>,
+    initialized: Arc<AtomicBool>,
+    request_id: AtomicU64,
+    pending_requests: Arc<DashMap<u64, Option<Output>>>,
 }
 
 impl Printer {
     pub(super) const fn new(
-        tx: Sender<String>,
-        rx: Receiver<Output>,
+        sender: Sender<String>,
+        mut receiver: Receiver<Output>,
         initialized: Arc<AtomicBool>,
     ) -> Self {
+        let pending_requests = Arc::new(DashMap::default());
+
+        let pending = pending_requests.clone();
+        tokio::spawn(async move {
+            loop {
+                while let Some(response) = receiver.next().await {
+                    if let Id::Num(ref id) = response.id() {
+                        pending.insert(*id, Some(response));
+                    } else {
+                        error!("expected numeric ID from client",);
+                    }
+                }
+            }
+        });
+
         Printer {
-            router: Router::new(tx, rx, initialized),
+            sender,
+            initialized,
+            request_id: AtomicU64::new(0),
+            pending_requests,
         }
     }
 
@@ -40,11 +61,10 @@ impl Printer {
     ///
     /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_logMessage
     pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.router
-            .send_notification::<LogMessage>(LogMessageParams {
-                typ,
-                message: message.to_string(),
-            });
+        self.send_notification::<LogMessage>(LogMessageParams {
+            typ,
+            message: message.to_string(),
+        });
     }
 
     /// Notifies the client to display a particular message in the user interface.
@@ -53,11 +73,10 @@ impl Printer {
     ///
     /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessage
     pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.router
-            .send_notification::<ShowMessage>(ShowMessageParams {
-                typ,
-                message: message.to_string(),
-            });
+        self.send_notification::<ShowMessage>(ShowMessageParams {
+            typ,
+            message: message.to_string(),
+        });
     }
 
     /// Notifies the client to log a telemetry event.
@@ -68,13 +87,12 @@ impl Printer {
     pub fn telemetry_event<S: Serialize>(&self, data: S) {
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
-            Ok(value) => {
+            Ok(mut value) => {
                 if !value.is_null() && !value.is_array() && !value.is_object() {
-                    let value = Value::Array(vec![value]);
-                    self.router.send_notification::<TelemetryEvent>(value);
-                } else {
-                    self.router.send_notification::<TelemetryEvent>(value);
+                    value = Value::Array(vec![value]);
                 }
+
+                self.send_notification::<TelemetryEvent>(value);
             }
         }
     }
@@ -85,8 +103,7 @@ impl Printer {
     ///
     /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_registerCapability
     pub async fn register_capability(&self, registrations: Vec<Registration>) -> Result<()> {
-        self.router
-            .send_request_initialized::<RegisterCapability>(RegistrationParams { registrations })
+        self.send_request_initialized::<RegisterCapability>(RegistrationParams { registrations })
             .await
     }
 
@@ -96,11 +113,10 @@ impl Printer {
     ///
     /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_unregisterCapability
     pub async fn unregister_capability(&self, unregisterations: Vec<Unregistration>) -> Result<()> {
-        self.router
-            .send_request_initialized::<UnregisterCapability>(UnregistrationParams {
-                unregisterations,
-            })
-            .await
+        self.send_request_initialized::<UnregisterCapability>(UnregistrationParams {
+            unregisterations,
+        })
+        .await
     }
 
     /// Requests a workspace resource be edited on the client side and returns whether the edit was
@@ -110,8 +126,7 @@ impl Printer {
     ///
     /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
     pub async fn apply_edit(&self, edit: WorkspaceEdit) -> Result<ApplyWorkspaceEditResponse> {
-        self.router
-            .send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit })
+        self.send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit })
             .await
     }
 
@@ -121,53 +136,18 @@ impl Printer {
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
-        self.router
-            .send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
-                uri, diags, version,
-            ));
+        self.send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
+            uri, diags, version,
+        ));
     }
 
     /// Sends a custom notification to the client.
-    pub fn send_notification<N>(&self, params: N::Params)
+    pub fn send_custom_notification<N>(&self, params: N::Params)
     where
         N: Notification,
         N::Params: Serialize,
     {
-        self.router.send_notification_initialized::<N>(params);
-    }
-}
-
-#[derive(Debug)]
-struct Router {
-    sender: Sender<String>,
-    initialized: Arc<AtomicBool>,
-    request_id: AtomicU64,
-    pending_requests: Arc<DashMap<u64, Option<Output>>>,
-}
-
-impl Router {
-    fn new(tx: Sender<String>, mut rx: Receiver<Output>, initialized: Arc<AtomicBool>) -> Self {
-        let pending_requests = Arc::new(DashMap::default());
-
-        let pending = pending_requests.clone();
-        tokio::spawn(async move {
-            loop {
-                while let Some(response) = rx.next().await {
-                    if let Id::Num(ref id) = response.id() {
-                        pending.insert(*id, Some(response));
-                    } else {
-                        error!("expected numeric ID from client",);
-                    }
-                }
-            }
-        });
-
-        Router {
-            sender: tx,
-            initialized,
-            request_id: AtomicU64::new(0),
-            pending_requests,
-        }
+        self.send_notification_initialized::<N>(params);
     }
 
     async fn send_request<R>(&self, params: R::Params) -> Result<R::Result>
@@ -296,18 +276,18 @@ where
 #[cfg(test)]
 mod tests {
     use futures::channel::mpsc;
-    use futures::stream::StreamExt;
     use serde_json::json;
 
     use super::*;
 
     async fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
-        let (tx, rx) = mpsc::channel(1);
+        let (req_tx, req_rx) = mpsc::channel(1);
+        let (res_tx, res_rx) = mpsc::channel(1);
 
-        let printer = Printer::new(tx, Arc::new(AtomicBool::new(true)));
+        let printer = Printer::new(req_tx, res_rx, Arc::new(AtomicBool::new(true)));
         f(printer);
 
-        let messages: Vec<_> = rx.collect().await;
+        let messages: Vec<_> = req_rx.collect().await;
         assert_eq!(messages, vec![expected]);
     }
 
