@@ -468,24 +468,25 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// `ServerCapabilities::execute_command_provider`). If the client supports providing edits
     /// with a code action then the mode should be used.
     ///
-    /// When the command is selected the server should be contacted again
-    /// (via the [`workspace/executeCommand`]) request to execute the command.
+    /// When the command is selected the server should be contacted again (via the
+    /// [`workspace/executeCommand`] request) to execute the command.
+    ///
+    /// # Compatibility
     ///
     /// Since version 3.8.0: support for `CodeAction` literals to enable the following scenarios:
     ///
-    /// - the ability to directly return a workspace edit from the code action request.
-    /// This avoids having another server roundtrip to execute an actual code action.
-    /// However server providers should be aware that if the code action is expensive to compute or
-    /// the edits are huge it might still be beneficial if the result is simply a command and the
-    /// actual edit is only computed when needed.
+    /// * The ability to directly return a workspace edit from the code action request.
+    ///   This avoids having another server roundtrip to execute an actual code action.
+    ///   However server providers should be aware that if the code action is expensive to compute
+    ///   or the edits are huge it might still be beneficial if the result is simply a command and
+    ///   the actual edit is only computed when needed.
     ///
-    /// - the ability to group code actions using a kind. Clients are allowed to ignore that
-    /// information. However it allows them to better group code action for example into
-    /// corresponding menus (e.g. all refactor code actions into a refactor menu).
+    /// * The ability to group code actions using a kind. Clients are allowed to ignore that
+    ///   information. However it allows them to better group code action for example into
+    ///   corresponding menus (e.g. all refactor code actions into a refactor menu).
     ///
     /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeAction
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
-    ///
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let _ = params;
         error!("Got a textDocument/codeAction request, but it is not implemented");
