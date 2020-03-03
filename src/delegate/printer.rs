@@ -4,14 +4,17 @@ use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use futures::channel::mpsc::Sender;
+use dashmap::DashMap;
+use futures::channel::mpsc::{Receiver, Sender};
 use futures::sink::SinkExt;
-use jsonrpc_core::types::{Id, Version};
+use futures::stream::StreamExt;
+use jsonrpc_core::types::{Id, Output, Version};
+use jsonrpc_core::{Error, Result};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{ApplyWorkspaceEdit, RegisterCapability, Request, UnregisterCapability};
 use lsp_types::*;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
 /// Sends notifications from the language server to the client.
@@ -153,6 +156,83 @@ impl Printer {
         } else {
             trace!("server not initialized, supressing message: {}", message);
         }
+    }
+}
+
+#[derive(Debug)]
+struct Router {
+    sender: Sender<String>,
+    request_id: AtomicU64,
+    pending_requests: Arc<DashMap<u64, Option<Output>>>,
+}
+
+impl Router {
+    fn new(sender: Sender<String>, mut receiver: Receiver<Output>) -> Self {
+        let pending_requests = Arc::new(DashMap::default());
+
+        let pending = pending_requests.clone();
+        tokio::spawn(async move {
+            loop {
+                while let Some(response) = receiver.next().await {
+                    if let Id::Num(ref id) = response.id() {
+                        pending.insert(*id, Some(response));
+                    } else {
+                        error!("expected numeric ID from client",);
+                    }
+                }
+            }
+        });
+
+        Router {
+            sender,
+            request_id: AtomicU64::new(0),
+            pending_requests,
+        }
+    }
+
+    async fn send_request<R>(&self, params: R::Params) -> Result<R::Result>
+    where
+        R: Request,
+        R::Params: Serialize,
+        R::Result: DeserializeOwned,
+    {
+        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
+        self.pending_requests.insert(id, None);
+
+        let request = make_request::<R>(id, params);
+        if self.sender.clone().send(request).await.is_err() {
+            error!("failed to send request");
+            return Err(Error::internal_error());
+        }
+
+        loop {
+            let response = self
+                .pending_requests
+                .remove_if(&id, |_, v| v.is_some())
+                .and_then(|(_, v)| v);
+
+            match response {
+                Some(Output::Success(s)) => {
+                    return serde_json::from_value(s.result).map_err(|e| Error::parse_error());
+                }
+                Some(Output::Failure(f)) => return Err(f.error),
+                None => tokio::task::yield_now().await,
+            }
+        }
+    }
+
+    fn send_notification<N>(&self, params: N::Params)
+    where
+        N: Notification,
+        N::Params: Serialize,
+    {
+        let mut sender = self.sender.clone();
+        let message = make_notification::<N>(params);
+        tokio::spawn(async move {
+            if sender.send(message).await.is_err() {
+                error!("failed to send notification")
+            }
+        });
     }
 }
 
