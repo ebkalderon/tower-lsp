@@ -164,7 +164,7 @@ impl Client {
         .await
     }
 
-    /// Fetch the current open list of workspace folders.
+    /// Fetches the current open list of workspace folders.
     ///
     /// Returns `None` if only a single file is open in the tool. Returns an empty `Vec` if a
     /// workspace is open but no folders are configured.
