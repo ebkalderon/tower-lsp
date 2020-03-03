@@ -36,6 +36,7 @@ impl Stream for MessageStream {
     }
 }
 
+/// Routes responses from the language client back to the server.
 #[derive(Clone, Debug)]
 pub struct MessageSender(Sender<Output>);
 
