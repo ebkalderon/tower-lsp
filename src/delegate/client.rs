@@ -159,8 +159,8 @@ impl Client {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
         self.pending_requests.insert(id, None);
 
-        let request = make_request::<R>(id, params);
-        if self.sender.clone().send(request).await.is_err() {
+        let message = make_request::<R>(id, params);
+        if self.sender.clone().send(message).await.is_err() {
             error!("failed to send request");
             return Err(Error::internal_error());
         }
