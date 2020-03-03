@@ -15,6 +15,7 @@ keywords = ["language-server", "lsp", "tower"]
 [dependencies]
 async-trait = "0.1"
 bytes = "0.5"
+dashmap = "3.5.1"
 futures = { version = "0.3", features = ["compat"] }
 jsonrpc-core = "14.0"
 jsonrpc-derive = "14.0"
