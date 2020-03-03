@@ -164,6 +164,42 @@ impl Client {
         .await
     }
 
+    /// Fetches configuration settings from the client.
+    ///
+    /// The request can fetch several configuration settings in one roundtrip. The order of the
+    /// returned configuration settings correspond to the order of the passed
+    /// [`ConfigurationItem`]s (e.g. the first item in the response is the result for the first
+    /// configuration item in the params).
+    ///
+    /// [`ConfigurationItem`]: https://docs.rs/lsp-types/0.70.2/lsp_types/struct.ConfigurationItem.html
+    ///
+    /// This corresponds to the [`workspace/configuration`] request.
+    ///
+    /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_configuration
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0 and requires client-side support
+    /// in order to be used. It can only be called if the client set the following field to `true`
+    /// in the [`LanguageServer::initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::workspace::configuration
+    /// ```
+    ///
+    /// [`LanguageServer::initialize`]: #tymethod.initialize
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    pub async fn configuration(&self, items: Vec<ConfigurationItem>) -> Result<Vec<Value>> {
+        self.send_request_initialized::<WorkspaceConfiguration>(ConfigurationParams { items })
+            .await
+    }
+
     /// Requests a workspace resource be edited on the client side and returns whether the edit was
     /// applied.
     ///
