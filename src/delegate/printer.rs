@@ -157,10 +157,10 @@ impl Printer {
 }
 
 /// Constructs a JSON-RPC request from its corresponding LSP type.
-fn make_request<N>(id: u64, params: N::Params) -> String
+fn make_request<R>(id: u64, params: R::Params) -> String
 where
-    N: Request,
-    N::Params: Serialize,
+    R: Request,
+    R::Params: Serialize,
 {
     #[derive(Serialize)]
     struct RawRequest<T> {
@@ -175,7 +175,7 @@ where
     serde_json::to_string(&RawRequest {
         jsonrpc: Version::V2,
         id: Id::Num(id),
-        method: N::METHOD,
+        method: R::METHOD,
         params,
     })
     .unwrap()
