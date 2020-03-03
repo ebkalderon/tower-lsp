@@ -11,19 +11,19 @@
 //! # use serde_json::Value;
 //! # use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 //! # use tower_lsp::lsp_types::*;
-//! # use tower_lsp::{LanguageServer, LspService, Printer, Server};
+//! # use tower_lsp::{LanguageServer, LspService, Client, Server};
 //! #
 //! #[derive(Debug, Default)]
 //! struct Backend;
 //!
 //! #[tower_lsp::async_trait]
 //! impl LanguageServer for Backend {
-//!     fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+//!     fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
 //!     }
 //!
-//!     async fn initialized(&self, printer: &Printer, _: InitializedParams) {
-//!         printer.log_message(MessageType::Info, "server initialized!");
+//!     async fn initialized(&self, client: &Client, _: InitializedParams) {
+//!         client.log_message(MessageType::Info, "server initialized!");
 //!     }
 //!
 //!     async fn shutdown(&self) -> Result<()> {
@@ -66,7 +66,7 @@
 
 pub extern crate lsp_types;
 
-pub use self::delegate::{MessageStream, Printer};
+pub use self::delegate::{Client, MessageStream};
 pub use self::message::Incoming;
 pub use self::service::{ExitedError, LspService};
 pub use self::stdio::Server;
@@ -96,7 +96,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
     /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
-    fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult>;
+    fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
@@ -105,8 +105,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialized
-    async fn initialized(&self, printer: &Printer, params: InitializedParams) {
-        let _ = printer;
+    async fn initialized(&self, client: &Client, params: InitializedParams) {
+        let _ = client;
         let _ = params;
     }
 
@@ -135,10 +135,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`initialize`]: #tymethod.initialize
     async fn did_change_workspace_folders(
         &self,
-        printer: &Printer,
+        client: &Client,
         params: DidChangeWorkspaceFoldersParams,
     ) {
-        let _ = printer;
+        let _ = client;
         let _ = params;
         warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
@@ -149,10 +149,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     async fn did_change_configuration(
         &self,
-        printer: &Printer,
+        client: &Client,
         params: DidChangeConfigurationParams,
     ) {
-        let _ = printer;
+        let _ = client;
         let _ = params;
         warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
     }
@@ -162,16 +162,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// It is recommended that servers register for these file events using the registration
     /// mechanism. This can be done here or in the [`initialized`] method using
-    /// `Printer::register_capability()`.
+    /// `Client::register_capability()`.
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
-    async fn did_change_watched_files(
-        &self,
-        printer: &Printer,
-        params: DidChangeWatchedFilesParams,
-    ) {
-        let _ = printer;
+    async fn did_change_watched_files(&self, client: &Client, params: DidChangeWatchedFilesParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
     }
@@ -193,15 +189,15 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// command execution on the server.
     ///
     /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
-    /// the workspace using `Printer::apply_edit()` before returning from this function.
+    /// the workspace using `Client::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
     async fn execute_command(
         &self,
-        p: &Printer,
+        client: &Client,
         params: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
-        let _ = p;
+        let _ = client;
         let _ = params;
         error!("Got a workspace/executeCommand request, but it is not implemented");
         Err(Error::method_not_found())
@@ -215,8 +211,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didOpen
-    async fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
-        let _ = printer;
+    async fn did_open(&self, client: &Client, params: DidOpenTextDocumentParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a textDocument/didOpen notification, but it is not implemented");
     }
@@ -228,8 +224,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document for the server to interpret.
     ///
     /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didChange
-    async fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
-        let _ = printer;
+    async fn did_change(&self, client: &Client, params: DidChangeTextDocumentParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a textDocument/didChange notification, but it is not implemented");
     }
@@ -238,8 +234,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document is actually saved.
     ///
     /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_willSave
-    async fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
-        let _ = printer;
+    async fn will_save(&self, client: &Client, params: WillSaveTextDocumentParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a textDocument/willSave notification, but it is not implemented");
     }
@@ -248,8 +244,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document was saved in the client.
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didSave
-    async fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
-        let _ = printer;
+    async fn did_save(&self, client: &Client, params: DidSaveTextDocumentParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a textDocument/didSave notification, but it is not implemented");
     }
@@ -261,8 +257,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// URI is a file URI, the truth now exists on disk).
     ///
     /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didClose
-    async fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
-        let _ = printer;
+    async fn did_close(&self, client: &Client, params: DidCloseTextDocumentParams) {
+        let _ = client;
         let _ = params;
         warn!("Got a textDocument/didClose notification, but it is not implemented");
     }
@@ -517,12 +513,12 @@ pub trait LanguageServer: Send + Sync + 'static {
 
 #[async_trait]
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
-    fn initialize(&self, printer: &Printer, params: InitializeParams) -> Result<InitializeResult> {
-        (**self).initialize(printer, params)
+    fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult> {
+        (**self).initialize(client, params)
     }
 
-    async fn initialized(&self, printer: &Printer, params: InitializedParams) {
-        (**self).initialized(printer, params).await;
+    async fn initialized(&self, client: &Client, params: InitializedParams) {
+        (**self).initialized(client, params).await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -531,26 +527,22 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn did_change_workspace_folders(
         &self,
-        printer: &Printer,
+        client: &Client,
         params: DidChangeWorkspaceFoldersParams,
     ) {
-        (**self).did_change_workspace_folders(printer, params).await;
+        (**self).did_change_workspace_folders(client, params).await;
     }
 
     async fn did_change_configuration(
         &self,
-        printer: &Printer,
+        client: &Client,
         params: DidChangeConfigurationParams,
     ) {
-        (**self).did_change_configuration(printer, params).await;
+        (**self).did_change_configuration(client, params).await;
     }
 
-    async fn did_change_watched_files(
-        &self,
-        printer: &Printer,
-        params: DidChangeWatchedFilesParams,
-    ) {
-        (**self).did_change_watched_files(printer, params).await;
+    async fn did_change_watched_files(&self, client: &Client, params: DidChangeWatchedFilesParams) {
+        (**self).did_change_watched_files(client, params).await;
     }
 
     async fn symbol(
@@ -562,30 +554,30 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn execute_command(
         &self,
-        p: &Printer,
+        client: &Client,
         params: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
-        (**self).execute_command(p, params).await
+        (**self).execute_command(client, params).await
     }
 
-    async fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
-        (**self).did_open(printer, params).await;
+    async fn did_open(&self, client: &Client, params: DidOpenTextDocumentParams) {
+        (**self).did_open(client, params).await;
     }
 
-    async fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
-        (**self).did_change(printer, params).await;
+    async fn did_change(&self, client: &Client, params: DidChangeTextDocumentParams) {
+        (**self).did_change(client, params).await;
     }
 
-    async fn will_save(&self, printer: &Printer, params: WillSaveTextDocumentParams) {
-        (**self).will_save(printer, params).await;
+    async fn will_save(&self, client: &Client, params: WillSaveTextDocumentParams) {
+        (**self).will_save(client, params).await;
     }
 
-    async fn did_save(&self, printer: &Printer, params: DidSaveTextDocumentParams) {
-        (**self).did_save(printer, params).await;
+    async fn did_save(&self, client: &Client, params: DidSaveTextDocumentParams) {
+        (**self).did_save(client, params).await;
     }
 
-    async fn did_close(&self, printer: &Printer, params: DidCloseTextDocumentParams) {
-        (**self).did_close(printer, params).await;
+    async fn did_close(&self, client: &Client, params: DidCloseTextDocumentParams) {
+        (**self).did_close(client, params).await;
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {

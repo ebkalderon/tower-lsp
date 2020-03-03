@@ -3,7 +3,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{LanguageServer, LspService, Printer, Server};
+use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 #[derive(Debug, Serialize)]
 struct CustomNotificationParams {
@@ -33,7 +33,7 @@ struct Backend;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -79,15 +79,15 @@ impl LanguageServer for Backend {
 
     async fn execute_command(
         &self,
-        printer: &Printer,
+        client: &Client,
         params: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
         if &params.command == "custom.notification" {
-            printer.send_notification::<CustomNotification>(CustomNotificationParams::new(
+            client.send_custom_notification::<CustomNotification>(CustomNotificationParams::new(
                 "Hello", "Message",
             ));
         }
-        printer.log_message(
+        client.log_message(
             MessageType::Info,
             format!("command executed!: {:?}", params),
         );

@@ -1,6 +1,6 @@
 //! Type-safe wrapper for the JSON-RPC interface.
 
-pub use self::printer::Printer;
+pub use self::client::Client;
 
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -21,7 +21,7 @@ use serde_json::Value;
 
 use super::LanguageServer;
 
-mod printer;
+mod client;
 
 /// Stream of messages produced by the language server.
 #[derive(Debug)]
@@ -159,13 +159,13 @@ pub trait LanguageServerCore {
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
 #[derive(Debug)]
 pub struct Delegate<T> {
-    // FIXME: Investigate whether `Arc` from `server` and `printer` can be removed once we switch
+    // FIXME: Investigate whether `Arc` from `server` and `client` can be removed once we switch
     // to `jsonrpsee`. These are currently necessary to resolve lifetime interaction issues between
     // `async-trait`, `jsonrpc-core`, and `.compat()`.
     //
     // https://github.com/ebkalderon/tower-lsp/issues/58
     server: Arc<T>,
-    printer: Arc<Printer>,
+    client: Arc<Client>,
     initialized: Arc<AtomicBool>,
 }
 
@@ -182,7 +182,7 @@ impl<T: LanguageServer> Delegate<T> {
         let initialized = Arc::new(AtomicBool::new(false));
         let delegate = Delegate {
             server: Arc::new(server),
-            printer: Arc::new(Printer::new(request_tx, response_rx, initialized.clone())),
+            client: Arc::new(Client::new(request_tx, response_rx, initialized.clone())),
             initialized,
         };
 
@@ -198,8 +198,8 @@ macro_rules! delegate_notification {
                     Err(err) => error!("invalid parameters for `{}`: {:?}", <$notif>::METHOD, err),
                     Ok(params) => {
                         let server = self.server.clone();
-                        let printer = self.printer.clone();
-                        tokio::spawn(async move { server.$name(&printer, params).await });
+                        let client = self.client.clone();
+                        tokio::spawn(async move { server.$name(&client, params).await });
                     }
                 }
             }
@@ -233,7 +233,7 @@ macro_rules! delegate_request {
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         let params: InitializeParams = params.parse()?;
-        let response = self.server.initialize(&self.printer, params)?;
+        let response = self.server.initialize(&self.client, params)?;
         info!("language server initialized");
         self.initialized.store(true, Ordering::SeqCst);
         Ok(response)
@@ -258,10 +258,10 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
         if self.initialized.load(Ordering::SeqCst) {
             let server = self.server.clone();
-            let printer = self.printer.clone();
+            let client = self.client.clone();
             let fut = async move {
                 match params.parse() {
-                    Ok(params) => server.execute_command(&printer, params).await,
+                    Ok(params) => server.execute_command(&client, params).await,
                     Err(err) => Err(Error::invalid_params_with_details(
                         "invalid parameters",
                         err,

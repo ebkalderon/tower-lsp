@@ -1,4 +1,4 @@
-//! Types for sending data back to the language client.
+//! Types for sending data to and from the language client.
 
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -17,16 +17,16 @@ use lsp_types::*;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
-/// Sends notifications from the language server to the client.
+/// Handle for communicating with the language client.
 #[derive(Debug)]
-pub struct Printer {
+pub struct Client {
     sender: Sender<String>,
     initialized: Arc<AtomicBool>,
     request_id: AtomicU64,
     pending_requests: Arc<DashMap<u64, Option<Output>>>,
 }
 
-impl Printer {
+impl Client {
     pub(super) fn new(
         sender: Sender<String>,
         mut receiver: Receiver<Output>,
@@ -47,7 +47,7 @@ impl Printer {
             }
         });
 
-        Printer {
+        Client {
             sender,
             initialized,
             request_id: AtomicU64::new(0),
@@ -169,7 +169,7 @@ impl Printer {
             let response = self
                 .pending_requests
                 .remove_if(&id, |_, v| v.is_some())
-                .and_then(|(_, v)| v);
+                .and_then(|entry| entry.1);
 
             match response {
                 Some(Output::Success(s)) => {
@@ -284,12 +284,12 @@ mod tests {
 
     use super::*;
 
-    async fn assert_printer_messages<F: FnOnce(Printer)>(f: F, expected: String) {
+    async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: String) {
         let (req_tx, req_rx) = mpsc::channel(1);
         let (res_tx, res_rx) = mpsc::channel(1);
 
-        let printer = Printer::new(req_tx, res_rx, Arc::new(AtomicBool::new(true)));
-        f(printer);
+        let client = Client::new(req_tx, res_rx, Arc::new(AtomicBool::new(true)));
+        f(client);
         drop(res_tx);
 
         let messages: Vec<_> = req_rx.collect().await;
@@ -304,7 +304,7 @@ mod tests {
             message: message.clone(),
         });
 
-        assert_printer_messages(|p| p.log_message(typ, message), expected).await;
+        assert_client_messages(|p| p.log_message(typ, message), expected).await;
     }
 
     #[tokio::test]
@@ -315,27 +315,27 @@ mod tests {
             message: message.clone(),
         });
 
-        assert_printer_messages(|p| p.show_message(typ, message), expected).await;
+        assert_client_messages(|p| p.show_message(typ, message), expected).await;
     }
 
     #[tokio::test]
     async fn telemetry_event() {
         let null = json!(null);
         let expected = make_notification::<TelemetryEvent>(null.clone());
-        assert_printer_messages(|p| p.telemetry_event(null), expected).await;
+        assert_client_messages(|p| p.telemetry_event(null), expected).await;
 
         let array = json!([1, 2, 3]);
         let expected = make_notification::<TelemetryEvent>(array.clone());
-        assert_printer_messages(|p| p.telemetry_event(array), expected).await;
+        assert_client_messages(|p| p.telemetry_event(array), expected).await;
 
         let object = json!({});
         let expected = make_notification::<TelemetryEvent>(object.clone());
-        assert_printer_messages(|p| p.telemetry_event(object), expected).await;
+        assert_client_messages(|p| p.telemetry_event(object), expected).await;
 
         let anything_else = json!("hello");
         let wrapped = Value::Array(vec![anything_else.clone()]);
         let expected = make_notification::<TelemetryEvent>(wrapped);
-        assert_printer_messages(|p| p.telemetry_event(anything_else), expected).await;
+        assert_client_messages(|p| p.telemetry_event(anything_else), expected).await;
     }
 
     #[tokio::test]
@@ -346,6 +346,6 @@ mod tests {
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);
         let expected = make_notification::<PublishDiagnostics>(params);
 
-        assert_printer_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected).await;
+        assert_client_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected).await;
     }
 }
