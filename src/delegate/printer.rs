@@ -20,17 +20,17 @@ use serde_json::Value;
 /// Sends notifications from the language server to the client.
 #[derive(Debug)]
 pub struct Printer {
-    buffer: Sender<String>,
-    initialized: Arc<AtomicBool>,
-    request_id: AtomicU64,
+    router: Router,
 }
 
 impl Printer {
-    pub(super) const fn new(buffer: Sender<String>, initialized: Arc<AtomicBool>) -> Self {
+    pub(super) const fn new(
+        tx: Sender<String>,
+        rx: Receiver<Output>,
+        initialized: Arc<AtomicBool>,
+    ) -> Self {
         Printer {
-            buffer,
-            initialized,
-            request_id: AtomicU64::new(0),
+            router: Router::new(tx, rx, initialized),
         }
     }
 
@@ -40,10 +40,11 @@ impl Printer {
     ///
     /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_logMessage
     pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_message(make_notification::<LogMessage>(LogMessageParams {
-            typ,
-            message: message.to_string(),
-        }));
+        self.router
+            .send_notification::<LogMessage>(LogMessageParams {
+                typ,
+                message: message.to_string(),
+            });
     }
 
     /// Notifies the client to display a particular message in the user interface.
@@ -52,10 +53,11 @@ impl Printer {
     ///
     /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessage
     pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_message(make_notification::<ShowMessage>(ShowMessageParams {
-            typ,
-            message: message.to_string(),
-        }));
+        self.router
+            .send_notification::<ShowMessage>(ShowMessageParams {
+                typ,
+                message: message.to_string(),
+            });
     }
 
     /// Notifies the client to log a telemetry event.
@@ -69,9 +71,9 @@ impl Printer {
             Ok(value) => {
                 if !value.is_null() && !value.is_array() && !value.is_object() {
                     let value = Value::Array(vec![value]);
-                    self.send_message(make_notification::<TelemetryEvent>(value));
+                    self.router.send_notification::<TelemetryEvent>(value);
                 } else {
-                    self.send_message(make_notification::<TelemetryEvent>(value));
+                    self.router.send_notification::<TelemetryEvent>(value);
                 }
             }
         }
@@ -82,13 +84,10 @@ impl Printer {
     /// This corresponds to the [`client/registerCapability`] request.
     ///
     /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_registerCapability
-    pub fn register_capability(&self, registrations: Vec<Registration>) {
-        // FIXME: Check whether the request succeeded or failed.
-        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message_initialized(make_request::<RegisterCapability>(
-            id,
-            RegistrationParams { registrations },
-        ))
+    pub async fn register_capability(&self, registrations: Vec<Registration>) -> Result<()> {
+        self.router
+            .send_request_initialized::<RegisterCapability>(RegistrationParams { registrations })
+            .await
     }
 
     /// Unregister a capability with the client.
@@ -96,13 +95,12 @@ impl Printer {
     /// This corresponds to the [`client/unregisterCapability`] request.
     ///
     /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_unregisterCapability
-    pub fn unregister_capability(&self, unregisterations: Vec<Unregistration>) {
-        // FIXME: Check whether the request succeeded or failed.
-        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message_initialized(make_request::<UnregisterCapability>(
-            id,
-            UnregistrationParams { unregisterations },
-        ))
+    pub async fn unregister_capability(&self, unregisterations: Vec<Unregistration>) -> Result<()> {
+        self.router
+            .send_request_initialized::<UnregisterCapability>(UnregistrationParams {
+                unregisterations,
+            })
+            .await
     }
 
     /// Requests a workspace resource be edited on the client side and returns whether the edit was
@@ -111,14 +109,10 @@ impl Printer {
     /// This corresponds to the [`workspace/applyEdit`] request.
     ///
     /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
-    pub fn apply_edit(&self, edit: WorkspaceEdit) -> bool {
-        // FIXME: Check whether the request succeeded or failed and retrieve apply status.
-        let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        self.send_message_initialized(make_request::<ApplyWorkspaceEdit>(
-            id,
-            ApplyWorkspaceEditParams { edit },
-        ));
-        true
+    pub async fn apply_edit(&self, edit: WorkspaceEdit) -> Result<ApplyWorkspaceEditResponse> {
+        self.router
+            .send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit })
+            .await
     }
 
     /// Submits validation diagnostics for an open file with the given URI.
@@ -127,9 +121,10 @@ impl Printer {
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
-        self.send_message_initialized(make_notification::<PublishDiagnostics>(
-            PublishDiagnosticsParams::new(uri, diags, version),
-        ));
+        self.router
+            .send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
+                uri, diags, version,
+            ));
     }
 
     /// Sends a custom notification to the client.
@@ -138,42 +133,26 @@ impl Printer {
         N: Notification,
         N::Params: Serialize,
     {
-        self.send_message_initialized(make_notification::<N>(params));
-    }
-
-    fn send_message(&self, message: String) {
-        let mut buffer = self.buffer.clone();
-        tokio::spawn(async move {
-            if buffer.send(message).await.is_err() {
-                error!("failed to send message")
-            }
-        });
-    }
-
-    fn send_message_initialized(&self, message: String) {
-        if self.initialized.load(Ordering::SeqCst) {
-            self.send_message(message)
-        } else {
-            trace!("server not initialized, supressing message: {}", message);
-        }
+        self.router.send_notification_initialized::<N>(params);
     }
 }
 
 #[derive(Debug)]
 struct Router {
     sender: Sender<String>,
+    initialized: Arc<AtomicBool>,
     request_id: AtomicU64,
     pending_requests: Arc<DashMap<u64, Option<Output>>>,
 }
 
 impl Router {
-    fn new(sender: Sender<String>, mut receiver: Receiver<Output>) -> Self {
+    fn new(tx: Sender<String>, mut rx: Receiver<Output>, initialized: Arc<AtomicBool>) -> Self {
         let pending_requests = Arc::new(DashMap::default());
 
         let pending = pending_requests.clone();
         tokio::spawn(async move {
             loop {
-                while let Some(response) = receiver.next().await {
+                while let Some(response) = rx.next().await {
                     if let Id::Num(ref id) = response.id() {
                         pending.insert(*id, Some(response));
                     } else {
@@ -184,7 +163,8 @@ impl Router {
         });
 
         Router {
-            sender,
+            sender: tx,
+            initialized,
             request_id: AtomicU64::new(0),
             pending_requests,
         }
@@ -233,6 +213,35 @@ impl Router {
                 error!("failed to send notification")
             }
         });
+    }
+
+    async fn send_request_initialized<R>(&self, params: R::Params) -> Result<R::Result>
+    where
+        R: Request,
+        R::Params: Serialize,
+        R::Result: DeserializeOwned,
+    {
+        if self.initialized.load(Ordering::SeqCst) {
+            self.send_request::<R>(params).await
+        } else {
+            let id = self.request_id.load(Ordering::SeqCst) + 1;
+            let msg = make_request::<R>(id, params);
+            trace!("server not initialized, supressing message: {}", msg);
+            Err(Error::internal_error())
+        }
+    }
+
+    fn send_notification_initialized<N>(&self, params: N::Params)
+    where
+        N: Notification,
+        N::Params: Serialize,
+    {
+        if self.initialized.load(Ordering::SeqCst) {
+            self.send_notification::<N>(params);
+        } else {
+            let msg = make_notification::<N>(params);
+            trace!("server not initialized, supressing message: {}", msg);
+        }
     }
 }
 
