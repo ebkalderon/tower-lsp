@@ -379,6 +379,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```text
     /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
+    ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_type_definition(
@@ -404,6 +405,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```text
     /// InitializeParams::capabilities::text_document::implementation::link_support
     /// ```
+    ///
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
     async fn goto_implementation(
