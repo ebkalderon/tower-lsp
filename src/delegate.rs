@@ -159,7 +159,7 @@ impl<T: LanguageServer> Delegate<T> {
 }
 
 macro_rules! delegate_notification {
-    ($name:ident as $notif:ty) => {
+    ($name:ident -> $notif:ty) => {
         fn $name(&self, params: Params) {
             if self.initialized.load(Ordering::SeqCst) {
                 match params.parse() {
@@ -176,7 +176,7 @@ macro_rules! delegate_notification {
 }
 
 macro_rules! delegate_request {
-    ($name:ident as $request:ty) => {
+    ($name:ident -> $request:ty) => {
         fn $name(&self, params: Params) -> BoxFuture<<$request as Request>::Result> {
             if self.initialized.load(Ordering::SeqCst) {
                 let server = self.server.clone();
@@ -207,7 +207,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         Ok(response)
     }
 
-    delegate_notification!(initialized as Initialized);
+    delegate_notification!(initialized -> Initialized);
 
     fn shutdown(&self) -> BoxFuture<()> {
         if self.initialized.load(Ordering::SeqCst) {
@@ -218,10 +218,10 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
-    delegate_notification!(did_change_workspace_folders as DidChangeWorkspaceFolders);
-    delegate_notification!(did_change_configuration as DidChangeConfiguration);
-    delegate_notification!(did_change_watched_files as DidChangeWatchedFiles);
-    delegate_request!(symbol as WorkspaceSymbol);
+    delegate_notification!(did_change_workspace_folders -> DidChangeWorkspaceFolders);
+    delegate_notification!(did_change_configuration -> DidChangeConfiguration);
+    delegate_notification!(did_change_watched_files -> DidChangeWatchedFiles);
+    delegate_request!(symbol -> WorkspaceSymbol);
 
     fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
         if self.initialized.load(Ordering::SeqCst) {
@@ -243,26 +243,26 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
-    delegate_notification!(did_open as DidOpenTextDocument);
-    delegate_notification!(did_change as DidChangeTextDocument);
-    delegate_notification!(will_save as WillSaveTextDocument);
-    delegate_notification!(did_save as DidSaveTextDocument);
-    delegate_notification!(did_close as DidCloseTextDocument);
+    delegate_notification!(did_open -> DidOpenTextDocument);
+    delegate_notification!(did_change -> DidChangeTextDocument);
+    delegate_notification!(will_save -> WillSaveTextDocument);
+    delegate_notification!(did_save -> DidSaveTextDocument);
+    delegate_notification!(did_close -> DidCloseTextDocument);
 
-    delegate_request!(completion as Completion);
-    delegate_request!(completion_resolve as ResolveCompletionItem);
-    delegate_request!(hover as HoverRequest);
-    delegate_request!(signature_help as SignatureHelpRequest);
-    delegate_request!(goto_declaration as GotoDeclaration);
-    delegate_request!(goto_definition as GotoDefinition);
-    delegate_request!(goto_type_definition as GotoTypeDefinition);
-    delegate_request!(goto_implementation as GotoImplementation);
-    delegate_request!(document_symbol as DocumentSymbolRequest);
-    delegate_request!(document_highlight as DocumentHighlightRequest);
-    delegate_request!(code_action as CodeActionRequest);
-    delegate_request!(code_lens as CodeLensRequest);
-    delegate_request!(code_lens_resolve as CodeLensResolve);
-    delegate_request!(formatting as Formatting);
+    delegate_request!(completion -> Completion);
+    delegate_request!(completion_resolve -> ResolveCompletionItem);
+    delegate_request!(hover -> HoverRequest);
+    delegate_request!(signature_help -> SignatureHelpRequest);
+    delegate_request!(goto_declaration -> GotoDeclaration);
+    delegate_request!(goto_definition -> GotoDefinition);
+    delegate_request!(goto_type_definition -> GotoTypeDefinition);
+    delegate_request!(goto_implementation -> GotoImplementation);
+    delegate_request!(document_symbol -> DocumentSymbolRequest);
+    delegate_request!(document_highlight -> DocumentHighlightRequest);
+    delegate_request!(code_action -> CodeActionRequest);
+    delegate_request!(code_lens -> CodeLensRequest);
+    delegate_request!(code_lens_resolve -> CodeLensResolve);
+    delegate_request!(formatting -> Formatting);
 }
 
 /// Error response returned for every request received before the server is initialized.
