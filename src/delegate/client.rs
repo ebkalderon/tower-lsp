@@ -12,7 +12,7 @@ use jsonrpc_core::types::{ErrorCode, Id, Output, Version};
 use jsonrpc_core::{Error, Result};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
-use lsp_types::request::{ApplyWorkspaceEdit, RegisterCapability, Request, UnregisterCapability};
+use lsp_types::request::{Request, *};
 use lsp_types::*;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
@@ -79,6 +79,35 @@ impl Client {
             typ,
             message: message.to_string(),
         });
+    }
+
+    /// Asks the client to display a particular message in the user interface.
+    ///
+    /// In addition to the `show_message` notification, the request allows to pass actions and to
+    /// wait for an answer from the client.
+    ///
+    /// This corresponds to the [`window/showMessageRequest`] request.
+    ///
+    /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessageRequest
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    pub async fn show_message_request<M: Display>(
+        &self,
+        typ: MessageType,
+        message: M,
+        actions: Option<Vec<MessageActionItem>>,
+    ) -> Result<Option<MessageActionItem>> {
+        self.send_request_initialized::<ShowMessageRequest>(ShowMessageRequestParams {
+            typ,
+            message: message.to_string(),
+            actions,
+        })
+        .await
     }
 
     /// Notifies the client to log a telemetry event.
