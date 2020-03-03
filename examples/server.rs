@@ -75,9 +75,10 @@ impl LanguageServer for Backend {
         _: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
         client.log_message(MessageType::Info, "command executed!");
+
         match client.apply_edit(WorkspaceEdit::default()).await {
             Ok(res) if res.applied => client.log_message(MessageType::Info, "edit applied"),
-            Ok(_) => client.log_message(MessageType::Info, "edit applied"),
+            Ok(_) => client.log_message(MessageType::Info, "edit not applied"),
             Err(err) => client.log_message(MessageType::Error, err),
         }
 
