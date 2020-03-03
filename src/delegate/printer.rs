@@ -8,7 +8,7 @@ use dashmap::DashMap;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
-use jsonrpc_core::types::{Id, Output, Version};
+use jsonrpc_core::types::{ErrorCode, Id, Output, Version};
 use jsonrpc_core::{Error, Result};
 use log::{error, trace};
 use lsp_types::notification::{Notification, *};
@@ -27,7 +27,7 @@ pub struct Printer {
 }
 
 impl Printer {
-    pub(super) const fn new(
+    pub(super) fn new(
         sender: Sender<String>,
         mut receiver: Receiver<Output>,
         initialized: Arc<AtomicBool>,
@@ -173,7 +173,11 @@ impl Printer {
 
             match response {
                 Some(Output::Success(s)) => {
-                    return serde_json::from_value(s.result).map_err(|e| Error::parse_error());
+                    return serde_json::from_value(s.result).map_err(|e| Error {
+                        code: ErrorCode::ParseError,
+                        message: e.to_string(),
+                        data: None,
+                    });
                 }
                 Some(Output::Failure(f)) => return Err(f.error),
                 None => tokio::task::yield_now().await,
@@ -286,6 +290,7 @@ mod tests {
 
         let printer = Printer::new(req_tx, res_rx, Arc::new(AtomicBool::new(true)));
         f(printer);
+        drop(res_tx);
 
         let messages: Vec<_> = req_rx.collect().await;
         assert_eq!(messages, vec![expected]);

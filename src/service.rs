@@ -10,12 +10,13 @@ use std::task::{Context, Poll};
 
 use futures::compat::Future01CompatExt;
 use futures::future::{self, TryFutureExt};
+use futures::sink::SinkExt;
 use jsonrpc_core::IoHandler;
-use log::{debug, info};
+use log::info;
 use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
-use super::delegate::{Delegate, LanguageServerCore, MessageStream};
+use super::delegate::{Delegate, LanguageServerCore, MessageSender, MessageStream};
 use super::message::Incoming;
 use super::LanguageServer;
 
@@ -47,6 +48,7 @@ impl Error for ExitedError {}
 #[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
+    sender: MessageSender,
     stopped: Arc<AtomicBool>,
 }
 
@@ -66,7 +68,7 @@ impl LspService {
         T: LanguageServer,
         U: Into<IoHandler>,
     {
-        let (delegate, messages) = Delegate::new(server);
+        let (delegate, messages, sender) = Delegate::new(server);
 
         let mut handler = handler.into();
         handler.extend_with(delegate.to_delegate());
@@ -78,7 +80,13 @@ impl LspService {
             stopped_arc.store(true, Ordering::SeqCst);
         });
 
-        (LspService { handler, stopped }, messages)
+        let service = LspService {
+            handler,
+            stopped,
+            sender,
+        };
+
+        (service, messages)
     }
 }
 
@@ -99,13 +107,12 @@ impl Service<Incoming> for LspService {
         if self.stopped.load(Ordering::SeqCst) {
             Box::pin(future::err(ExitedError))
         } else {
-            if let Incoming::Response(r) = request {
-                // FIXME: Currently, we are dropping responses to requests created in `Printer`.
-                // We need some way to route them back to the `Printer`. See this issue for more:
-                //
-                // https://github.com/ebkalderon/tower-lsp/issues/13
-                debug!("dropping client response, as per GitHub issue #13: {:?}", r);
-                Box::pin(future::ok(None))
+            if let Incoming::Response(res) = request {
+                let mut sender = self.sender.clone();
+                Box::pin(async move {
+                    sender.send(res).await.unwrap();
+                    Ok(None)
+                })
             } else {
                 Box::pin(
                     self.handler

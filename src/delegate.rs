@@ -7,10 +7,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use futures::channel::mpsc::{self, Receiver};
+use futures::channel::mpsc::{self, Receiver, Sender};
 use futures::future::{self, FutureExt, TryFutureExt};
-use futures::Stream;
-use jsonrpc_core::types::{ErrorCode, Params};
+use futures::{Sink, Stream};
+use jsonrpc_core::types::{ErrorCode, Output, Params};
 use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, info};
@@ -23,7 +23,7 @@ use super::LanguageServer;
 
 mod printer;
 
-/// Stream of notification messages produced by the language server.
+/// Stream of messages produced by the language server.
 #[derive(Debug)]
 pub struct MessageStream(Receiver<String>);
 
@@ -33,6 +33,33 @@ impl Stream for MessageStream {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let recv = &mut self.as_mut().0;
         Pin::new(recv).poll_next(cx)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MessageSender(Sender<Output>);
+
+impl Sink<Output> for MessageSender {
+    type Error = mpsc::SendError;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let send = &mut self.as_mut().0;
+        Pin::new(send).poll_ready(cx)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, msg: Output) -> Result<(), Self::Error> {
+        let send = &mut self.as_mut().0;
+        Pin::new(send).start_send(msg)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let send = &mut self.as_mut().0;
+        Pin::new(send).poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let send = &mut self.as_mut().0;
+        Pin::new(send).poll_close(cx)
     }
 }
 
@@ -143,18 +170,23 @@ pub struct Delegate<T> {
 }
 
 impl<T: LanguageServer> Delegate<T> {
-    /// Creates a new `Delegate` and a stream of notifications from the server to the client.
-    pub fn new(server: T) -> (Self, MessageStream) {
-        let (tx, rx) = mpsc::channel(1);
-        let messages = MessageStream(rx);
+    /// Creates a new `Delegate`, a stream of messages from the server to the client, and a
+    /// sender to route responses from the client back to the server.
+    pub fn new(server: T) -> (Self, MessageStream, MessageSender) {
+        let (request_tx, request_rx) = mpsc::channel(1);
+        let messages = MessageStream(request_rx);
+
+        let (response_tx, response_rx) = mpsc::channel(1);
+        let sender = MessageSender(response_tx);
+
         let initialized = Arc::new(AtomicBool::new(false));
         let delegate = Delegate {
             server: Arc::new(server),
-            printer: Arc::new(Printer::new(tx, initialized.clone())),
+            printer: Arc::new(Printer::new(request_tx, response_rx, initialized.clone())),
             initialized,
         };
 
-        (delegate, messages)
+        (delegate, messages, sender)
     }
 }
 
