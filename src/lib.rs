@@ -316,16 +316,19 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/declaration`] request asks the server for the declaration location of a
     /// symbol at a given text document position.
     ///
+    /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_declaration
+    ///
+    /// # Compatibility
+    ///
     /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
-    /// field to `true` in the [`initialize`] method:
+    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
+    /// client set the following field to `true` in the [`initialize`] method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
     ///
-    /// [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_declaration
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_declaration(
         &self,
@@ -339,16 +342,19 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/definition`] request asks the server for the definition location of a
     /// symbol at a given text document position.
     ///
+    /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_definition
+    ///
+    /// # Compatibility
+    ///
     /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
-    /// field to `true` in the [`initialize`] method:
+    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
+    /// client set the following field to `true` in the [`initialize`] method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::definition::link_support
     /// ```
     ///
-    /// [`textDocument/definition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_definition
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_definition(
         &self,
@@ -362,16 +368,18 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/typeDefinition`] request asks the server for the type definition location of
     /// a symbol at a given text document position.
     ///
+    /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_typeDefinition
+    ///
+    /// # Compatibility
+    ///
     /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support. It can be returned if the client set the following
-    /// field to `true` in the [`initialize`] method:
+    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
+    /// client set the following field to `true` in the [`initialize`] method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
-    ///
-    /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_typeDefinition
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_type_definition(
         &self,
@@ -385,16 +393,18 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/implementation`] request is sent from the client to the server to resolve
     /// the implementation location of a symbol at a given text document position.
     ///
-    /// The result type [`GotoImplementationResponse::Link`] got introduced with version 3.14.0 and
-    /// requires client-side support. It can be returned if the client set the following
-    /// field to `true` in the [`initialize`] method:
+    /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_implementation
+    ///
+    /// # Compatibility
+    ///
+    /// The [`GotoImplementationResponse::Link`] return value was introduced in specification
+    /// version 3.14.0 and requires client-side support in order to be used. It can be returned if
+    /// the client set the following field to `true` in the [`initialize`] method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::implementation::link_support
     /// ```
-    ///
-    /// [`textDocument/implementation`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_implementation
-    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.63.1/lsp_types/request/enum.GotoDefinitionResponse.html
+    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html
     /// [`initialize`]: #tymethod.initialize
     async fn goto_implementation(
         &self,
