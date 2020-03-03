@@ -164,6 +164,38 @@ impl Client {
         .await
     }
 
+    /// Fetch the current open list of workspace folders.
+    ///
+    /// Returns `None` if only a single file is open in the tool. Returns an empty `Vec` if a
+    /// workspace is open but no folders are configured.
+    ///
+    /// This corresponds to the [`workspace/workspaceFolders`] request.
+    ///
+    /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_workspaceFolders
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0 and requires client-side support
+    /// in order to be used. It can only be called if the client set the following field to `true`
+    /// in the [`LanguageServer::initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::workspace::workspace_folders
+    /// ```
+    ///
+    /// [`LanguageServer::initialize`]: #tymethod.initialize
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    pub async fn workspace_folders(&self) -> Result<Option<Vec<WorkspaceFolder>>> {
+        self.send_request_initialized::<WorkspaceFoldersRequest>(())
+            .await
+    }
+
     /// Fetches configuration settings from the client.
     ///
     /// The request can fetch several configuration settings in one roundtrip. The order of the
