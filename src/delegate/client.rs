@@ -169,7 +169,7 @@ impl Client {
             let response = self
                 .pending_requests
                 .remove_if(&id, |_, v| v.is_some())
-                .and_then(|entry| entry.1);
+                .and_then(|(_, v)| v);
 
             match response {
                 Some(Output::Success(s)) => {
