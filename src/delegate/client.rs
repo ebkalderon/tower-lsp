@@ -17,6 +17,8 @@ use lsp_types::*;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
+use super::not_initialized_error;
+
 /// Handle for communicating with the language client.
 #[derive(Debug)]
 pub struct Client {
@@ -102,6 +104,13 @@ impl Client {
     /// This corresponds to the [`client/registerCapability`] request.
     ///
     /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_registerCapability
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
     pub async fn register_capability(&self, registrations: Vec<Registration>) -> Result<()> {
         self.send_request_initialized::<RegisterCapability>(RegistrationParams { registrations })
             .await
@@ -112,6 +121,13 @@ impl Client {
     /// This corresponds to the [`client/unregisterCapability`] request.
     ///
     /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_unregisterCapability
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
     pub async fn unregister_capability(&self, unregisterations: Vec<Unregistration>) -> Result<()> {
         self.send_request_initialized::<UnregisterCapability>(UnregistrationParams {
             unregisterations,
@@ -125,6 +141,13 @@ impl Client {
     /// This corresponds to the [`workspace/applyEdit`] request.
     ///
     /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
     pub async fn apply_edit(&self, edit: WorkspaceEdit) -> Result<ApplyWorkspaceEditResponse> {
         self.send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit })
             .await
@@ -135,6 +158,10 @@ impl Client {
     /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
     ///
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_publishDiagnostics
+    ///
+    /// # Initialization
+    ///
+    /// This notification will only be sent if the server is initialized.
     pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
         self.send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
             uri, diags, version,
@@ -142,6 +169,10 @@ impl Client {
     }
 
     /// Sends a custom notification to the client.
+    ///
+    /// # Initialization
+    ///
+    /// This notification will only be sent if the server is initialized.
     pub fn send_custom_notification<N>(&self, params: N::Params)
     where
         N: Notification,
@@ -212,7 +243,7 @@ impl Client {
             let id = self.request_id.load(Ordering::SeqCst) + 1;
             let msg = make_request::<R>(id, params);
             trace!("server not initialized, supressing message: {}", msg);
-            Err(Error::internal_error())
+            Err(not_initialized_error())
         }
     }
 
