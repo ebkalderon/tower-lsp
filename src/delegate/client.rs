@@ -361,22 +361,14 @@ where
     R: Request,
     R::Params: Serialize,
 {
-    #[derive(Serialize)]
-    struct RawRequest<T> {
-        jsonrpc: Version,
-        method: &'static str,
-        params: T,
-        id: Id,
-    }
-
     // Since these types come from the `lsp-types` crate and validity is enforced via the
     // `Request` trait, the `unwrap()` call below should never fail.
-    serde_json::to_string(&RawRequest {
-        jsonrpc: Version::V2,
-        id: Id::Num(id),
-        method: R::METHOD,
-        params,
-    })
+    serde_json::to_string(&serde_json::json!({
+        "jsonrpc": Version::V2,
+        "id": Id::Num(id),
+        "method": R::METHOD,
+        "params": params,
+    }))
     .unwrap()
 }
 
@@ -386,20 +378,13 @@ where
     N: Notification,
     N::Params: Serialize,
 {
-    #[derive(Serialize)]
-    struct RawNotification<T> {
-        jsonrpc: Version,
-        method: &'static str,
-        params: T,
-    }
-
     // Since these types come from the `lsp-types` crate and validity is enforced via the
     // `Notification` trait, the `unwrap()` call below should never fail.
-    serde_json::to_string(&RawNotification {
-        jsonrpc: Version::V2,
-        method: N::METHOD,
-        params,
-    })
+    serde_json::to_string(&serde_json::json!({
+        "jsonrpc": Version::V2,
+        "method": N::METHOD,
+        "params": params,
+    }))
     .unwrap()
 }
 
