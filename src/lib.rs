@@ -417,6 +417,16 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/references`] request is sent from the client to the server to resolve
+    /// project-wide references for the symbol denoted by the given text document position.
+    ///
+    /// [`textDocument/references`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_references
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let _ = params;
+        error!("Got a textDocument/references request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
     ///
@@ -698,6 +708,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         params: TextDocumentPositionParams,
     ) -> Result<Option<GotoImplementationResponse>> {
         (**self).goto_implementation(params).await
+    }
+
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        (**self).references(params).await
     }
 
     async fn document_highlight(
