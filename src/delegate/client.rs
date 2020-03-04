@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 use futures::channel::mpsc::{Receiver, Sender};
+use futures::channel::oneshot;
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
 use jsonrpc_core::types::{ErrorCode, Id, Output, Version};
@@ -19,13 +20,16 @@ use serde_json::Value;
 
 use super::not_initialized_error;
 
+/// Maps all pending client request IDs to their future responses.
+type RequestMap = DashMap<u64, oneshot::Sender<Output>>;
+
 /// Handle for communicating with the language client.
 #[derive(Debug)]
 pub struct Client {
     sender: Sender<String>,
     initialized: Arc<AtomicBool>,
     request_id: AtomicU64,
-    pending_requests: Arc<DashMap<u64, Option<Output>>>,
+    pending_requests: Arc<RequestMap>,
 }
 
 impl Client {
@@ -34,17 +38,18 @@ impl Client {
         mut receiver: Receiver<Output>,
         initialized: Arc<AtomicBool>,
     ) -> Self {
-        let pending_requests = Arc::new(DashMap::default());
+        let pending_requests = Arc::new(RequestMap::default());
 
         let pending = pending_requests.clone();
         tokio::spawn(async move {
             while let Some(response) = receiver.next().await {
-                match response.id() {
-                    Id::Num(ref id) if pending.contains_key(id) => {
-                        pending.insert(*id, Some(response));
+                if let Id::Num(ref id) = response.id() {
+                    match pending.remove(id) {
+                        Some((_, tx)) => tx.send(response).expect("receiver already dropped"),
+                        None => error!("received response from client with no matching request"),
                     }
-                    Id::Num(_) => error!("received response from client with no matching request"),
-                    _ => error!("received response from client with non-numeric ID"),
+                } else {
+                    error!("received response from client with non-numeric ID");
                 }
             }
         });
@@ -292,25 +297,17 @@ impl Client {
             return Err(Error::internal_error());
         }
 
-        self.pending_requests.insert(id, None);
+        let (tx, rx) = oneshot::channel();
+        self.pending_requests.insert(id, tx);
+        let response = rx.await.expect("sender already dropped");
 
-        loop {
-            let response = self
-                .pending_requests
-                .remove_if(&id, |_, v| v.is_some())
-                .and_then(|(_, v)| v);
-
-            match response {
-                Some(Output::Success(s)) => {
-                    return serde_json::from_value(s.result).map_err(|e| Error {
-                        code: ErrorCode::ParseError,
-                        message: e.to_string(),
-                        data: None,
-                    });
-                }
-                Some(Output::Failure(f)) => return Err(f.error),
-                None => tokio::task::yield_now().await,
-            }
+        match response {
+            Output::Success(s) => serde_json::from_value(s.result).map_err(|e| Error {
+                code: ErrorCode::ParseError,
+                message: e.to_string(),
+                data: None,
+            }),
+            Output::Failure(f) => Err(f.error),
         }
     }
 
