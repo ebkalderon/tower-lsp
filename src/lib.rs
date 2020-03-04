@@ -513,6 +513,32 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/documentLink`] request is sent from the client to the server to request
+    /// the location of links in a document.
+    ///
+    /// A document link is a range in a text document that links to an internal or external
+    /// resource, like another text document or a web site.
+    ///
+    /// [`textDocument/documentLink`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentLink
+    async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
+        let _ = params;
+        error!("Got a textDocument/documentLink request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`documentLink/resolve`] request is sent from the client to the server to resolve the
+    /// target of a given document link.
+    ///
+    /// A document link is a range in a text document that links to an internal or external
+    /// resource, like another text document or a web site.
+    ///
+    /// [`documentLink/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#documentLink_resolve
+    async fn document_link_resolve(&self, params: DocumentLink) -> Result<DocumentLink> {
+        let _ = params;
+        error!("Got a documentLink/resolve request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/formatting`] request is sent from the client to the server to format a
     /// whole document.
     ///
@@ -664,6 +690,14 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
         (**self).code_lens_resolve(params).await
+    }
+
+    async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
+        (**self).document_link(params).await
+    }
+
+    async fn document_link_resolve(&self, params: DocumentLink) -> Result<DocumentLink> {
+        (**self).document_link_resolve(params).await
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
