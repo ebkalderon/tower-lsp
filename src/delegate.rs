@@ -136,6 +136,9 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/formatting", raw_params)]
     fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
+
+    #[rpc(name = "textDocument/rename", raw_params)]
+    fn rename(&self, params: Params) -> BoxFuture<Option<WorkspaceEdit>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -277,6 +280,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(document_link -> DocumentLinkRequest);
     delegate_request!(document_link_resolve -> DocumentLinkResolve);
     delegate_request!(formatting -> Formatting);
+    delegate_request!(rename -> Rename);
 }
 
 /// Error response returned for every request received before the server is initialized.
