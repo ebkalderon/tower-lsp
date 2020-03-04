@@ -548,6 +548,17 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/formatting request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/rename`] request is sent from the client to the server to ask the server
+    /// to compute a workspace change so that the client can perform a workspace-wide rename of a
+    /// symbol.
+    ///
+    /// [`textDocument/rename`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_formatting
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let _ = params;
+        error!("Got a textDocument/rename request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -702,5 +713,9 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
         (**self).formatting(params).await
+    }
+
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        (**self).rename(params).await
     }
 }
