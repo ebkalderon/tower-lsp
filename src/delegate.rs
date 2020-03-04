@@ -113,11 +113,11 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/implementation", raw_params)]
     fn goto_implementation(&self, params: Params) -> BoxFuture<Option<GotoImplementationResponse>>;
 
-    #[rpc(name = "textDocument/documentSymbol", raw_params)]
-    fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>>;
-
     #[rpc(name = "textDocument/documentHighlight", raw_params)]
     fn document_highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
+
+    #[rpc(name = "textDocument/documentSymbol", raw_params)]
+    fn document_symbol(&self, params: Params) -> BoxFuture<Option<DocumentSymbolResponse>>;
 
     #[rpc(name = "textDocument/codeAction", raw_params)]
     fn code_action(&self, params: Params) -> BoxFuture<Option<CodeActionResponse>>;
@@ -275,8 +275,8 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(goto_definition -> GotoDefinition);
     delegate_request!(goto_type_definition -> GotoTypeDefinition);
     delegate_request!(goto_implementation -> GotoImplementation);
-    delegate_request!(document_symbol -> DocumentSymbolRequest);
     delegate_request!(document_highlight -> DocumentHighlightRequest);
+    delegate_request!(document_symbol -> DocumentSymbolRequest);
     delegate_request!(code_action -> CodeActionRequest);
     delegate_request!(code_lens -> CodeLensRequest);
     delegate_request!(code_lens_resolve -> CodeLensResolve);

@@ -417,6 +417,25 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
+    /// resolve appropriate highlights for a given text document position.
+    ///
+    /// For programming languages, this usually highlights all textual references to the symbol
+    /// scoped to this file.
+    ///
+    /// This request differs slightly from `textDocument/references` in that this one is allowed to
+    /// be more fuzzy.
+    ///
+    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight
+    async fn document_highlight(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        let _ = params;
+        error!("Got a textDocument/documentHighlight request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/documentSymbol`] request is sent from the client to the server to
     /// retrieve all symbols found in a given text document.
     ///
@@ -437,25 +456,6 @@ pub trait LanguageServer: Send + Sync + 'static {
     ) -> Result<Option<DocumentSymbolResponse>> {
         let _ = params;
         error!("Got a textDocument/documentSymbol request, but it is not implemented");
-        Err(Error::method_not_found())
-    }
-
-    /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
-    /// resolve appropriate highlights for a given text document position.
-    ///
-    /// For programming languages, this usually highlights all textual references to the symbol
-    /// scoped to this file.
-    ///
-    /// This request differs slightly from `textDocument/references` in that this one is allowed to
-    /// be more fuzzy.
-    ///
-    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight
-    async fn document_highlight(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>> {
-        let _ = params;
-        error!("Got a textDocument/documentHighlight request, but it is not implemented");
         Err(Error::method_not_found())
     }
 
@@ -700,18 +700,18 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).goto_implementation(params).await
     }
 
-    async fn document_symbol(
-        &self,
-        params: DocumentSymbolParams,
-    ) -> Result<Option<DocumentSymbolResponse>> {
-        (**self).document_symbol(params).await
-    }
-
     async fn document_highlight(
         &self,
         params: TextDocumentPositionParams,
     ) -> Result<Option<Vec<DocumentHighlight>>> {
         (**self).document_highlight(params).await
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        (**self).document_symbol(params).await
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
