@@ -41,19 +41,19 @@ consists of three parts:
 ```rust
 use jsonrpc_core::Result;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{LanguageServer, LspService, Printer, Server};
+use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 #[derive(Debug, Default)]
 struct Backend;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
     }
 
-    async fn initialized(&self, printer: &Printer, _: InitializedParams) {
-        printer.log_message(MessageType::Info, "server initialized!");
+    async fn initialized(&self, client: &Client, _: InitializedParams) {
+        client.log_message(MessageType::Info, "server initialized!");
     }
 
     async fn shutdown(&self) -> Result<()> {
