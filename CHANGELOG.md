@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.9.0] - 2020-03-04
+
+### Added
+
+* Add `info!()` message when server initializes to be consistent with the
+  existing `info!()` message that is emitted when the server exits.
+* Implement support for the following client-to-server messages:
+  * `textDocument/references`
+  * `textDocument/documentLink`
+  * `documentLink/resolve`
+  * `textDocument/rename`
+  * `textDocument/prepareRename`
+* Implement support for the following server-to-client messages:
+  * `window/showMessageRequest`
+  * `workspace/workspaceFolders`
+  * `workspace/configuration`
+
+### Changed
+
+* Improve LSP message encoding efficiency (PR #126).
+* Reduce chattiness of `trace!()` logs (PR #130).
+* Change all notification trait methods to `async fn` (PR #131).
+* Implement proper server-to-client request routing (PRs #134 #135).
+* Rename `Printer` to `Client`.
+* Change `Client::apply_edit()` to return `Result<ApplyWorkspaceEditResponse>`.
+* Change `Client::register_capability()` to return `Result<()>`.
+* Change `Client::unregister_capability()` to return `Result<()>`.
+
+### Removed
+
+* Remove redundant serialization steps from `Client` (PR #129).
+
 ## [0.8.0] - 2020-02-28
 
 ### Added
@@ -198,7 +230,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.5.0...v0.6.0
