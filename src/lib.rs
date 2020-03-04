@@ -766,3 +766,8 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).prepare_rename(params).await
     }
 }
+
+fn _assert_object_safe() {
+    fn assert_impl<T: LanguageServer>() {}
+    assert_impl::<Box<dyn LanguageServer>>();
+}
