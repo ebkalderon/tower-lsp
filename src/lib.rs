@@ -553,7 +553,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// to compute a workspace change so that the client can perform a workspace-wide rename of a
     /// symbol.
     ///
-    /// [`textDocument/rename`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_formatting
+    /// [`textDocument/rename`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_rename
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         let _ = params;
         error!("Got a textDocument/rename request, but it is not implemented");
