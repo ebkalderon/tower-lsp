@@ -559,6 +559,29 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/rename request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/prepareRename`] request is sent from the client to the server to setup
+    /// and test the validity of a rename operation at a given location.
+    ///
+    /// [`textDocument/prepareRename`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_prepareRename
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.12.0 and requires client-side
+    /// support in order to be used. It can be returned if the client set the following field to
+    /// `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::rename::prepare_support
+    /// ```
+    async fn prepare_rename(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<PrepareRenameResponse>> {
+        let _ = params;
+        error!("Got a textDocument/prepareRename request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -717,5 +740,12 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         (**self).rename(params).await
+    }
+
+    async fn prepare_rename(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<PrepareRenameResponse>> {
+        (**self).prepare_rename(params).await
     }
 }
