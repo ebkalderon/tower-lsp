@@ -128,6 +128,12 @@ pub trait LanguageServerCore {
     #[rpc(name = "codeLens/resolve", raw_params)]
     fn code_lens_resolve(&self, params: Params) -> BoxFuture<CodeLens>;
 
+    #[rpc(name = "textDocument/documentLink", raw_params)]
+    fn document_link(&self, params: Params) -> BoxFuture<Option<Vec<DocumentLink>>>;
+
+    #[rpc(name = "documentLink/resolve", raw_params)]
+    fn document_link_resolve(&self, params: Params) -> BoxFuture<DocumentLink>;
+
     #[rpc(name = "textDocument/formatting", raw_params)]
     fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
 }
@@ -268,6 +274,8 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(code_action -> CodeActionRequest);
     delegate_request!(code_lens -> CodeLensRequest);
     delegate_request!(code_lens_resolve -> CodeLensResolve);
+    delegate_request!(document_link -> DocumentLinkRequest);
+    delegate_request!(document_link_resolve -> DocumentLinkResolve);
     delegate_request!(formatting -> Formatting);
 }
 
