@@ -471,12 +471,15 @@ pub trait LanguageServer: Send + Sync + 'static {
 
     /// The [`textDocument/codeAction`] request is sent from the client to the server to compute
     /// commands for a given text document and range. These commands are typically code fixes to
-    /// either fix problems or to beautify/refactor code. The result of a [`textDocument/codeAction`]
-    /// request is an array of `Command` literals which are typically presented in the user interface.
-    /// To ensure that a server is useful in many clients the commands specified in a code actions
+    /// either fix problems or to beautify/refactor code.
+    ///
+    /// The result of a [`textDocument/codeAction`] request is an array of `Command` literals which
+    /// are typically presented in the user interface.
+    ///
+    /// To ensure that a server is useful in many clients, the commands specified in a code actions
     /// should be handled by the server and not by the client (see [`workspace/executeCommand`] and
     /// `ServerCapabilities::execute_command_provider`). If the client supports providing edits
-    /// with a code action then the mode should be used.
+    /// with a code action, then the mode should be used.
     ///
     /// When the command is selected the server should be contacted again (via the
     /// [`workspace/executeCommand`] request) to execute the command.
