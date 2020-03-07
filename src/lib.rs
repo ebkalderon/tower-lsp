@@ -675,6 +675,19 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/prepareRename request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/foldingRange`] request is sent from the client to the server to return
+    /// all folding ranges found in a given text document.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.10.0 and requires client-side
+    /// support in order to be used.
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        let _ = params;
+        error!("Got a textDocument/foldingRange request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -869,6 +882,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         params: TextDocumentPositionParams,
     ) -> Result<Option<PrepareRenameResponse>> {
         (**self).prepare_rename(params).await
+    }
+
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        (**self).folding_range(params).await
     }
 }
 

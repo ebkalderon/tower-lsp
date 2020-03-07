@@ -157,6 +157,9 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/prepareRename", raw_params)]
     fn prepare_rename(&self, params: Params) -> BoxFuture<Option<PrepareRenameResponse>>;
+
+    #[rpc(name = "textDocument/prepareRename", raw_params)]
+    fn folding_range(&self, params: Params) -> BoxFuture<Option<Vec<FoldingRange>>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -305,6 +308,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(on_type_formatting -> OnTypeFormatting);
     delegate_request!(rename -> Rename);
     delegate_request!(prepare_rename -> PrepareRenameRequest);
+    delegate_request!(folding_range -> FoldingRangeRequest);
 }
 
 /// Error response returned for every request received before the server is initialized.
