@@ -1,4 +1,4 @@
-use jsonrpc_core::Result;
+use jsonrpc_core::{Error, Result};
 use serde::Serialize;
 use serde_json::Value;
 use tower_lsp::lsp_types::notification::Notification;
@@ -37,36 +37,9 @@ impl LanguageServer for Backend {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::Incremental,
-                )),
-                hover_provider: Some(true),
-                completion_provider: Some(CompletionOptions {
-                    resolve_provider: Some(false),
-                    trigger_characters: Some(vec![".".to_string()]),
-                    work_done_progress_options: Default::default(),
-                }),
-                signature_help_provider: Some(SignatureHelpOptions {
-                    trigger_characters: None,
-                    retrigger_characters: None,
-                    work_done_progress_options: Default::default(),
-                }),
-                document_highlight_provider: Some(true),
-                workspace_symbol_provider: Some(true),
                 execute_command_provider: Some(ExecuteCommandOptions {
-                    commands: vec![
-                        "dummy.do_something".to_string(),
-                        "custom.notification".to_string(),
-                    ],
+                    commands: vec!["custom.notification".to_string()],
                     work_done_progress_options: Default::default(),
-                }),
-                workspace: Some(WorkspaceCapability {
-                    workspace_folders: Some(WorkspaceFolderCapability {
-                        supported: Some(true),
-                        change_notifications: Some(
-                            WorkspaceFolderCapabilityChangeNotifications::Bool(true),
-                        ),
-                    }),
                 }),
                 ..ServerCapabilities::default()
             },
@@ -82,16 +55,18 @@ impl LanguageServer for Backend {
         client: &Client,
         params: ExecuteCommandParams,
     ) -> Result<Option<Value>> {
-        if &params.command == "custom.notification" {
+        if params.command == "custom.notification" {
             client.send_custom_notification::<CustomNotification>(CustomNotificationParams::new(
                 "Hello", "Message",
             ));
+            client.log_message(
+                MessageType::Info,
+                format!("Command executed with params: {:?}", params),
+            );
+            Ok(None)
+        } else {
+            Err(Error::invalid_request())
         }
-        client.log_message(
-            MessageType::Info,
-            format!("command executed!: {:?}", params),
-        );
-        Ok(None)
     }
 }
 
