@@ -208,15 +208,7 @@ impl Client {
     ///
     /// # Compatibility
     ///
-    /// This request was introduced in specification version 3.6.0 and requires client-side support
-    /// in order to be used. It can only be called if the client set the following field to `true`
-    /// in the [`LanguageServer::initialize`] method:
-    ///
-    /// ```text
-    /// InitializeParams::capabilities::workspace::configuration
-    /// ```
-    ///
-    /// [`LanguageServer::initialize`]: ./trait.LanguageServer.html#tymethod.initialize
+    /// This request was introduced in specification version 3.6.0.
     ///
     /// # Initialization
     ///
