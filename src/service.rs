@@ -135,6 +135,9 @@ mod tests {
     use super::*;
     use crate::Client;
 
+    const INITIALIZE_REQUEST: &str =
+        r#"{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1}"#;
+
     #[derive(Debug, Default)]
     struct Mock;
 
@@ -147,6 +150,21 @@ mod tests {
         async fn shutdown(&self) -> Result<()> {
             Ok(())
         }
+    }
+
+    #[tokio::test]
+    async fn initializes_only_once() {
+        let (service, _) = LspService::new(Mock::default());
+        let mut service = Spawn::new(service);
+
+        let initialize: Incoming = INITIALIZE_REQUEST.parse().unwrap();
+        let ok = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(initialize.clone()).await, Ok(Some(ok.into())));
+
+        let err = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":1}"#;
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(initialize).await, Ok(Some(err.into())));
     }
 
     #[tokio::test]

@@ -96,6 +96,9 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
     /// [`initialize`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    ///
+    /// This method is guaranteed to only execute once. If the client sends this request to the
+    /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
     fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
