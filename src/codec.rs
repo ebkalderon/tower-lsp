@@ -76,11 +76,10 @@ pub struct LanguageServerCodec {
     remaining_msg_bytes: usize,
 }
 
-impl Encoder for LanguageServerCodec {
-    type Item = String;
+impl Encoder<String> for LanguageServerCodec {
     type Error = ParseError;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: String, dst: &mut BytesMut) -> Result<(), Self::Error> {
         if !item.is_empty() {
             // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
             // the length of the message, and the message body.
