@@ -590,9 +590,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// This request was introduced in specification version 3.6.0 and requires client-side support
-    /// in order to be used. However, it has no special capabilities and registration options since
-    /// it is send as a resolve request for the [`textDocument/documentColor`] request.
+    /// This request was introduced in specification version 3.6.0.
+    ///
+    /// This request has no special capabilities and registration options since it is sent as a
+    /// resolve request for the [`textDocument/documentColor`] request.
     ///
     /// [`textDocument/documentColor`]: #tymethod.document_color
     async fn color_presentation(
