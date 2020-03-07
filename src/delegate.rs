@@ -2,16 +2,18 @@
 
 pub use self::client::Client;
 
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc::{self, Receiver, Sender};
+use futures::compat::Compat;
 use futures::future::{self, FutureExt, TryFutureExt};
 use futures::Stream;
 use jsonrpc_core::types::{ErrorCode, Output, Params};
-use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
+use jsonrpc_core::{Error, Result as RpcResult};
 use jsonrpc_derive::rpc;
 use log::{error, info};
 use lsp_types::notification::{Notification, *};
@@ -22,6 +24,9 @@ use serde_json::Value;
 use super::LanguageServer;
 
 mod client;
+
+/// Compat alternative for `jsonrpc_core::BoxFuture`.
+type BoxFuture<T> = Compat<Pin<Box<dyn Future<Output = Result<T, Error>> + Send>>>;
 
 /// Routes responses from the language client back to the server.
 pub type MessageSender = Sender<Output>;
@@ -226,9 +231,9 @@ macro_rules! delegate_request {
                     }
                 };
 
-                Box::new(fut.boxed().compat())
+                fut.boxed().compat()
             } else {
-                Box::new(future::err(not_initialized_error()).compat())
+                future::err(not_initialized_error()).boxed().compat()
             }
         }
     };
@@ -252,9 +257,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn shutdown(&self) -> BoxFuture<()> {
         if self.initialized.load(Ordering::SeqCst) {
             let server = self.server.clone();
-            Box::new(async move { server.shutdown().await }.boxed().compat())
+            async move { server.shutdown().await }.boxed().compat()
         } else {
-            Box::new(future::err(not_initialized_error()).compat())
+            future::err(not_initialized_error()).boxed().compat()
         }
     }
 
@@ -277,9 +282,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
                 }
             };
 
-            Box::new(fut.boxed().compat())
+            fut.boxed().compat()
         } else {
-            Box::new(future::err(not_initialized_error()).compat())
+            future::err(not_initialized_error()).boxed().compat()
         }
     }
 
