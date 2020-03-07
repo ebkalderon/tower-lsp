@@ -682,6 +682,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/foldingRange`] request is sent from the client to the server to return
     /// all folding ranges found in a given text document.
     ///
+    /// [`textDocument/foldingRange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_foldingRange
+    ///
     /// # Compatibility
     ///
     /// This request was introduced in specification version 3.10.0.
