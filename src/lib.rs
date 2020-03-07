@@ -580,6 +580,30 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/colorPresentation`] request is sent from the client to the server to
+    /// obtain a list of presentations for a color value at a given location.
+    ///
+    /// Clients can use the result to:
+    ///
+    /// * Modify a color reference
+    /// * Show in a color picker and let users pick one of the presentations
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0 and requires client-side support
+    /// in order to be used. However, it has no special capabilities and registration options since
+    /// it is send as a resolve request for the [`textDocument/documentColor`] request.
+    ///
+    /// [`textDocument/documentColor`]: #tymethod.document_color
+    async fn color_presentation(
+        &self,
+        params: ColorPresentationParams,
+    ) -> Result<Vec<ColorPresentation>> {
+        let _ = params;
+        error!("Got a textDocument/colorPresentation request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/formatting`] request is sent from the client to the server to format a
     /// whole document.
     ///
@@ -783,6 +807,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
         (**self).document_color(params).await
+    }
+
+    async fn color_presentation(
+        &self,
+        params: ColorPresentationParams,
+    ) -> Result<Vec<ColorPresentation>> {
+        (**self).color_presentation(params).await
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {

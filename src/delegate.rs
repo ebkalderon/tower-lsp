@@ -140,6 +140,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/documentColor", raw_params)]
     fn document_color(&self, params: Params) -> BoxFuture<Vec<ColorInformation>>;
 
+    #[rpc(name = "textDocument/colorPresentation", raw_params)]
+    fn color_presentation(&self, params: Params) -> BoxFuture<Vec<ColorPresentation>>;
+
     #[rpc(name = "textDocument/formatting", raw_params)]
     fn formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
 
@@ -290,6 +293,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(document_link -> DocumentLinkRequest);
     delegate_request!(document_link_resolve -> DocumentLinkResolve);
     delegate_request!(document_color -> DocumentColor);
+    delegate_request!(color_presentation -> ColorPresentationRequest);
     delegate_request!(formatting -> Formatting);
     delegate_request!(rename -> Rename);
     delegate_request!(prepare_rename -> PrepareRenameRequest);
