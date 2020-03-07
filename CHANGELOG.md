@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.9.1] - 2020-03-07
+
+### Added
+
+* Implement support for the following client-to-server messages:
+  * `textDocument/documentColor`
+  * `textDocument/colorPresentation`
+  * `textDocument/rangeFormatting`
+  * `textDocument/onTypeFormatting`
+  * `textDocument/foldingRange`
+
+### Changed
+
+* Server will accept the `initialize` request from the client only once and will
+  respond with JSON-RPC error code `-32600` if sent again (PR #160).
+
+### Fixed
+
+* Fix broken links and improve documentation (PRs #152 #157 #158).
+
 ## [0.9.0] - 2020-03-04
 
 ### Added
@@ -230,7 +250,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.6.0...v0.7.0
