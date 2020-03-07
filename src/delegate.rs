@@ -149,6 +149,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/rangeFormatting", raw_params)]
     fn range_formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
 
+    #[rpc(name = "textDocument/onTypeFormatting", raw_params)]
+    fn on_type_formatting(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
+
     #[rpc(name = "textDocument/rename", raw_params)]
     fn rename(&self, params: Params) -> BoxFuture<Option<WorkspaceEdit>>;
 
@@ -299,6 +302,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(color_presentation -> ColorPresentationRequest);
     delegate_request!(formatting -> Formatting);
     delegate_request!(range_formatting -> RangeFormatting);
+    delegate_request!(on_type_formatting -> OnTypeFormatting);
     delegate_request!(rename -> Rename);
     delegate_request!(prepare_rename -> PrepareRenameRequest);
 }
