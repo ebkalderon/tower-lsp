@@ -684,8 +684,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// This request was introduced in specification version 3.10.0 and requires client-side
-    /// support in order to be used.
+    /// This request was introduced in specification version 3.10.0.
     async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
         let _ = params;
         error!("Got a textDocument/foldingRange request, but it is not implemented");
