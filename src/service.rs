@@ -110,7 +110,7 @@ impl Service<Incoming> for LspService {
             if let Incoming::Response(res) = request {
                 let mut sender = self.sender.clone();
                 Box::pin(async move {
-                    sender.send(res).await.unwrap();
+                    sender.send(res).await.expect("LspService already dropped");
                     Ok(None)
                 })
             } else {
