@@ -539,6 +539,18 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// resource, like another text document or a web site.
     ///
     /// [`textDocument/documentLink`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentLink
+    ///
+    /// # Compatibility
+    ///
+    /// The [`DocumentLink::tooltip`] field was introduced in specification version 3.15.0 and
+    /// requires client-side support in order to be used. It can be returned if the client set the
+    /// following field to `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::document_link::tooltip_support
+    /// ```
+    ///
+    /// [`initialize`]: #tymethod.initialize
     async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
         let _ = params;
         error!("Got a textDocument/documentLink request, but it is not implemented");
