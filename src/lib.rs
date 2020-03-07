@@ -583,15 +583,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// This request was introduced in specification version 3.6.0 and requires client-side support
-    /// in order to be used. It can be returned if the client set the following field to
-    /// `true` in the [`initialize`] method:
-    ///
-    /// ```text
-    /// InitializeParams::capabilities::text_document::color_provider
-    /// ```
-    ///
-    /// [`initialize`]: #tymethod.initialize
+    /// This request was introduced in specification version 3.6.0.
     async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
         let _ = params;
         error!("Got a textDocument/documentColor request, but it is not implemented");
