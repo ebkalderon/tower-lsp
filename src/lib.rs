@@ -320,6 +320,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
+    /// This request was introduced in specification version 3.14.0.
+    ///
     /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
     /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
     /// client set the following field to `true` in the [`initialize`] method:
