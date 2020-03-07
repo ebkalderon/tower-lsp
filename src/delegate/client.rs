@@ -178,16 +178,16 @@ impl Client {
     ///
     /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_workspaceFolders
     ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.6.0.
-    ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0.
     pub async fn workspace_folders(&self) -> Result<Option<Vec<WorkspaceFolder>>> {
         self.send_request_initialized::<WorkspaceFoldersRequest>(())
             .await
@@ -206,16 +206,16 @@ impl Client {
     ///
     /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_configuration
     ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.6.0.
-    ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0.
     pub async fn configuration(&self, items: Vec<ConfigurationItem>) -> Result<Vec<Value>> {
         self.send_request_initialized::<WorkspaceConfiguration>(ConfigurationParams { items })
             .await
