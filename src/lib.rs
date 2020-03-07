@@ -614,6 +614,19 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/rangeFormatting`] request is sent from the client to the server to
+    /// format a given range in a document.
+    ///
+    /// [`textDocument/rangeFormatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_rangeFormatting
+    async fn range_formatting(
+        &self,
+        params: DocumentRangeFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        let _ = params;
+        error!("Got a textDocument/rangeFormatting request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/rename`] request is sent from the client to the server to ask the server
     /// to compute a workspace change so that the client can perform a workspace-wide rename of a
     /// symbol.
@@ -818,6 +831,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
         (**self).formatting(params).await
+    }
+
+    async fn range_formatting(
+        &self,
+        params: DocumentRangeFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        (**self).range_formatting(params).await
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
