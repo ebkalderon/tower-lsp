@@ -188,7 +188,7 @@ impl Client {
     /// InitializeParams::capabilities::workspace::workspace_folders
     /// ```
     ///
-    /// [`LanguageServer::initialize`]: #tymethod.initialize
+    /// [`LanguageServer::initialize`]: ./trait.LanguageServer.html#tymethod.initialize
     ///
     /// # Initialization
     ///
@@ -224,7 +224,7 @@ impl Client {
     /// InitializeParams::capabilities::workspace::configuration
     /// ```
     ///
-    /// [`LanguageServer::initialize`]: #tymethod.initialize
+    /// [`LanguageServer::initialize`]: ./trait.LanguageServer.html#tymethod.initialize
     ///
     /// # Initialization
     ///
