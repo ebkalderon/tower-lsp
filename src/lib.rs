@@ -615,6 +615,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```text
     /// InitializeParams::capabilities::text_document::rename::prepare_support
     /// ```
+    ///
+    /// [`initialize`]: #tymethod.initialize
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
