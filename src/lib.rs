@@ -627,6 +627,19 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/onTypeFormatting`] request is sent from the client to the server to
+    /// format parts of the document during typing.
+    ///
+    /// [`textDocument/onTypeFormatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_onTypeFormatting
+    async fn on_type_formatting(
+        &self,
+        params: DocumentOnTypeFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        let _ = params;
+        error!("Got a textDocument/onTypeFormatting request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/rename`] request is sent from the client to the server to ask the server
     /// to compute a workspace change so that the client can perform a workspace-wide rename of a
     /// symbol.
@@ -838,6 +851,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         params: DocumentRangeFormattingParams,
     ) -> Result<Option<Vec<TextEdit>>> {
         (**self).range_formatting(params).await
+    }
+
+    async fn on_type_formatting(
+        &self,
+        params: DocumentOnTypeFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        (**self).on_type_formatting(params).await
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
