@@ -669,15 +669,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// This request was introduced in specification version 3.12.0 and requires client-side
-    /// support in order to be used. It can be returned if the client set the following field to
-    /// `true` in the [`initialize`] method:
-    ///
-    /// ```text
-    /// InitializeParams::capabilities::text_document::rename::prepare_support
-    /// ```
-    ///
-    /// [`initialize`]: #tymethod.initialize
+    /// This request was introduced in specification version 3.12.0.
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
