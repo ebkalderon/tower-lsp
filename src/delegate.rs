@@ -236,11 +236,15 @@ macro_rules! delegate_request {
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
-        let params: InitializeParams = params.parse()?;
-        let response = self.server.initialize(&self.client, params)?;
-        info!("language server initialized");
-        self.initialized.store(true, Ordering::SeqCst);
-        Ok(response)
+        if !self.initialized.load(Ordering::SeqCst) {
+            let params: InitializeParams = params.parse()?;
+            let response = self.server.initialize(&self.client, params)?;
+            info!("language server initialized");
+            self.initialized.store(true, Ordering::SeqCst);
+            Ok(response)
+        } else {
+            Err(Error::invalid_request())
+        }
     }
 
     delegate_notification!(initialized -> Initialized);
