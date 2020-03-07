@@ -15,7 +15,7 @@ use log::{error, trace};
 use lsp_types::notification::{Notification, *};
 use lsp_types::request::{Request, *};
 use lsp_types::*;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 
 use super::not_initialized_error;
@@ -262,7 +262,6 @@ impl Client {
     pub fn send_custom_notification<N>(&self, params: N::Params)
     where
         N: Notification,
-        N::Params: Serialize,
     {
         self.send_notification_initialized::<N>(params);
     }
@@ -270,8 +269,6 @@ impl Client {
     async fn send_request<R>(&self, params: R::Params) -> Result<R::Result>
     where
         R: Request,
-        R::Params: Serialize,
-        R::Result: DeserializeOwned,
     {
         let id = self.request_id.fetch_add(1, Ordering::Relaxed);
         let message = make_request::<R>(id, params);
@@ -298,7 +295,6 @@ impl Client {
     fn send_notification<N>(&self, params: N::Params)
     where
         N: Notification,
-        N::Params: Serialize,
     {
         let mut sender = self.sender.clone();
         let message = make_notification::<N>(params);
@@ -312,8 +308,6 @@ impl Client {
     async fn send_request_initialized<R>(&self, params: R::Params) -> Result<R::Result>
     where
         R: Request,
-        R::Params: Serialize,
-        R::Result: DeserializeOwned,
     {
         if self.initialized.load(Ordering::SeqCst) {
             self.send_request::<R>(params).await
@@ -328,7 +322,6 @@ impl Client {
     fn send_notification_initialized<N>(&self, params: N::Params)
     where
         N: Notification,
-        N::Params: Serialize,
     {
         if self.initialized.load(Ordering::SeqCst) {
             self.send_notification::<N>(params);
@@ -343,7 +336,6 @@ impl Client {
 fn make_request<R>(id: u64, params: R::Params) -> String
 where
     R: Request,
-    R::Params: Serialize,
 {
     // Since these types come from the `lsp-types` crate and validity is enforced via the
     // `Request` trait, the `unwrap()` call below should never fail.
@@ -360,7 +352,6 @@ where
 fn make_notification<N>(params: N::Params) -> String
 where
     N: Notification,
-    N::Params: Serialize,
 {
     // Since these types come from the `lsp-types` crate and validity is enforced via the
     // `Notification` trait, the `unwrap()` call below should never fail.
