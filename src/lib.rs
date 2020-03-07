@@ -552,6 +552,34 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/documentColor`] request is sent from the client to the server to list
+    /// all color references found in a given text document. Along with the range, a color value in
+    /// RGB is returned.
+    ///
+    /// [`textDocument/documentColor`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentColor
+    ///
+    /// Clients can use the result to decorate color references in an editor. For example:
+    ///
+    /// * Color boxes showing the actual color next to the reference
+    /// * Show a color picker when a color reference is edited
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0 and requires client-side support
+    /// in order to be used. It can be returned if the client set the following field to
+    /// `true` in the [`initialize`] method:
+    ///
+    /// ```text
+    /// InitializeParams::capabilities::text_document::color_provider
+    /// ```
+    ///
+    /// [`initialize`]: #tymethod.initialize
+    async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
+        let _ = params;
+        error!("Got a textDocument/documentColor request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/formatting`] request is sent from the client to the server to format a
     /// whole document.
     ///
@@ -749,6 +777,10 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn document_link_resolve(&self, params: DocumentLink) -> Result<DocumentLink> {
         (**self).document_link_resolve(params).await
+    }
+
+    async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
+        (**self).document_color(params).await
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
