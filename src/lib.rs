@@ -714,12 +714,17 @@ pub trait LanguageServer: Send + Sync + 'static {
     }
 
     /// The [`textDocument/selectionRange`] request is sent from the client to the server to return
-    /// suggested selection ranges at an array of given positions.
-    ///
-    /// A selection range is a range around the cursor position which the user might be interested
-    /// in selecting.
+    /// suggested selection ranges at an array of given positions. A selection range is a range
+    /// around the cursor position which the user might be interested in selecting.
     ///
     /// [`textDocument/selectionRange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_selectionRange
+    ///
+    /// A selection range in the return array is for the position in the provided parameters at the
+    /// same index. Therefore `params.positions[i]` must be contained in `result[i].range`.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.15.0.
     async fn selection_range(
         &self,
         params: SelectionRangeParams,
