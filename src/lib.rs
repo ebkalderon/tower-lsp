@@ -712,6 +712,22 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/foldingRange request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/selectionRange`] request is sent from the client to the server to return
+    /// suggested selection ranges at an array of given positions.
+    ///
+    /// A selection range is a range around the cursor position which the user might be interested
+    /// in selecting.
+    ///
+    /// [`textDocument/selectionRange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_selectionRange
+    async fn selection_range(
+        &self,
+        params: SelectionRangeParams,
+    ) -> Result<Option<Vec<SelectionRange>>> {
+        let _ = params;
+        error!("Got a textDocument/selectionRange request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
@@ -917,6 +933,13 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
         (**self).folding_range(params).await
+    }
+
+    async fn selection_range(
+        &self,
+        params: SelectionRangeParams,
+    ) -> Result<Option<Vec<SelectionRange>>> {
+        (**self).selection_range(params).await
     }
 }
 
