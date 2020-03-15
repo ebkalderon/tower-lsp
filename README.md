@@ -39,7 +39,7 @@ consists of three parts:
 ## Example
 
 ```rust
-use jsonrpc_core::Result;
+use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 

@@ -5,14 +5,10 @@
 //! # Example
 //!
 //! ```rust
-//! # use std::future::Future;
-//! #
-//! # use jsonrpc_core::Result;
-//! # use serde_json::Value;
-//! # use tower_lsp::lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
-//! # use tower_lsp::lsp_types::*;
-//! # use tower_lsp::{LanguageServer, LspService, Client, Server};
-//! #
+//! use tower_lsp::jsonrpc::Result;
+//! use tower_lsp::lsp_types::*;
+//! use tower_lsp::{LanguageServer, LspService, Client, Server};
+//!
 //! #[derive(Debug, Default)]
 //! struct Backend;
 //!
@@ -78,6 +74,8 @@ use log::{error, warn};
 use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
 use lsp_types::*;
 use serde_json::Value;
+
+pub mod jsonrpc;
 
 mod codec;
 mod delegate;
