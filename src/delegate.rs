@@ -86,6 +86,9 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/willSave", raw_params)]
     fn will_save(&self, params: Params);
 
+    #[rpc(name = "textDocument/willSaveWaitUntil", raw_params)]
+    fn will_save_wait_until(&self, params: Params) -> BoxFuture<Option<Vec<TextEdit>>>;
+
     #[rpc(name = "textDocument/didSave", raw_params)]
     fn did_save(&self, params: Params);
 
@@ -291,6 +294,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_notification!(did_open -> DidOpenTextDocument);
     delegate_notification!(did_change -> DidChangeTextDocument);
     delegate_notification!(will_save -> WillSaveTextDocument);
+    delegate_request!(will_save_wait_until -> WillSaveWaitUntil);
     delegate_notification!(did_save -> DidSaveTextDocument);
     delegate_notification!(did_close -> DidCloseTextDocument);
 
