@@ -166,7 +166,7 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/prepareRename", raw_params)]
     fn prepare_rename(&self, params: Params) -> BoxFuture<Option<PrepareRenameResponse>>;
 
-    #[rpc(name = "textDocument/prepareRename", raw_params)]
+    #[rpc(name = "textDocument/foldingRange", raw_params)]
     fn folding_range(&self, params: Params) -> BoxFuture<Option<Vec<FoldingRange>>>;
 
     #[rpc(name = "textDocument/selectionRange", raw_params)]
