@@ -171,6 +171,31 @@ pub trait LanguageServerCore {
 
     #[rpc(name = "textDocument/selectionRange", raw_params)]
     fn selection_range(&self, params: Params) -> BoxFuture<Option<Vec<SelectionRange>>>;
+
+    #[rpc(name = "textDocument/prepareCallHierarchy", raw_params)]
+    fn prepare_call_hierarchy(&self, params: Params) -> BoxFuture<Option<Vec<CallHierarchyItem>>>;
+
+    #[rpc(name = "callHierarchy/incomingCalls", raw_params)]
+    fn call_hierarchy_incoming_calls(
+        &self,
+        params: Params,
+    ) -> BoxFuture<Option<Vec<CallHierarchyIncomingCall>>>;
+
+    #[rpc(name = "callHierarchy/incomingCalls", raw_params)]
+    fn call_hierarchy_outgoing_calls(
+        &self,
+        params: Params,
+    ) -> BoxFuture<Option<Vec<CallHierarchyOutgoingCall>>>;
+
+    #[rpc(name = "textDocument/semanticTokens", raw_params)]
+    fn semantic_tokens(&self, params: Params) -> BoxFuture<Option<SemanticTokensResult>>;
+
+    #[rpc(name = "textDocument/semanticTokens/edits", raw_params)]
+    fn semantic_tokens_edits(&self, params: Params) -> BoxFuture<Option<SemanticTokensEditResult>>;
+
+    #[rpc(name = "textDocument/semanticTokens/range", raw_params)]
+    fn semantic_tokens_range(&self, params: Params)
+        -> BoxFuture<Option<SemanticTokensRangeResult>>;
 }
 
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
@@ -326,6 +351,12 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_request!(prepare_rename -> PrepareRenameRequest);
     delegate_request!(folding_range -> FoldingRangeRequest);
     delegate_request!(selection_range -> SelectionRangeRequest);
+    delegate_request!(prepare_call_hierarchy -> CallHierarchyPrepare);
+    delegate_request!(call_hierarchy_incoming_calls -> CallHierarchyIncomingCalls);
+    delegate_request!(call_hierarchy_outgoing_calls -> CallHierarchyOutgoingCalls);
+    delegate_request!(semantic_tokens -> SemanticTokensRequest);
+    delegate_request!(semantic_tokens_edits -> SemanticTokensEditsRequest);
+    delegate_request!(semantic_tokens_range -> SemanticTokensRangeRequest);
 }
 
 /// Error response returned for every request received before the server is initialized.

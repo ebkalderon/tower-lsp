@@ -34,4 +34,5 @@ tokio = { version = "0.2", features = ["io-std", "macros", "test-util"] }
 tower-test = "0.3"
 
 [features]
-proposed = []
+default = ["proposed"]
+proposed = ["lsp-types/proposed"]

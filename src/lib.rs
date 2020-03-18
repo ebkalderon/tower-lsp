@@ -731,6 +731,90 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/selectionRange request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// [`textDocument/prepareCallHierarchy`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.callHierarchy.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn prepare_call_hierarchy(
+        &self,
+        params: CallHierarchyPrepareParams,
+    ) -> Result<Option<Vec<CallHierarchyItem>>> {
+        let _ = params;
+        error!("Got a textDocument/prepareCallHierarchy request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// [`callHierarchy/incomingCalls`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.callHierarchy.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn call_hierarchy_incoming_calls(
+        &self,
+        params: CallHierarchyIncomingCallsParams,
+    ) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
+        let _ = params;
+        error!("Got a callHierarchy/incomingCalls request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// [`callHierarchy/outgoingCalls`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.callHierarchy.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn call_hierarchy_outgoing_calls(
+        &self,
+        params: CallHierarchyOutgoingCallsParams,
+    ) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
+        let _ = params;
+        error!("Got a callHierarchy/outgoingCalls request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// [`textDocument/semanticTokens`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.semanticTokens.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn semantic_tokens(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// [`textDocument/semanticTokens/edits`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.semanticTokens.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn semantic_tokens_edits(
+        &self,
+        params: SemanticTokensEditsParams,
+    ) -> Result<Option<SemanticTokensEditResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens/edits request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// [`textDocument/semanticTokens/range`]: https://github.com/microsoft/vscode-languageserver-node/blob/master/protocol/src/protocol.semanticTokens.proposed.ts
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    async fn semantic_tokens_range(
+        &self,
+        params: SemanticTokensRangeParams,
+    ) -> Result<Option<SemanticTokensRangeResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens/range request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 #[async_trait]
