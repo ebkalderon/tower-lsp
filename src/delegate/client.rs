@@ -23,17 +23,17 @@ use super::not_initialized_error;
 /// Maps all pending client request IDs to their future responses.
 type RequestMap = DashMap<u64, oneshot::Sender<Output>>;
 
-/// Handle for communicating with the language client.
+/// Internals for language client handle.
 #[derive(Debug)]
-pub struct Client {
+struct ClientInner {
     sender: Sender<String>,
     initialized: Arc<AtomicBool>,
     request_id: AtomicU64,
     pending_requests: Arc<RequestMap>,
 }
 
-impl Client {
-    pub(super) fn new(
+impl ClientInner {
+    fn new(
         sender: Sender<String>,
         mut receiver: Receiver<Output>,
         initialized: Arc<AtomicBool>,
@@ -54,12 +54,26 @@ impl Client {
             }
         });
 
-        Client {
+        ClientInner {
             sender,
             initialized,
             request_id: AtomicU64::new(0),
             pending_requests,
         }
+    }
+}
+
+/// Handle for communicating with the language client.
+#[derive(Clone, Debug)]
+pub struct Client(Arc<ClientInner>);
+
+impl Client {
+    pub(super) fn new(
+        sender: Sender<String>,
+        receiver: Receiver<Output>,
+        initialized: Arc<AtomicBool>,
+    ) -> Self {
+        Client(Arc::new(ClientInner::new(sender, receiver, initialized)))
     }
 
     /// Notifies the client to log a particular message.
@@ -270,16 +284,16 @@ impl Client {
     where
         R: Request,
     {
-        let id = self.request_id.fetch_add(1, Ordering::Relaxed);
+        let id = self.0.request_id.fetch_add(1, Ordering::Relaxed);
         let message = make_request::<R>(id, params);
 
-        if self.sender.clone().send(message).await.is_err() {
+        if self.0.sender.clone().send(message).await.is_err() {
             error!("failed to send request");
             return Err(Error::internal_error());
         }
 
         let (tx, rx) = oneshot::channel();
-        self.pending_requests.insert(id, tx);
+        self.0.pending_requests.insert(id, tx);
         let response = rx.await.expect("sender already dropped");
 
         match response {
@@ -296,7 +310,7 @@ impl Client {
     where
         N: Notification,
     {
-        let mut sender = self.sender.clone();
+        let mut sender = self.0.sender.clone();
         let message = make_notification::<N>(params);
         tokio::spawn(async move {
             if sender.send(message).await.is_err() {
@@ -309,10 +323,10 @@ impl Client {
     where
         R: Request,
     {
-        if self.initialized.load(Ordering::SeqCst) {
+        if self.0.initialized.load(Ordering::SeqCst) {
             self.send_request::<R>(params).await
         } else {
-            let id = self.request_id.load(Ordering::SeqCst) + 1;
+            let id = self.0.request_id.load(Ordering::SeqCst) + 1;
             let msg = make_request::<R>(id, params);
             trace!("server not initialized, supressing message: {}", msg);
             Err(not_initialized_error())
@@ -323,7 +337,7 @@ impl Client {
     where
         N: Notification,
     {
-        if self.initialized.load(Ordering::SeqCst) {
+        if self.0.initialized.load(Ordering::SeqCst) {
             self.send_notification::<N>(params);
         } else {
             let msg = make_notification::<N>(params);
