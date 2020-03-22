@@ -182,7 +182,7 @@ pub struct Delegate<T> {
     //
     // https://github.com/ebkalderon/tower-lsp/issues/58
     server: Arc<T>,
-    client: Arc<Client>,
+    client: Client,
     initialized: Arc<AtomicBool>,
 }
 
@@ -197,7 +197,7 @@ impl<T: LanguageServer> Delegate<T> {
         let initialized = Arc::new(AtomicBool::new(false));
         let delegate = Delegate {
             server: Arc::new(server),
-            client: Arc::new(Client::new(request_tx, response_rx, initialized.clone())),
+            client: Client::new(request_tx, response_rx, initialized.clone()),
             initialized,
         };
 
