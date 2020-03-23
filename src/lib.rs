@@ -734,7 +734,11 @@ pub trait LanguageServer: Send + Sync + 'static {
 }
 
 #[async_trait]
-impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
+impl<T, S> LanguageServer for T
+where
+    T: std::ops::Deref<Target = S> + Send + Sync + 'static,
+    S: ?Sized + LanguageServer,
+{
     fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult> {
         (**self).initialize(client, params)
     }
