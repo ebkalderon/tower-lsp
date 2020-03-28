@@ -23,7 +23,6 @@ use super::not_initialized_error;
 /// Maps all pending client request IDs to their future responses.
 type RequestMap = DashMap<u64, oneshot::Sender<Output>>;
 
-/// Internals for language client handle.
 #[derive(Debug)]
 struct ClientInner {
     sender: Sender<String>,
@@ -32,8 +31,12 @@ struct ClientInner {
     pending_requests: Arc<RequestMap>,
 }
 
-impl ClientInner {
-    fn new(
+/// Handle for communicating with the language client.
+#[derive(Clone, Debug)]
+pub struct Client(Arc<ClientInner>);
+
+impl Client {
+    pub(super) fn new(
         sender: Sender<String>,
         mut receiver: Receiver<Output>,
         initialized: Arc<AtomicBool>,
@@ -54,26 +57,14 @@ impl ClientInner {
             }
         });
 
-        ClientInner {
+        let inner = Arc::new(ClientInner {
             sender,
             initialized,
             request_id: AtomicU64::new(0),
             pending_requests,
-        }
-    }
-}
+        });
 
-/// Handle for communicating with the language client.
-#[derive(Clone, Debug)]
-pub struct Client(Arc<ClientInner>);
-
-impl Client {
-    pub(super) fn new(
-        sender: Sender<String>,
-        receiver: Receiver<Output>,
-        initialized: Arc<AtomicBool>,
-    ) -> Self {
-        Client(Arc::new(ClientInner::new(sender, receiver, initialized)))
+        Client(inner)
     }
 
     /// Notifies the client to log a particular message.
