@@ -33,6 +33,7 @@ pub type MessageSender = Sender<Output>;
 
 /// Stream of messages produced by the language server.
 #[derive(Debug)]
+#[must_use = "streams do nothing unless polled"]
 pub struct MessageStream(Receiver<String>);
 
 impl Stream for MessageStream {
