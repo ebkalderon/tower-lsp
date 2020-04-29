@@ -322,10 +322,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// signature information at a given cursor position.
     ///
     /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_signatureHelp
-    async fn signature_help(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<SignatureHelp>> {
+    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
         let _ = params;
         error!("Got a textDocument/signatureHelp request, but it is not implemented");
         Err(Error::method_not_found())
@@ -821,10 +818,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).hover(params).await
     }
 
-    async fn signature_help(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<SignatureHelp>> {
+    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
         (**self).signature_help(params).await
     }
 
