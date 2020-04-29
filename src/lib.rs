@@ -71,7 +71,7 @@ pub use async_trait::async_trait;
 
 use jsonrpc_core::{Error, Result};
 use log::{error, warn};
-use lsp_types::request::{GotoDefinitionResponse, GotoImplementationResponse};
+use lsp_types::request::GotoImplementationResponse;
 use lsp_types::*;
 use serde_json::Value;
 
