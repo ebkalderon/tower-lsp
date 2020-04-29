@@ -377,7 +377,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`initialize`]: #tymethod.initialize
     async fn goto_definition(
         &self,
-        params: TextDocumentPositionParams,
+        params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
         let _ = params;
         error!("Got a textDocument/definition request, but it is not implemented");
@@ -833,7 +833,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn goto_definition(
         &self,
-        params: TextDocumentPositionParams,
+        params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
         (**self).goto_definition(params).await
     }
