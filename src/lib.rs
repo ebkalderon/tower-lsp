@@ -463,7 +463,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight
     async fn document_highlight(
         &self,
-        params: TextDocumentPositionParams,
+        params: DocumentHighlightParams,
     ) -> Result<Option<Vec<DocumentHighlight>>> {
         let _ = params;
         error!("Got a textDocument/documentHighlight request, but it is not implemented");
@@ -859,7 +859,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn document_highlight(
         &self,
-        params: TextDocumentPositionParams,
+        params: DocumentHighlightParams,
     ) -> Result<Option<Vec<DocumentHighlight>>> {
         (**self).document_highlight(params).await
     }
