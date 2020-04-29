@@ -68,35 +68,46 @@ where
 
         let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
         let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
+        let responses = receiver.buffer_unordered(4).filter_map(future::ready);
         let interleave = self.interleave.fuse();
 
-        let printer = stream::select(receiver, interleave)
+        let printer = stream::select(responses, interleave)
             .map(Ok)
             .forward(framed_stdout.sink_map_err(|e| error!("failed to encode response: {}", e)))
             .map(|_| ());
 
-        tokio::spawn(printer);
+        let reader = async move {
+            while let Some(line) = framed_stdin.next().await {
+                let request = match line {
+                    Ok(req) => Incoming::from(req),
+                    Err(err) => {
+                        error!("failed to decode message: {}", err);
+                        continue;
+                    }
+                };
 
-        while let Some(line) = framed_stdin.next().await {
-            let request = match line {
-                Ok(req) => Incoming::from(req),
-                Err(err) => {
-                    error!("failed to decode message: {}", err);
-                    continue;
+                if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
+                    error!("{}", display_sources(err.into().as_ref()));
+                    return;
                 }
-            };
 
-            if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
-                error!("{}", display_sources(err.into().as_ref()));
-                return;
-            }
+                let fut = service.call(request);
+                let response_fut = async move {
+                    match fut.await {
+                        Ok(Some(res)) => Some(res),
+                        Ok(None) => None,
+                        Err(err) => {
+                            error!("{}", display_sources(err.into().as_ref()));
+                            None
+                        }
+                    }
+                };
 
-            match service.call(request).await {
-                Ok(Some(res)) => sender.send(res).await.unwrap(),
-                Ok(None) => {}
-                Err(err) => error!("{}", display_sources(err.into().as_ref())),
+                sender.send(response_fut).await.unwrap();
             }
-        }
+        };
+
+        futures::join!(reader, printer);
     }
 }
 
@@ -154,7 +165,7 @@ mod tests {
     }
 
     fn mock_stdio() -> (Cursor<Box<[u8]>>, Cursor<Box<[u8]>>) {
-        let message = r#"{"jsonrpc":"2.0","method":"initialized"}"#;
+        let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#;
         let stdin = format!("Content-Length: {}\r\n\r\n{}", message.len(), message);
         (
             Cursor::new(stdin.into_bytes().into_boxed_slice()),
@@ -173,12 +184,12 @@ mod tests {
     async fn serves_on_stdio() {
         let (mut stdin, stdout) = mock_stdio();
         Server::new(&mut stdin, stdout).serve(MockService).await;
-        assert_eq!(stdin.position(), 62);
+        assert_eq!(stdin.position(), 76);
     }
 
     #[tokio::test]
     async fn interleaves_messages() {
-        let message = r#"{"jsonrpc":"2.0","method":"initialized"}"#.to_owned();
+        let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#.to_owned();
         let messages = stream::iter(vec![message]);
 
         let (mut stdin, stdout) = mock_stdio();
@@ -187,6 +198,6 @@ mod tests {
             .serve(MockService)
             .await;
 
-        assert_eq!(stdin.position(), 62);
+        assert_eq!(stdin.position(), 76);
     }
 }

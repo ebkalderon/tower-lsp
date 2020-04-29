@@ -45,8 +45,12 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
+//! #   use std::io::Cursor;
 //!     let stdin = tokio::io::stdin();
+//! #   let message = r#"{"jsonrpc":"2.0","method":"exit"}"#;
+//! #   let stdin = Cursor::new(format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes());
 //!     let stdout = tokio::io::stdout();
+//! #   let stdout = Cursor::new(Vec::new());
 //!
 //!     let (service, messages) = LspService::new(Backend::default());
 //!     Server::new(stdin, stdout)
