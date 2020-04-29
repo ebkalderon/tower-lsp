@@ -143,7 +143,7 @@ mod tests {
 
     #[async_trait]
     impl LanguageServer for Mock {
-        fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+        async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 

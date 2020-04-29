@@ -13,7 +13,7 @@ use futures::compat::Compat;
 use futures::future::{self, FutureExt, TryFutureExt};
 use futures::Stream;
 use jsonrpc_core::types::{ErrorCode, Output, Params};
-use jsonrpc_core::{Error, Result as RpcResult};
+use jsonrpc_core::Error;
 use jsonrpc_derive::rpc;
 use log::{error, info};
 use lsp_types::notification::{Notification, *};
@@ -51,7 +51,7 @@ pub trait LanguageServerCore {
     // Initialization
 
     #[rpc(name = "initialize", raw_params)]
-    fn initialize(&self, params: Params) -> RpcResult<InitializeResult>;
+    fn initialize(&self, params: Params) -> BoxFuture<InitializeResult>;
 
     #[rpc(name = "initialized", raw_params)]
     fn initialized(&self, params: Params);
@@ -247,15 +247,22 @@ macro_rules! delegate_request {
 }
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
-    fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
+    fn initialize(&self, params: Params) -> BoxFuture<InitializeResult> {
         if !self.initialized.load(Ordering::SeqCst) {
-            let params: InitializeParams = params.parse()?;
-            let response = self.server.initialize(&self.client, params)?;
-            info!("language server initialized");
-            self.initialized.store(true, Ordering::SeqCst);
-            Ok(response)
+            let server = self.server.clone();
+            let initialized = self.initialized.clone();
+            let client = self.client.clone();
+            let fut = async move {
+                let params = params.parse()?;
+                let response = server.initialize(&client, params).await?;
+                info!("language server initialized");
+                initialized.store(true, Ordering::SeqCst);
+                Ok(response)
+            };
+
+            fut.boxed().compat()
         } else {
-            Err(Error::invalid_request())
+            future::err(Error::invalid_request()).boxed().compat()
         }
     }
 
