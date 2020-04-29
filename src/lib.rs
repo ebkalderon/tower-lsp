@@ -72,8 +72,8 @@ pub use async_trait::async_trait;
 use jsonrpc_core::{Error, Result};
 use log::{error, warn};
 use lsp_types::request::{
-    GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationResponse,
-    GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
+    GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
+    GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
 };
 use lsp_types::*;
 use serde_json::Value;
@@ -434,7 +434,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`initialize`]: #tymethod.initialize
     async fn goto_implementation(
         &self,
-        params: TextDocumentPositionParams,
+        params: GotoImplementationParams,
     ) -> Result<Option<GotoImplementationResponse>> {
         let _ = params;
         error!("Got a textDocument/implementation request, but it is not implemented");
@@ -848,7 +848,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
 
     async fn goto_implementation(
         &self,
-        params: TextDocumentPositionParams,
+        params: GotoImplementationParams,
     ) -> Result<Option<GotoImplementationResponse>> {
         (**self).goto_implementation(params).await
     }
