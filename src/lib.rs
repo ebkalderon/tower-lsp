@@ -33,7 +33,7 @@
 //!         ])))
 //!     }
 //!
-//!     async fn hover(&self, _: TextDocumentPositionParams) -> Result<Option<Hover>> {
+//!     async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
 //!         Ok(Some(Hover {
 //!             contents: HoverContents::Scalar(
 //!                 MarkedString::String("You're hovering!".to_string())
@@ -312,7 +312,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// documentation for the symbol at the given text document position.
     ///
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
-    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let _ = params;
         error!("Got a textDocument/hover request, but it is not implemented");
         Err(Error::method_not_found())
@@ -817,7 +817,7 @@ impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
         (**self).completion_resolve(params).await
     }
 
-    async fn hover(&self, params: TextDocumentPositionParams) -> Result<Option<Hover>> {
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         (**self).hover(params).await
     }
 
