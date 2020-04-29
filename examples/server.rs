@@ -8,7 +8,7 @@ struct Backend;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {

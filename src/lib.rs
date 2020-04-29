@@ -14,7 +14,7 @@
 //!
 //! #[tower_lsp::async_trait]
 //! impl LanguageServer for Backend {
-//!     fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+//!     async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
 //!     }
 //!
@@ -100,7 +100,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This method is guaranteed to only execute once. If the client sends this request to the
     /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
-    fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult>;
+    async fn initialize(
+        &self,
+        client: &Client,
+        params: InitializeParams,
+    ) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
@@ -735,8 +739,12 @@ pub trait LanguageServer: Send + Sync + 'static {
 
 #[async_trait]
 impl<S: ?Sized + LanguageServer> LanguageServer for Box<S> {
-    fn initialize(&self, client: &Client, params: InitializeParams) -> Result<InitializeResult> {
-        (**self).initialize(client, params)
+    async fn initialize(
+        &self,
+        client: &Client,
+        params: InitializeParams,
+    ) -> Result<InitializeResult> {
+        (**self).initialize(client, params).await
     }
 
     async fn initialized(&self, client: &Client, params: InitializedParams) {
