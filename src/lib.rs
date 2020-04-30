@@ -356,7 +356,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
     ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_declaration(
         &self,
@@ -382,7 +382,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::definition::link_support
     /// ```
     ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_definition(
         &self,
@@ -410,7 +410,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
     ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html#variant.Link
+    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_type_definition(
         &self,
@@ -438,7 +438,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::implementation::link_support
     /// ```
     ///
-    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.70.2/lsp_types/request/enum.GotoDefinitionResponse.html
+    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
     async fn goto_implementation(
         &self,
@@ -490,8 +490,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///   document.
     ///
     /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentSymbol
-    /// [`DocumentSymbolResponse::Flat`]: https://docs.rs/lsp-types/0.70.2/lsp_types/enum.DocumentSymbolResponse.html#variant.Flat
-    /// [`DocumentSymbolResponse::Nested`]: https://docs.rs/lsp-types/0.70.2/lsp_types/enum.DocumentSymbolResponse.html#variant.Nested
+    /// [`DocumentSymbolResponse::Flat`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Flat
+    /// [`DocumentSymbolResponse::Nested`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Nested
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
