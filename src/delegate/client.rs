@@ -205,7 +205,7 @@ impl Client {
     /// [`ConfigurationItem`]s (e.g. the first item in the response is the result for the first
     /// configuration item in the params).
     ///
-    /// [`ConfigurationItem`]: https://docs.rs/lsp-types/0.70.2/lsp_types/struct.ConfigurationItem.html
+    /// [`ConfigurationItem`]: https://docs.rs/lsp-types/0.74.0/lsp_types/struct.ConfigurationItem.html
     ///
     /// This corresponds to the [`workspace/configuration`] request.
     ///
