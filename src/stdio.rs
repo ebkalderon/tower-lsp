@@ -26,8 +26,8 @@ pub struct Server<I, O, S = Nothing> {
 
 impl<I, O> Server<I, O, Nothing>
 where
-    I: AsyncRead + Send + Unpin,
-    O: AsyncWrite + Send + 'static,
+    I: AsyncRead + Unpin,
+    O: AsyncWrite,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
@@ -41,14 +41,14 @@ where
 
 impl<I, O, S> Server<I, O, S>
 where
-    I: AsyncRead + Send + Unpin,
-    O: AsyncWrite + Send + 'static,
-    S: Stream<Item = String> + Send + 'static,
+    I: AsyncRead + Unpin,
+    O: AsyncWrite,
+    S: Stream<Item = String>,
 {
     /// Interleaves the given stream of messages into `stdout` together with the responses.
     pub fn interleave<T>(self, stream: T) -> Server<I, O, T>
     where
-        T: Stream<Item = String> + Send + 'static,
+        T: Stream<Item = String>,
     {
         Server {
             stdin: self.stdin,
@@ -164,27 +164,24 @@ mod tests {
         }
     }
 
-    fn mock_stdio() -> (Cursor<Box<[u8]>>, Cursor<Box<[u8]>>) {
+    fn mock_request() -> Vec<u8> {
         let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#;
-        let stdin = format!("Content-Length: {}\r\n\r\n{}", message.len(), message);
-        (
-            Cursor::new(stdin.into_bytes().into_boxed_slice()),
-            Cursor::new(Box::new([])),
-        )
+        format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes()
     }
 
-    // FIXME: Cannot inspect the output after serving because the server currently requires that
-    // `stdout` be `'static`, thereby requiring owned values and disallowing `&mut` handles. This
-    // could be fixed by spawning the `printer` in `Server::serve()` using a `LocalSet` once it
-    // gains the ability to spawn non-`'static` futures. See the following issue for details:
-    //
-    // https://github.com/tokio-rs/tokio/issues/2013
+    fn mock_stdio() -> (Cursor<Vec<u8>>, Vec<u8>) {
+        (Cursor::new(mock_request()), Vec::new())
+    }
 
     #[tokio::test]
     async fn serves_on_stdio() {
-        let (mut stdin, stdout) = mock_stdio();
-        Server::new(&mut stdin, stdout).serve(MockService).await;
+        let (mut stdin, mut stdout) = mock_stdio();
+        Server::new(&mut stdin, &mut stdout)
+            .serve(MockService)
+            .await;
+
         assert_eq!(stdin.position(), 76);
+        assert_eq!(stdout, mock_request());
     }
 
     #[tokio::test]
@@ -192,12 +189,14 @@ mod tests {
         let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#.to_owned();
         let messages = stream::iter(vec![message]);
 
-        let (mut stdin, stdout) = mock_stdio();
-        Server::new(&mut stdin, stdout)
+        let (mut stdin, mut stdout) = mock_stdio();
+        Server::new(&mut stdin, &mut stdout)
             .interleave(messages)
             .serve(MockService)
             .await;
 
         assert_eq!(stdin.position(), 76);
+        let output: Vec<_> = mock_request().into_iter().chain(mock_request()).collect();
+        assert_eq!(stdout, output);
     }
 }
