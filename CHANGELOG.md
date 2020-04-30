@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.11.0] - 2020-04-30
+
+### Changed
+
+* Update `lsp-types` crate from 0.73 to 0.74 (PR #178). This introduces breaking
+  changes to the following `LanguageServer` trait method signatures:
+  * `hover()`
+  * `signatureHelp()`
+  * `goto_declaration()`
+  * `goto_definition()`
+  * `goto_type_definition()`
+  * `goto_implementation()`
+  * `document_highlight()`
+* Make `LanguageServer::initialize()` handler `async fn` (PR #182).
+* Accept `stdin` and `stdout` handles that are not `Send + 'static`. This
+  permits the use of `std::io::Cursor` or `Vec<u8>` as mock stdio sources for
+  tests, and passing in `&mut` handles is now supported as well (PR #184).
+
+### Fixed
+
+* Fix broken bidirectional request/response routing (PR #184). The original
+  implementation introduced in [0.9.0](#090---2020-03-04) would deadlock under
+  certain conditions.
+
 ## [0.10.1] - 2020-04-29
 
 ### Changed
@@ -275,7 +299,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.0...v0.9.1
