@@ -64,7 +64,7 @@ pub trait LanguageServerCore {
     #[rpc(name = "workspace/didChangeWorkspaceFolders", raw_params)]
     fn did_change_workspace_folders(&self, params: Params);
 
-    #[rpc(name = "workspace/DidChangeConfiguration", raw_params)]
+    #[rpc(name = "workspace/didChangeConfiguration", raw_params)]
     fn did_change_configuration(&self, params: Params);
 
     #[rpc(name = "workspace/didChangeWatchedFiles", raw_params)]
