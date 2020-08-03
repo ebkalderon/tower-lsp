@@ -15,19 +15,11 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::Incremental,
                 )),
-                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
                     trigger_characters: Some(vec![".".to_string()]),
                     work_done_progress_options: Default::default(),
                 }),
-                signature_help_provider: Some(SignatureHelpOptions {
-                    trigger_characters: None,
-                    retrigger_characters: None,
-                    work_done_progress_options: Default::default(),
-                }),
-                document_highlight_provider: Some(true),
-                workspace_symbol_provider: Some(true),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: vec!["dummy.do_something".to_string()],
                     work_done_progress_options: Default::default(),
