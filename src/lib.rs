@@ -69,7 +69,7 @@ pub extern crate lsp_types;
 pub use self::delegate::{Client, MessageStream};
 pub use self::message::Incoming;
 pub use self::service::{ExitedError, LspService};
-pub use self::stdio::Server;
+pub use self::transport::Server;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
@@ -88,7 +88,7 @@ mod codec;
 mod delegate;
 mod message;
 mod service;
-mod stdio;
+mod transport;
 
 /// Trait implemented by language server backends.
 ///

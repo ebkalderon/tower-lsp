@@ -1,4 +1,4 @@
-//! Asynchronous `tower` server with an stdio transport.
+//! `tower` server which multiplexes bidirectional traffic over one connection.
 
 use std::error::Error;
 use std::pin::Pin;
@@ -16,7 +16,7 @@ use tower_service::Service;
 use super::codec::LanguageServerCodec;
 use super::message::Incoming;
 
-/// Server for processing requests and responses on `stdin` and `stdout`.
+/// Server for processing requests and responses on standard I/O or TCP.
 #[derive(Debug)]
 pub struct Server<I, O, S = Nothing> {
     stdin: I,
@@ -57,7 +57,7 @@ where
         }
     }
 
-    /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
+    /// Spawns the service with messages read through `stdin` and responses written to `stdout`.
     pub async fn serve<T>(self, mut service: T)
     where
         T: Service<Incoming, Response = Option<String>> + Send + 'static,
