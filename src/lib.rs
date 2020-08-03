@@ -7,19 +7,21 @@
 //! ```rust
 //! use tower_lsp::jsonrpc::Result;
 //! use tower_lsp::lsp_types::*;
-//! use tower_lsp::{LanguageServer, LspService, Client, Server};
+//! use tower_lsp::{Client, LanguageServer, LspService, Server};
 //!
-//! #[derive(Debug, Default)]
-//! struct Backend;
+//! #[derive(Debug)]
+//! struct Backend {
+//!     client: Client,
+//! }
 //!
 //! #[tower_lsp::async_trait]
 //! impl LanguageServer for Backend {
-//!     async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+//!     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult::default())
 //!     }
 //!
-//!     async fn initialized(&self, client: &Client, _: InitializedParams) {
-//!         client.log_message(MessageType::Info, "server initialized!");
+//!     async fn initialized(&self, _: InitializedParams) {
+//!         self.client.log_message(MessageType::Info, "server initialized!");
 //!     }
 //!
 //!     async fn shutdown(&self) -> Result<()> {
@@ -52,7 +54,7 @@
 //!     let stdout = tokio::io::stdout();
 //! #   let stdout = Cursor::new(Vec::new());
 //!
-//!     let (service, messages) = LspService::new(Backend::default());
+//!     let (service, messages) = LspService::new(|client| Backend { client });
 //!     Server::new(stdin, stdout)
 //!         .interleave(messages)
 //!         .serve(service)
@@ -106,11 +108,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This method is guaranteed to only execute once. If the client sends this request to the
     /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
-    async fn initialize(
-        &self,
-        client: &Client,
-        params: InitializeParams,
-    ) -> Result<InitializeResult>;
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
@@ -119,8 +117,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialized
-    async fn initialized(&self, client: &Client, params: InitializedParams) {
-        let _ = client;
+    async fn initialized(&self, params: InitializedParams) {
         let _ = params;
     }
 
@@ -147,12 +144,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeWorkspaceFolders
     /// [`initialize`]: #tymethod.initialize
-    async fn did_change_workspace_folders(
-        &self,
-        client: &Client,
-        params: DidChangeWorkspaceFoldersParams,
-    ) {
-        let _ = client;
+    async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
@@ -161,12 +153,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// to signal the change of configuration settings.
     ///
     /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
-    async fn did_change_configuration(
-        &self,
-        client: &Client,
-        params: DidChangeConfigurationParams,
-    ) {
-        let _ = client;
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         let _ = params;
         warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
     }
@@ -180,8 +167,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
-    async fn did_change_watched_files(&self, client: &Client, params: DidChangeWatchedFilesParams) {
-        let _ = client;
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
     }
@@ -206,12 +192,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// the workspace using `Client::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
-    async fn execute_command(
-        &self,
-        client: &Client,
-        params: ExecuteCommandParams,
-    ) -> Result<Option<Value>> {
-        let _ = client;
+    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         let _ = params;
         error!("Got a workspace/executeCommand request, but it is not implemented");
         Err(Error::method_not_found())
@@ -225,8 +206,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didOpen
-    async fn did_open(&self, client: &Client, params: DidOpenTextDocumentParams) {
-        let _ = client;
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didOpen notification, but it is not implemented");
     }
@@ -238,8 +218,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document for the server to interpret.
     ///
     /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didChange
-    async fn did_change(&self, client: &Client, params: DidChangeTextDocumentParams) {
-        let _ = client;
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didChange notification, but it is not implemented");
     }
@@ -248,8 +227,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document is actually saved.
     ///
     /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_willSave
-    async fn will_save(&self, client: &Client, params: WillSaveTextDocumentParams) {
-        let _ = client;
+    async fn will_save(&self, params: WillSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/willSave notification, but it is not implemented");
     }
@@ -275,8 +253,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document was saved in the client.
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didSave
-    async fn did_save(&self, client: &Client, params: DidSaveTextDocumentParams) {
-        let _ = client;
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didSave notification, but it is not implemented");
     }
@@ -288,8 +265,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// URI is a file URI, the truth now exists on disk).
     ///
     /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didClose
-    async fn did_close(&self, client: &Client, params: DidCloseTextDocumentParams) {
-        let _ = client;
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didClose notification, but it is not implemented");
     }

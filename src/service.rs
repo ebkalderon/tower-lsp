@@ -16,7 +16,7 @@ use log::info;
 use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
-use super::delegate::{Delegate, LanguageServerCore, MessageSender, MessageStream};
+use super::delegate::{Client, Delegate, LanguageServerCore, MessageSender, MessageStream};
 use super::message::Incoming;
 use super::LanguageServer;
 
@@ -55,20 +55,22 @@ pub struct LspService {
 impl LspService {
     /// Creates a new `LspService` with the given server backend, also returning a stream of
     /// notifications from the server back to the client.
-    pub fn new<T>(server: T) -> (Self, MessageStream)
+    pub fn new<T, F>(init: F) -> (Self, MessageStream)
     where
+        F: FnOnce(Client) -> T,
         T: LanguageServer,
     {
-        Self::with_handler(server, IoHandler::new())
+        Self::with_handler(init, IoHandler::new())
     }
 
     /// Creates a new `LspService` with the given server backend a custom `IoHandler`.
-    pub fn with_handler<T, U>(server: T, handler: U) -> (Self, MessageStream)
+    pub fn with_handler<T, U, F>(init: F, handler: U) -> (Self, MessageStream)
     where
+        F: FnOnce(Client) -> T,
         T: LanguageServer,
         U: Into<IoHandler>,
     {
-        let (delegate, messages, sender) = Delegate::new(server);
+        let (delegate, messages, sender) = Delegate::new(init);
 
         let mut handler = handler.into();
         handler.extend_with(delegate.to_delegate());
@@ -133,7 +135,6 @@ mod tests {
     use tower_test::mock::Spawn;
 
     use super::*;
-    use crate::Client;
 
     const INITIALIZE_REQUEST: &str =
         r#"{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1}"#;
@@ -143,7 +144,7 @@ mod tests {
 
     #[async_trait]
     impl LanguageServer for Mock {
-        async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+        async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 
@@ -154,7 +155,7 @@ mod tests {
 
     #[tokio::test]
     async fn initializes_only_once() {
-        let (service, _) = LspService::new(Mock::default());
+        let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
 
         let initialize: Incoming = INITIALIZE_REQUEST.parse().unwrap();
@@ -169,7 +170,7 @@ mod tests {
 
     #[tokio::test]
     async fn exit_notification() {
-        let (service, _) = LspService::new(Mock::default());
+        let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
 
         let initialized: Incoming = r#"{"jsonrpc":"2.0","method":"initialized"}"#.parse().unwrap();
