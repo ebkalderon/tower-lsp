@@ -43,17 +43,19 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-#[derive(Debug, Default)]
-struct Backend;
+#[derive(Debug)]
+struct Backend {
+    client: Client,
+}
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
     }
 
-    async fn initialized(&self, client: &Client, _: InitializedParams) {
-        client.log_message(MessageType::Info, "server initialized!");
+    async fn initialized(&self, _: InitializedParams) {
+        self.client.log_message(MessageType::Info, "server initialized!");
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -66,7 +68,7 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, messages) = LspService::new(Backend::default());
+    let (service, messages) = LspService::new(|client| Backend { client });
     Server::new(stdin, stdout)
         .interleave(messages)
         .serve(service)

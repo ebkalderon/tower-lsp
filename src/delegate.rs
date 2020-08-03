@@ -177,28 +177,28 @@ pub trait LanguageServerCore {
 /// Wraps the language server backend and provides a `Printer` for sending notifications.
 #[derive(Debug)]
 pub struct Delegate<T> {
-    // FIXME: Investigate whether `Arc` from `server` and `client` can be removed once we switch
-    // to `jsonrpsee`. These are currently necessary to resolve lifetime interaction issues between
-    // `async-trait`, `jsonrpc-core`, and `.compat()`.
+    // FIXME: Investigate whether `Arc` from `server` can be removed once we switch to `jsonrpsee`.
+    // This is currently necessary to resolve lifetime interaction issues between `async-trait`,
+    // `jsonrpc-core`, and `.compat()`.
     //
     // https://github.com/ebkalderon/tower-lsp/issues/58
     server: Arc<T>,
-    client: Client,
     initialized: Arc<AtomicBool>,
 }
 
 impl<T: LanguageServer> Delegate<T> {
     /// Creates a new `Delegate`, a stream of messages from the server to the client, and a
     /// sender to route responses from the client back to the server.
-    pub fn new(server: T) -> (Self, MessageStream, MessageSender) {
+    pub fn new<F: FnOnce(Client) -> T>(init: F) -> (Self, MessageStream, MessageSender) {
         let (request_tx, request_rx) = mpsc::channel(1);
         let messages = MessageStream(request_rx);
 
         let (response_tx, response_rx) = mpsc::channel(1);
         let initialized = Arc::new(AtomicBool::new(false));
+        let client = Client::new(request_tx, response_rx, initialized.clone());
+
         let delegate = Delegate {
-            server: Arc::new(server),
-            client: Client::new(request_tx, response_rx, initialized.clone()),
+            server: Arc::new(init(client)),
             initialized,
         };
 
@@ -214,8 +214,7 @@ macro_rules! delegate_notification {
                     Err(err) => error!("invalid parameters for `{}`: {:?}", <$notif>::METHOD, err),
                     Ok(params) => {
                         let server = self.server.clone();
-                        let client = self.client.clone();
-                        tokio::spawn(async move { server.$name(&client, params).await });
+                        tokio::spawn(async move { server.$name(params).await });
                     }
                 }
             }
@@ -251,10 +250,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         if !self.initialized.load(Ordering::SeqCst) {
             let server = self.server.clone();
             let initialized = self.initialized.clone();
-            let client = self.client.clone();
             let fut = async move {
                 let params = params.parse()?;
-                let response = server.initialize(&client, params).await?;
+                let response = server.initialize(params).await?;
                 info!("language server initialized");
                 initialized.store(true, Ordering::SeqCst);
                 Ok(response)
@@ -281,26 +279,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
     delegate_notification!(did_change_configuration -> DidChangeConfiguration);
     delegate_notification!(did_change_watched_files -> DidChangeWatchedFiles);
     delegate_request!(symbol -> WorkspaceSymbol);
-
-    fn execute_command(&self, params: Params) -> BoxFuture<Option<Value>> {
-        if self.initialized.load(Ordering::SeqCst) {
-            let server = self.server.clone();
-            let client = self.client.clone();
-            let fut = async move {
-                match params.parse() {
-                    Ok(params) => server.execute_command(&client, params).await,
-                    Err(err) => Err(Error::invalid_params_with_details(
-                        "invalid parameters",
-                        err,
-                    )),
-                }
-            };
-
-            fut.boxed().compat()
-        } else {
-            future::err(not_initialized_error()).boxed().compat()
-        }
-    }
+    delegate_request!(execute_command -> ExecuteCommand);
 
     delegate_notification!(did_open -> DidOpenTextDocument);
     delegate_notification!(did_change -> DidChangeTextDocument);

@@ -28,12 +28,14 @@ impl Notification for CustomNotification {
     const METHOD: &'static str = "custom/notification";
 }
 
-#[derive(Debug, Default)]
-struct Backend;
+#[derive(Debug)]
+struct Backend {
+    client: Client,
+}
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: &Client, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -50,16 +52,12 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn execute_command(
-        &self,
-        client: &Client,
-        params: ExecuteCommandParams,
-    ) -> Result<Option<Value>> {
+    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         if params.command == "custom.notification" {
-            client.send_custom_notification::<CustomNotification>(CustomNotificationParams::new(
-                "Hello", "Message",
-            ));
-            client.log_message(
+            self.client.send_custom_notification::<CustomNotification>(
+                CustomNotificationParams::new("Hello", "Message"),
+            );
+            self.client.log_message(
                 MessageType::Info,
                 format!("Command executed with params: {:?}", params),
             );
@@ -77,7 +75,7 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, messages) = LspService::new(Backend::default());
+    let (service, messages) = LspService::new(|client| Backend { client });
     Server::new(stdin, stdout)
         .interleave(messages)
         .serve(service)
