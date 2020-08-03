@@ -34,7 +34,7 @@ consists of three parts:
 * The asynchronous `LspService` delegate which wraps your language server
   implementation and defines the behavior of the protocol.
 * A `Server` which spawns the `LspService` and processes requests and responses
-  over stdin and stdout.
+  over `stdio` or TCP.
 
 ## Example
 
