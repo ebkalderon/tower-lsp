@@ -7,3 +7,5 @@ pub use jsonrpc_core::request::{MethodCall, Notification};
 pub use jsonrpc_core::response::{Failure, Output, Success};
 pub use jsonrpc_core::version::Version;
 pub use jsonrpc_core::Result;
+
+mod error;
