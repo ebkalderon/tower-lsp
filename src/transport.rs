@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc;
-use futures::future::{self, FutureExt};
+use futures::future::{self, FutureExt, TryFutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{self, Empty, Stream, StreamExt};
 use log::error;
@@ -118,17 +118,10 @@ where
                     return;
                 }
 
-                let fut = service.call(request);
-                let response_fut = async move {
-                    match fut.await {
-                        Ok(Some(res)) => Some(res),
-                        Ok(None) => None,
-                        Err(err) => {
-                            error!("{}", display_sources(err.into().as_ref()));
-                            None
-                        }
-                    }
-                };
+                let response_fut = service.call(request).unwrap_or_else(|err| {
+                    error!("{}", display_sources(err.into().as_ref()));
+                    None
+                });
 
                 sender.send(response_fut).await.unwrap();
             }
