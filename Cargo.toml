@@ -19,8 +19,6 @@ auto_impl = "0.4"
 bytes = "0.5"
 dashmap = "3.5.1"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
-jsonrpc-core = "14.0"
-jsonrpc-derive = "14.0"
 log = "0.4"
 lsp-types = "0.79"
 nom = { version = "5.1", default-features = false, features = ["std"] }
