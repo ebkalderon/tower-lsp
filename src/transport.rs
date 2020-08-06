@@ -5,16 +5,16 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc;
-use futures::future::{self, FutureExt, TryFutureExt};
+use futures::future::{self, Either, FutureExt, TryFutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{self, Empty, Stream, StreamExt};
-use log::error;
+use log::{error, trace};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tower_service::Service;
 
 use super::codec::LanguageServerCodec;
-use super::message::Incoming;
+use super::jsonrpc::{self, Incoming, Outgoing, Response};
 
 /// Server for processing requests and responses on standard I/O or TCP.
 #[derive(Debug)]
@@ -70,12 +70,12 @@ impl<I, O, S> Server<I, O, S>
 where
     I: AsyncRead + Unpin,
     O: AsyncWrite,
-    S: Stream<Item = String>,
+    S: Stream<Item = Outgoing>,
 {
     /// Interleaves the given stream of messages into `stdout` together with the responses.
     pub fn interleave<T>(self, stream: T) -> Server<I, O, T>
     where
-        T: Stream<Item = String>,
+        T: Stream<Item = Outgoing>,
     {
         Server {
             stdin: self.stdin,
@@ -87,7 +87,7 @@ where
     /// Spawns the service with messages read through `stdin` and responses written to `stdout`.
     pub async fn serve<T>(self, mut service: T)
     where
-        T: Service<Incoming, Response = Option<String>> + Send + 'static,
+        T: Service<Incoming, Response = Option<Outgoing>> + Send + 'static,
         T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send,
     {
@@ -99,14 +99,24 @@ where
         let interleave = self.interleave.fuse();
 
         let printer = stream::select(responses, interleave)
-            .map(Ok)
+            .map(|msg| Ok(msg.to_string()))
             .forward(framed_stdout.sink_map_err(|e| error!("failed to encode response: {}", e)))
             .map(|_| ());
 
         let reader = async move {
             while let Some(line) = framed_stdin.next().await {
                 let request = match line {
-                    Ok(req) => Incoming::from(req),
+                    Ok(line) => match serde_json::from_str(&line) {
+                        Ok(json) => json,
+                        Err(err) => {
+                            error!("failed to parse JSON payload: {}", err);
+                            trace!("raw message payload: {:?}", line);
+                            let res = Response::error(None, jsonrpc::Error::parse_error());
+                            let response_fut = future::ready(Some(Outgoing::Response(res)));
+                            sender.send(Either::Right(response_fut)).await.unwrap();
+                            continue;
+                        }
+                    },
                     Err(err) => {
                         error!("failed to decode message: {}", err);
                         continue;
@@ -123,7 +133,7 @@ where
                     None
                 });
 
-                sender.send(response_fut).await.unwrap();
+                sender.send(Either::Left(response_fut)).await.unwrap();
             }
         };
 
@@ -141,7 +151,7 @@ fn display_sources(error: &dyn Error) -> String {
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct Nothing(Empty<String>);
+pub struct Nothing(Empty<Outgoing>);
 
 impl Nothing {
     fn new() -> Self {
@@ -150,7 +160,7 @@ impl Nothing {
 }
 
 impl Stream for Nothing {
-    type Item = String;
+    type Item = Outgoing;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let stream = &mut self.as_mut().0;
@@ -167,11 +177,14 @@ mod tests {
 
     use super::*;
 
+    const REQUEST: &'static str = r#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#;
+    const RESPONSE: &'static str = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
+
     #[derive(Debug)]
     struct MockService;
 
     impl Service<Incoming> for MockService {
-        type Response = Option<String>;
+        type Response = Option<Outgoing>;
         type Error = String;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -179,14 +192,18 @@ mod tests {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, request: Incoming) -> Self::Future {
-            future::ok(Some(request.to_string()))
+        fn call(&mut self, _: Incoming) -> Self::Future {
+            let value = serde_json::from_str(RESPONSE).unwrap();
+            future::ok(Some(Outgoing::Response(value)))
         }
     }
 
     fn mock_request() -> Vec<u8> {
-        let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#;
-        format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes()
+        format!("Content-Length: {}\r\n\r\n{}", REQUEST.len(), REQUEST).into_bytes()
+    }
+
+    fn mock_response() -> Vec<u8> {
+        format!("Content-Length: {}\r\n\r\n{}", RESPONSE.len(), RESPONSE).into_bytes()
     }
 
     fn mock_stdio() -> (Cursor<Vec<u8>>, Vec<u8>) {
@@ -200,13 +217,13 @@ mod tests {
             .serve(MockService)
             .await;
 
-        assert_eq!(stdin.position(), 76);
-        assert_eq!(stdout, mock_request());
+        assert_eq!(stdin.position(), 80);
+        assert_eq!(stdout, mock_response());
     }
 
     #[tokio::test]
     async fn interleaves_messages() {
-        let message = r#"{"jsonrpc":"2.0","method":"initialized","params":null}"#.to_owned();
+        let message = Outgoing::Response(serde_json::from_str(RESPONSE).unwrap());
         let messages = stream::iter(vec![message]);
 
         let (mut stdin, mut stdout) = mock_stdio();
@@ -215,8 +232,24 @@ mod tests {
             .serve(MockService)
             .await;
 
-        assert_eq!(stdin.position(), 76);
-        let output: Vec<_> = mock_request().into_iter().chain(mock_request()).collect();
+        assert_eq!(stdin.position(), 80);
+        let output: Vec<_> = mock_response().into_iter().chain(mock_response()).collect();
+        assert_eq!(stdout, output);
+    }
+
+    #[tokio::test]
+    async fn handles_invalid_json() {
+        let invalid = r#"{"jsonrpc":"2.0","method":"#;
+        let message = format!("Content-Length: {}\r\n\r\n{}", invalid.len(), invalid).into_bytes();
+        let (mut stdin, mut stdout) = (Cursor::new(message), Vec::new());
+
+        Server::new(&mut stdin, &mut stdout)
+            .serve(MockService)
+            .await;
+
+        assert_eq!(stdin.position(), 48);
+        let err = r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":null}"#;
+        let output = format!("Content-Length: {}\r\n\r\n{}", err.len(), err).into_bytes();
         assert_eq!(stdout, output);
     }
 }
