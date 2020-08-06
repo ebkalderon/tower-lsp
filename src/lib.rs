@@ -91,7 +91,6 @@ pub mod jsonrpc;
 
 mod client;
 mod codec;
-mod message;
 mod service;
 mod transport;
 
