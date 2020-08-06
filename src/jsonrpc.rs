@@ -5,6 +5,7 @@ pub use jsonrpc_core::request::{MethodCall, Notification};
 pub use jsonrpc_core::response::{Failure, Output, Success};
 
 pub use self::error::{Error, ErrorCode};
+pub(crate) use self::pending::{ClientRequests, ServerRequests};
 
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod error;
+mod pending;
 
 /// A specialized [`Result`] error type for JSON-RPC handlers.
 ///
