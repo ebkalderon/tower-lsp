@@ -11,6 +11,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use serde::de::{self, Deserializer};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 mod error;
 
@@ -36,6 +37,70 @@ impl Display for Id {
             Id::String(id) => Debug::fmt(id, f),
         }
     }
+}
+
+/// A successful or failed JSON-RPC response.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct Response {
+    jsonrpc: Version,
+    #[serde(flatten)]
+    kind: ResponseKind,
+}
+
+impl Response {
+    /// Creates a new successful response from a request ID and `Error` object.
+    #[inline]
+    pub const fn ok(id: Id, result: Value) -> Self {
+        Response {
+            jsonrpc: Version,
+            kind: ResponseKind::Ok { result, id },
+        }
+    }
+
+    /// Creates a new error response from a request ID and `Error` object.
+    #[inline]
+    pub const fn error(id: Option<Id>, error: Error) -> Self {
+        Response {
+            jsonrpc: Version,
+            kind: ResponseKind::Err { error, id },
+        }
+    }
+
+    /// Creates a new response from a request ID and either an `Ok(Value)` or `Err(Error)` body.
+    #[inline]
+    pub fn from_parts(id: Id, body: Result<Value>) -> Self {
+        match body {
+            Ok(result) => Response::ok(id, result),
+            Err(error) => Response::error(Some(id), error),
+        }
+    }
+
+    /// Splits the response into a request ID paired with either an `Ok(Value)` or `Err(Error)` to
+    /// signify whether the response is a success or failure.
+    #[inline]
+    pub fn into_parts(self) -> (Option<Id>, Result<Value>) {
+        match self.kind {
+            ResponseKind::Ok { id, result } => (Some(id), Ok(result)),
+            ResponseKind::Err { id, error } => (id, Err(error)),
+        }
+    }
+
+    /// Returns the corresponding request ID, if any.
+    #[inline]
+    pub fn id(&self) -> Option<&Id> {
+        match self.kind {
+            ResponseKind::Ok { ref id, .. } => Some(id),
+            ResponseKind::Err { ref id, .. } => id.as_ref(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+enum ResponseKind {
+    Ok { result: Value, id: Id },
+    Err { error: Error, id: Option<Id> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
