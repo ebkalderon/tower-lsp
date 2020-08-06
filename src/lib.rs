@@ -68,15 +68,14 @@
 
 pub extern crate lsp_types;
 
-pub use self::delegate::{Client, MessageStream};
-pub use self::message::Incoming;
-pub use self::service::{ExitedError, LspService};
+pub use self::client::Client;
+pub use self::service::{ExitedError, LspService, MessageStream};
 pub use self::transport::Server;
+
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
 use auto_impl::auto_impl;
-use jsonrpc_core::{Error, Result};
 use log::{error, warn};
 use lsp_types::request::{
     GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
@@ -84,11 +83,14 @@ use lsp_types::request::{
 };
 use lsp_types::*;
 use serde_json::Value;
+use tower_lsp_macros::rpc;
+
+use self::jsonrpc::{Error, Result};
 
 pub mod jsonrpc;
 
+mod client;
 mod codec;
-mod delegate;
 mod message;
 mod service;
 mod transport;
@@ -99,8 +101,9 @@ mod transport;
 /// safe and easily testable way without exposing the low-level implementation details.
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
+#[rpc]
 #[async_trait]
-#[auto_impl(Box)]
+#[auto_impl(Arc, Box)]
 pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialize`] request is the first request sent from the client to the server.
     ///
@@ -108,6 +111,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This method is guaranteed to only execute once. If the client sends this request to the
     /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
+    #[rpc(name = "initialize")]
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
@@ -117,6 +121,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialized
+    #[rpc(name = "initialized")]
     async fn initialized(&self, params: InitializedParams) {
         let _ = params;
     }
@@ -128,6 +133,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#shutdown
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#exit
+    #[rpc(name = "shutdown")]
     async fn shutdown(&self) -> Result<()>;
 
     /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
@@ -144,6 +150,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeWorkspaceFolders
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "workspace/didChangeWorkspaceFolders")]
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
@@ -153,6 +160,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// to signal the change of configuration settings.
     ///
     /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
+    #[rpc(name = "workspace/didChangeConfiguration")]
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         let _ = params;
         warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
@@ -167,6 +175,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_didChangeConfiguration
     /// [`initialized`]: #tymethod.initialized
+    #[rpc(name = "workspace/didChangeWatchedFiles")]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
@@ -176,6 +185,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// symbols matching the given query string.
     ///
     /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_symbol
+    #[rpc(name = "workspace/symbol")]
     async fn symbol(
         &self,
         params: WorkspaceSymbolParams,
@@ -192,6 +202,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// the workspace using `Client::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
+    #[rpc(name = "workspace/executeCommand")]
     async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         let _ = params;
         error!("Got a workspace/executeCommand request, but it is not implemented");
@@ -206,6 +217,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     ///
     /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didOpen
+    #[rpc(name = "textDocument/didOpen")]
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didOpen notification, but it is not implemented");
@@ -218,6 +230,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document for the server to interpret.
     ///
     /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didChange
+    #[rpc(name = "textDocument/didChange")]
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didChange notification, but it is not implemented");
@@ -227,6 +240,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document is actually saved.
     ///
     /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_willSave
+    #[rpc(name = "textDocument/willSave")]
     async fn will_save(&self, params: WillSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/willSave notification, but it is not implemented");
@@ -240,6 +254,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// Please note that clients might drop results if computing the text edits took too long or if
     /// a server constantly fails on this request. This is done to keep the save fast and reliable.
+    #[rpc(name = "textDocument/willSaveWaitUntil")]
     async fn will_save_wait_until(
         &self,
         params: WillSaveTextDocumentParams,
@@ -253,6 +268,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// document was saved in the client.
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didSave
+    #[rpc(name = "textDocument/didSave")]
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didSave notification, but it is not implemented");
@@ -265,6 +281,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// URI is a file URI, the truth now exists on disk).
     ///
     /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_didClose
+    #[rpc(name = "textDocument/didClose")]
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didClose notification, but it is not implemented");
@@ -278,6 +295,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// when a completion item is selected in the user interface.
     ///
     /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion
+    #[rpc(name = "textDocument/completion")]
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let _ = params;
         error!("Got a textDocument/completion request, but it is not implemented");
@@ -288,6 +306,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// additional information for a given completion item.
     ///
     /// [`completionItem/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#completionItem_resolve
+    #[rpc(name = "completionItem/resolve")]
     async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
         let _ = params;
         error!("Got a completionItem/resolve request, but it is not implemented");
@@ -301,6 +320,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// documentation for the symbol at the given text document position.
     ///
     /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
+    #[rpc(name = "textDocument/hover")]
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let _ = params;
         error!("Got a textDocument/hover request, but it is not implemented");
@@ -311,6 +331,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// signature information at a given cursor position.
     ///
     /// [`textDocument/signatureHelp`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_signatureHelp
+    #[rpc(name = "textDocument/signatureHelp")]
     async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
         let _ = params;
         error!("Got a textDocument/signatureHelp request, but it is not implemented");
@@ -336,6 +357,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "textDocument/declaration")]
     async fn goto_declaration(
         &self,
         params: GotoDeclarationParams,
@@ -362,6 +384,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "textDocument/definition")]
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
@@ -390,6 +413,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "textDocument/typeDefinition")]
     async fn goto_type_definition(
         &self,
         params: GotoTypeDefinitionParams,
@@ -418,6 +442,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "textDocument/implementation")]
     async fn goto_implementation(
         &self,
         params: GotoImplementationParams,
@@ -431,6 +456,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// project-wide references for the symbol denoted by the given text document position.
     ///
     /// [`textDocument/references`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_references
+    #[rpc(name = "textDocument/references")]
     async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
         let _ = params;
         error!("Got a textDocument/references request, but it is not implemented");
@@ -447,6 +473,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// be more fuzzy.
     ///
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight
+    #[rpc(name = "textDocument/documentHighlight")]
     async fn document_highlight(
         &self,
         params: DocumentHighlightParams,
@@ -470,6 +497,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentSymbol
     /// [`DocumentSymbolResponse::Flat`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Flat
     /// [`DocumentSymbolResponse::Nested`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Nested
+    #[rpc(name = "textDocument/documentSymbol")]
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
@@ -510,6 +538,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeAction
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand
+    #[rpc(name = "textDocument/codeAction")]
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let _ = params;
         error!("Got a textDocument/codeAction request, but it is not implemented");
@@ -520,6 +549,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// lenses for a given text document.
     ///
     /// [`textDocument/codeLens`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeLens
+    #[rpc(name = "textDocument/codeLens")]
     async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
         let _ = params;
         error!("Got a textDocument/codeLens request, but it is not implemented");
@@ -530,6 +560,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// command for a given code lens item.
     ///
     /// [`codeLens/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#codeLens_resolve
+    #[rpc(name = "codeLens/resolve")]
     async fn code_lens_resolve(&self, params: CodeLens) -> Result<CodeLens> {
         let _ = params;
         error!("Got a codeLens/resolve request, but it is not implemented");
@@ -555,6 +586,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```
     ///
     /// [`initialize`]: #tymethod.initialize
+    #[rpc(name = "textDocument/documentLink")]
     async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
         let _ = params;
         error!("Got a textDocument/documentLink request, but it is not implemented");
@@ -568,6 +600,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// resource, like another text document or a web site.
     ///
     /// [`documentLink/resolve`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#documentLink_resolve
+    #[rpc(name = "documentLink/resolve")]
     async fn document_link_resolve(&self, params: DocumentLink) -> Result<DocumentLink> {
         let _ = params;
         error!("Got a documentLink/resolve request, but it is not implemented");
@@ -588,6 +621,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// # Compatibility
     ///
     /// This request was introduced in specification version 3.6.0.
+    #[rpc(name = "textDocument/documentColor")]
     async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
         let _ = params;
         error!("Got a textDocument/documentColor request, but it is not implemented");
@@ -610,6 +644,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// resolve request for the [`textDocument/documentColor`] request.
     ///
     /// [`textDocument/documentColor`]: #tymethod.document_color
+    #[rpc(name = "textDocument/colorPresentation")]
     async fn color_presentation(
         &self,
         params: ColorPresentationParams,
@@ -623,6 +658,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// whole document.
     ///
     /// [`textDocument/formatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_formatting
+    #[rpc(name = "textDocument/formatting")]
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
         let _ = params;
         error!("Got a textDocument/formatting request, but it is not implemented");
@@ -633,6 +669,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// format a given range in a document.
     ///
     /// [`textDocument/rangeFormatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_rangeFormatting
+    #[rpc(name = "textDocument/rangeFormatting")]
     async fn range_formatting(
         &self,
         params: DocumentRangeFormattingParams,
@@ -646,6 +683,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// format parts of the document during typing.
     ///
     /// [`textDocument/onTypeFormatting`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_onTypeFormatting
+    #[rpc(name = "textDocument/onTypeFormatting")]
     async fn on_type_formatting(
         &self,
         params: DocumentOnTypeFormattingParams,
@@ -660,6 +698,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// symbol.
     ///
     /// [`textDocument/rename`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_rename
+    #[rpc(name = "textDocument/rename")]
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         let _ = params;
         error!("Got a textDocument/rename request, but it is not implemented");
@@ -674,6 +713,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// # Compatibility
     ///
     /// This request was introduced in specification version 3.12.0.
+    #[rpc(name = "textDocument/prepareRename")]
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
@@ -691,6 +731,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// # Compatibility
     ///
     /// This request was introduced in specification version 3.10.0.
+    #[rpc(name = "textDocument/foldingRange")]
     async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
         let _ = params;
         error!("Got a textDocument/foldingRange request, but it is not implemented");
@@ -709,6 +750,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// # Compatibility
     ///
     /// This request was introduced in specification version 3.15.0.
+    #[rpc(name = "textDocument/selectionRange")]
     async fn selection_range(
         &self,
         params: SelectionRangeParams,

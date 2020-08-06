@@ -11,13 +11,14 @@ documentation = "https://docs.rs/tower-lsp/"
 readme = "README.md"
 categories = ["asynchronous"]
 keywords = ["language-server", "lsp", "tower"]
+exclude = ["./tower-lsp-macros"]
 
 [dependencies]
 async-trait = "0.1"
 auto_impl = "0.4"
 bytes = "0.5"
 dashmap = "3.5.1"
-futures = { version = "0.3", features = ["compat"] }
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 jsonrpc-core = "14.0"
 jsonrpc-derive = "14.0"
 log = "0.4"
@@ -27,9 +28,14 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "0.2", features = ["rt-core"] }
 tokio-util = { version = "0.3", features = ["codec"] }
+tower-lsp-macros = { version = "0.1", path = "./tower-lsp-macros" }
 tower-service = "0.3"
 
 [dev-dependencies]
 env_logger = "0.7"
 tokio = { version = "0.2", features = ["io-std", "io-util", "macros", "net", "test-util"] }
 tower-test = "0.3"
+
+[workspace]
+members = [".", "./tower-lsp-macros"]
+default-members = ["."]
