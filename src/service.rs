@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc::{self, Receiver};
+use futures::stream::FusedStream;
 use futures::{future, FutureExt, Stream};
 use log::{error, trace};
 use tower_service::Service;
@@ -40,6 +41,13 @@ impl Stream for MessageStream {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let recv = &mut self.as_mut().0;
         Pin::new(recv).poll_next(cx)
+    }
+}
+
+impl FusedStream for MessageStream {
+    #[inline]
+    fn is_terminated(&self) -> bool {
+        self.0.is_terminated()
     }
 }
 
