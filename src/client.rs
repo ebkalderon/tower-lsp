@@ -13,7 +13,7 @@ use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::jsonrpc::{self, ClientRequests, Error, ErrorCode, Id, Outgoing, Result, Version};
+use super::jsonrpc::{self, ClientRequest, ClientRequests, Error, ErrorCode, Id, Outgoing, Result};
 
 #[derive(Debug)]
 struct ClientInner {
@@ -253,7 +253,7 @@ impl Client {
         R: Request,
     {
         let id = self.inner.request_id.fetch_add(1, Ordering::Relaxed);
-        let message = Outgoing::Request(make_request::<R>(id, params));
+        let message = Outgoing::Request(ClientRequest::request::<R>(id, params));
 
         if self.inner.sender.clone().send(message).await.is_err() {
             error!("failed to send request");
@@ -276,7 +276,7 @@ impl Client {
         N: Notification,
     {
         let mut sender = self.inner.sender.clone();
-        let message = Outgoing::Request(make_notification::<N>(params));
+        let message = Outgoing::Request(ClientRequest::notification::<N>(params));
         tokio::spawn(async move {
             if sender.send(message).await.is_err() {
                 error!("failed to send notification")
@@ -292,7 +292,7 @@ impl Client {
             self.send_request::<R>(params).await
         } else {
             let id = self.inner.request_id.fetch_add(1, Ordering::Relaxed);
-            let msg = make_request::<R>(id, params);
+            let msg = ClientRequest::request::<R>(id, params);
             trace!("server not initialized, supressing message: {}", msg);
             Err(jsonrpc::not_initialized_error())
         }
@@ -305,35 +305,10 @@ impl Client {
         if self.inner.initialized.load(Ordering::SeqCst) {
             self.send_notification::<N>(params);
         } else {
-            let msg = make_notification::<N>(params);
+            let msg = ClientRequest::notification::<N>(params);
             trace!("server not initialized, supressing message: {}", msg);
         }
     }
-}
-
-/// Constructs a JSON-RPC request from its corresponding LSP type.
-fn make_request<R>(id: u64, params: R::Params) -> Value
-where
-    R: Request,
-{
-    serde_json::json!({
-        "jsonrpc": Version,
-        "id": Id::Number(id),
-        "method": R::METHOD,
-        "params": params,
-    })
-}
-
-/// Constructs a JSON-RPC notification from its corresponding LSP type.
-fn make_notification<N>(params: N::Params) -> Value
-where
-    N: Notification,
-{
-    serde_json::json!({
-        "jsonrpc": Version,
-        "method": N::METHOD,
-        "params": params,
-    })
 }
 
 #[cfg(test)]
@@ -344,7 +319,7 @@ mod tests {
 
     use super::*;
 
-    async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: Outgoing) {
+    async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: ClientRequest) {
         let (request_tx, request_rx) = mpsc::channel(1);
         let pending = Arc::new(ClientRequests::new());
 
@@ -352,16 +327,16 @@ mod tests {
         f(client);
 
         let messages: Vec<_> = request_rx.collect().await;
-        assert_eq!(messages, vec![expected]);
+        assert_eq!(messages, vec![Outgoing::Request(expected)]);
     }
 
     #[tokio::test]
     async fn log_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
-        let expected = Outgoing::Request(make_notification::<LogMessage>(LogMessageParams {
+        let expected = ClientRequest::notification::<LogMessage>(LogMessageParams {
             typ,
             message: message.clone(),
-        }));
+        });
 
         assert_client_messages(|p| p.log_message(typ, message), expected).await;
     }
@@ -369,10 +344,10 @@ mod tests {
     #[tokio::test]
     async fn show_message() {
         let (typ, message) = (MessageType::Log, "foo bar".to_owned());
-        let expected = Outgoing::Request(make_notification::<ShowMessage>(ShowMessageParams {
+        let expected = ClientRequest::notification::<ShowMessage>(ShowMessageParams {
             typ,
             message: message.clone(),
-        }));
+        });
 
         assert_client_messages(|p| p.show_message(typ, message), expected).await;
     }
@@ -380,20 +355,20 @@ mod tests {
     #[tokio::test]
     async fn telemetry_event() {
         let null = json!(null);
-        let expected = Outgoing::Request(make_notification::<TelemetryEvent>(null.clone()));
+        let expected = ClientRequest::notification::<TelemetryEvent>(null.clone());
         assert_client_messages(|p| p.telemetry_event(null), expected).await;
 
         let array = json!([1, 2, 3]);
-        let expected = Outgoing::Request(make_notification::<TelemetryEvent>(array.clone()));
+        let expected = ClientRequest::notification::<TelemetryEvent>(array.clone());
         assert_client_messages(|p| p.telemetry_event(array), expected).await;
 
         let object = json!({});
-        let expected = Outgoing::Request(make_notification::<TelemetryEvent>(object.clone()));
+        let expected = ClientRequest::notification::<TelemetryEvent>(object.clone());
         assert_client_messages(|p| p.telemetry_event(object), expected).await;
 
         let anything_else = json!("hello");
         let wrapped = Value::Array(vec![anything_else.clone()]);
-        let expected = Outgoing::Request(make_notification::<TelemetryEvent>(wrapped));
+        let expected = ClientRequest::notification::<TelemetryEvent>(wrapped);
         assert_client_messages(|p| p.telemetry_event(anything_else), expected).await;
     }
 
@@ -403,7 +378,7 @@ mod tests {
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);
-        let expected = Outgoing::Request(make_notification::<PublishDiagnostics>(params));
+        let expected = ClientRequest::notification::<PublishDiagnostics>(params);
 
         assert_client_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected).await;
     }
