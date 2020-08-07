@@ -126,10 +126,16 @@ impl Decoder for LanguageServerCodec {
             Err(Err::Incomplete(_)) => {
                 return Ok(None);
             }
-            Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => match err {
-                ErrorKind::Digit | ErrorKind::MapRes => return Err(ParseError::InvalidLength),
-                ErrorKind::Char | ErrorKind::IsNot => return Err(ParseError::InvalidType),
-                _ => return Err(ParseError::MissingHeader),
+            Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => loop {
+                use ParseError::*;
+                match parse_message(&src) {
+                    Err(_) if !src.is_empty() => src.advance(1),
+                    _ => match err {
+                        ErrorKind::Digit | ErrorKind::MapRes => return Err(InvalidLength),
+                        ErrorKind::Char | ErrorKind::IsNot => return Err(InvalidType),
+                        _ => return Err(MissingHeader),
+                    },
+                }
             },
         };
 
@@ -177,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn skip_encoding_empty_message() {
+    fn skips_encoding_empty_message() {
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::new();
         codec.encode("".to_string(), &mut buffer).unwrap();
@@ -193,6 +199,24 @@ mod tests {
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, Some(decoded));
+    }
+
+    #[test]
+    fn recovers_from_parse_error() {
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
+        let encoded = format!("Content-Length: {}\r\n\r\n{}", decoded.len(), decoded);
+        let mixed = format!("1234567890abcdefgh{}", encoded);
+
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::from(mixed.as_str());
+
+        match codec.decode(&mut buffer) {
+            Err(ParseError::MissingHeader) => {}
+            other => panic!("expected `Err(ParseError::MissingHeader)`, got {:?}", other),
+        }
+
         let message = codec.decode(&mut buffer).unwrap();
         assert_eq!(message, Some(decoded));
     }
