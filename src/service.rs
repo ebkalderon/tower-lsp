@@ -74,6 +74,7 @@ pub struct LspService {
     pending_server: ServerRequests,
     pending_client: Arc<ClientRequests>,
     initialized: Arc<AtomicBool>,
+    shut_down: AtomicBool,
     stopped: AtomicBool,
 }
 
@@ -97,6 +98,7 @@ impl LspService {
             pending_server: ServerRequests::new(),
             pending_client,
             initialized,
+            shut_down: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
         };
 
@@ -124,8 +126,9 @@ impl Service<Incoming> for LspService {
             match request {
                 Incoming::Request(req) => generated_impl::handle_request(
                     self.server.clone(),
+                    &self.initialized,
+                    &self.shut_down,
                     &self.stopped,
-                    self.initialized.clone(),
                     &self.pending_server,
                     req,
                 ),
@@ -161,6 +164,7 @@ impl Debug for LspService {
             .field("pending_server", &self.pending_server)
             .field("pending_client", &self.pending_client)
             .field("initialized", &self.initialized)
+            .field("shut_down", &self.shut_down)
             .field("stopped", &self.stopped)
             .finish()
     }
@@ -177,6 +181,9 @@ mod tests {
 
     const INITIALIZE_REQUEST: &str =
         r#"{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1}"#;
+    const INITIALIZED_NOTIF: &str = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#;
+    const SHUTDOWN_REQUEST: &str = r#"{"jsonrpc":"2.0","method":"shutdown","id":1}"#;
+    const EXIT_NOTIF: &str = r#"{"jsonrpc":"2.0","method":"exit"}"#;
 
     #[derive(Debug, Default)]
     struct Mock;
@@ -210,17 +217,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn refuses_requests_after_shutdown() {
+        let (service, _) = LspService::new(|_| Mock::default());
+        let mut service = Spawn::new(service);
+
+        let initialize: Incoming = serde_json::from_str(INITIALIZE_REQUEST).unwrap();
+        let raw = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
+        let ok = serde_json::from_str(raw).unwrap();
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(initialize.clone()).await, Ok(Some(ok)));
+
+        let shutdown: Incoming = serde_json::from_str(SHUTDOWN_REQUEST).unwrap();
+        let raw = r#"{"jsonrpc":"2.0","result":null,"id":1}"#;
+        let ok = serde_json::from_str(raw).unwrap();
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(shutdown.clone()).await, Ok(Some(ok)));
+
+        let raw = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":1}"#;
+        let err = serde_json::from_str(raw).unwrap();
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(shutdown).await, Ok(Some(err)));
+    }
+
+    #[tokio::test]
     async fn exit_notification() {
         let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
 
-        let initialized: Incoming =
-            serde_json::from_str(r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#)
-                .unwrap();
+        let initialized: Incoming = serde_json::from_str(INITIALIZED_NOTIF).unwrap();
         assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
         assert_eq!(service.call(initialized.clone()).await, Ok(None));
 
-        let exit: Incoming = serde_json::from_str(r#"{"jsonrpc":"2.0","method":"exit"}"#).unwrap();
+        let exit: Incoming = serde_json::from_str(EXIT_NOTIF).unwrap();
         assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
         assert_eq!(service.call(exit).await, Ok(None));
 
