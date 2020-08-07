@@ -5,8 +5,11 @@ pub use crate::generated_impl::ServerRequest;
 
 pub(crate) use self::pending::{ClientRequests, ServerRequests};
 
+use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter};
 
+use lsp_types::notification::Notification;
+use lsp_types::request::Request;
 use serde::de::{self, Deserializer};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -123,6 +126,60 @@ pub enum Incoming {
     },
 }
 
+/// A server-to-client LSP request.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct ClientRequest {
+    jsonrpc: Version,
+    method: Cow<'static, str>,
+    #[serde(flatten)]
+    kind: ClientMethod,
+}
+
+impl ClientRequest {
+    /// Constructs a JSON-RPC request from its corresponding LSP type.
+    pub(crate) fn request<R: Request>(id: u64, params: R::Params) -> Self {
+        // Since `R::Params` come from the `lsp-types` crate and validity is enforced via the
+        // `Request` trait, the `unwrap()` call below should never fail.
+        ClientRequest {
+            jsonrpc: Version,
+            method: R::METHOD.into(),
+            kind: ClientMethod::Request {
+                params: serde_json::to_value(params).unwrap(),
+                id: Id::Number(id),
+            },
+        }
+    }
+
+    /// Constructs a JSON-RPC notification from its corresponding LSP type.
+    pub(crate) fn notification<N: Notification>(params: N::Params) -> Self {
+        // Since `N::Params` comes from the `lsp-types` crate and validity is enforced via the
+        // `Notification` trait, the `unwrap()` call below should never fail.
+        ClientRequest {
+            jsonrpc: Version,
+            method: N::METHOD.into(),
+            kind: ClientMethod::Notification {
+                params: serde_json::to_value(params).unwrap(),
+            },
+        }
+    }
+}
+
+impl Display for ClientRequest {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut w = WriterFormatter { inner: f };
+        serde_json::to_writer(&mut w, self).map_err(|_| fmt::Error)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+#[serde(untagged)]
+enum ClientMethod {
+    Request { params: Value, id: Id },
+    Notification { params: Value },
+}
+
 /// An outgoing JSON-RPC message.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[cfg_attr(test, derive(Deserialize))]
@@ -131,34 +188,34 @@ pub enum Outgoing {
     /// Response to a client-to-server request.
     Response(Response),
     /// Request intended for the language client.
-    Request(Value),
+    Request(ClientRequest),
 }
 
 impl Display for Outgoing {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        struct WriterFormatter<'a, 'b: 'a> {
-            inner: &'a mut Formatter<'b>,
-        }
-
-        impl<'a, 'b> std::io::Write for WriterFormatter<'a, 'b> {
-            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                fn io_error<E>(_: E) -> std::io::Error {
-                    // Error value does not matter because fmt::Display impl below just
-                    // maps it to fmt::Error
-                    std::io::Error::new(std::io::ErrorKind::Other, "fmt error")
-                }
-                let s = std::str::from_utf8(buf).map_err(io_error)?;
-                self.inner.write_str(s).map_err(io_error)?;
-                Ok(buf.len())
-            }
-
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-
         let mut w = WriterFormatter { inner: f };
         serde_json::to_writer(&mut w, self).map_err(|_| fmt::Error)
+    }
+}
+
+struct WriterFormatter<'a, 'b: 'a> {
+    inner: &'a mut Formatter<'b>,
+}
+
+impl<'a, 'b> std::io::Write for WriterFormatter<'a, 'b> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        fn io_error<E>(_: E) -> std::io::Error {
+            // Error value does not matter because fmt::Display impl below just
+            // maps it to fmt::Error
+            std::io::Error::new(std::io::ErrorKind::Other, "fmt error")
+        }
+        let s = std::str::from_utf8(buf).map_err(io_error)?;
+        self.inner.write_str(s).map_err(io_error)?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
