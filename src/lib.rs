@@ -132,6 +132,9 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#shutdown
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#exit
+    ///
+    /// This method is guaranteed to only execute once. If the client sends this request to the
+    /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
     #[rpc(name = "shutdown")]
     async fn shutdown(&self) -> Result<()>;
 
