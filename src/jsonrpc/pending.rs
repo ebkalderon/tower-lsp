@@ -115,19 +115,19 @@ impl ClientRequests {
 
     /// Marks the given request ID as pending and waits for its corresponding response to arrive.
     ///
-    /// If the request is already pending, an "invalid request" response will be returned.
+    /// # Panics
+    ///
+    /// Panics if the request ID is already in the hashmap and is pending a matching response. This
+    /// should never happen provided that a monotonically increasing `id` value is used.
     #[inline]
     pub fn wait(&self, id: Id) -> impl Future<Output = Response> + Send + 'static {
         match self.0.entry(id) {
             Entry::Vacant(entry) => {
                 let (tx, rx) = oneshot::channel();
                 entry.insert(tx);
-                Either::Left(async { rx.await.expect("sender already dropped") })
+                async { rx.await.expect("sender already dropped") }
             }
-            Entry::Occupied(entry) => {
-                let id = entry.key().clone();
-                Either::Right(async { Response::error(Some(id), Error::invalid_request()) })
-            }
+            _ => panic!("concurrent waits for the same request ID can't happen, this is a bug"),
         }
     }
 }
