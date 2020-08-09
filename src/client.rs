@@ -291,7 +291,7 @@ impl Client {
         if self.inner.initialized.load(Ordering::SeqCst) {
             self.send_request::<R>(params).await
         } else {
-            let id = self.inner.request_id.fetch_add(1, Ordering::Relaxed);
+            let id = self.inner.request_id.load(Ordering::SeqCst) + 1;
             let msg = ClientRequest::request::<R>(id, params);
             trace!("server not initialized, supressing message: {}", msg);
             Err(jsonrpc::not_initialized_error())
