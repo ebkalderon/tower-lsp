@@ -21,7 +21,9 @@
 //!     }
 //!
 //!     async fn initialized(&self, _: InitializedParams) {
-//!         self.client.log_message(MessageType::Info, "server initialized!");
+//!         self.client
+//!             .log_message(MessageType::Info, "server initialized!")
+//!             .await;
 //!     }
 //!
 //!     async fn shutdown(&self) -> Result<()> {
