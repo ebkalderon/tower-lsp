@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 
 * Remove dependency on `jsonrpc-core`, as `tower-lsp` no longer relies on it.
-* Remove `Server::with_handler()` constructor (PR #202).
+* Remove `LspService::with_handler()` constructor (PR #202).
 
 ## [0.11.0] - 2020-04-30
 
