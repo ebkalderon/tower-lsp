@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.0] - 2020-08-09]
+
+### Added
+
+* Add private subcrate `tower-lsp-macros` for internal use only (PR #202).
+* Implement cancellation support via `$/cancelRequest` (PR #202).
+* Officially support serving over TCP (PR #198).
+
+### Changed
+
+* Update `lsp-types` crate from 0.74 to 0.79.
+* Have language servers store `Client` directly as struct field (PR #199).
+* Replace `jsonrpc-core` with minimal JSON-RPC implementation (PR #202).
+* Redefine `LspService` as `Service<Incoming, Response = Option<Outgoing>>`.
+* Implement `FusedStream` for `MessageStream`.
+
+### Fixed
+
+* Fix typo which caused `workspace/didChangeConfiguration` to break (PR #195).
+* Implement proper parse error recovery in LSP codec (PR #201).
+* Refuse to accept further requests after `shutdown` has been called once.
+
+### Removed
+
+* Remove dependency on `jsonrpc-core`, as `tower-lsp` no longer relies on it.
+* Remove `Server::with_handler()` constructor (PR #202).
+
 ## [0.11.0] - 2020-04-30
 
 ### Changed
@@ -299,7 +326,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.9.1...v0.10.0
