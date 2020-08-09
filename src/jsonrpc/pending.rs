@@ -79,8 +79,6 @@ impl ServerRequests {
     }
 }
 
-///
-/// If the request is already pending, an "invalid request" response will be returned.
 impl Debug for ServerRequests {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_set()
