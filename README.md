@@ -20,11 +20,11 @@ Tower is a simple and composable framework for implementing asynchronous
 services in Rust. Central to Tower is the [`Service`] trait, which provides the
 necessary abstractions for defining request/response clients and servers.
 Examples of protocols implemented using the `Service` trait include
-[`tower-web`] and [`tower-grpc`].
+[`hyper`] for HTTP and [`tonic`] for gRPC.
 
 [`Service`]: https://docs.rs/tower-service/
-[`tower-web`]: https://docs.rs/tower-web/
-[`tower-grpc`]: https://docs.rs/tower-grpc/
+[`hyper`]: https://docs.rs/hyper/
+[`tonic`]: https://docs.rs/tonic/
 
 This library (`tower-lsp`) provides a simple implementation of the Language
 Server Protocol (LSP) that makes it easy to write your own language server. It
