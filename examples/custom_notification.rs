@@ -20,11 +20,11 @@ impl CustomNotificationParams {
     }
 }
 
-#[derive(Debug)]
 enum CustomNotification {}
 
 impl Notification for CustomNotification {
     type Params = CustomNotificationParams;
+
     const METHOD: &'static str = "custom/notification";
 }
 
@@ -54,13 +54,17 @@ impl LanguageServer for Backend {
 
     async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         if params.command == "custom.notification" {
-            self.client.send_custom_notification::<CustomNotification>(
-                CustomNotificationParams::new("Hello", "Message"),
-            );
-            self.client.log_message(
-                MessageType::Info,
-                format!("Command executed with params: {:?}", params),
-            );
+            self.client
+                .send_custom_notification::<CustomNotification>(CustomNotificationParams::new(
+                    "Hello", "Message",
+                ))
+                .await;
+            self.client
+                .log_message(
+                    MessageType::Info,
+                    format!("Command executed with params: {:?}", params),
+                )
+                .await;
             Ok(None)
         } else {
             Err(Error::invalid_request())

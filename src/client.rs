@@ -51,11 +51,12 @@ impl Client {
     /// This corresponds to the [`window/logMessage`] notification.
     ///
     /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_logMessage
-    pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
+    pub async fn log_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification::<LogMessage>(LogMessageParams {
             typ,
             message: message.to_string(),
-        });
+        })
+        .await;
     }
 
     /// Notifies the client to display a particular message in the user interface.
@@ -63,11 +64,12 @@ impl Client {
     /// This corresponds to the [`window/showMessage`] notification.
     ///
     /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessage
-    pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
+    pub async fn show_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification::<ShowMessage>(ShowMessageParams {
             typ,
             message: message.to_string(),
-        });
+        })
+        .await;
     }
 
     /// Asks the client to display a particular message in the user interface.
@@ -104,14 +106,14 @@ impl Client {
     /// This corresponds to the [`telemetry/event`] notification.
     ///
     /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#telemetry_event
-    pub fn telemetry_event<S: Serialize>(&self, data: S) {
+    pub async fn telemetry_event<S: Serialize>(&self, data: S) {
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
             Ok(mut value) => {
                 if !value.is_null() && !value.is_array() && !value.is_object() {
                     value = Value::Array(vec![value]);
                 }
-                self.send_notification::<TelemetryEvent>(value);
+                self.send_notification::<TelemetryEvent>(value).await;
             }
         }
     }
@@ -231,10 +233,16 @@ impl Client {
     /// # Initialization
     ///
     /// This notification will only be sent if the server is initialized.
-    pub fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i64>) {
+    pub async fn publish_diagnostics(
+        &self,
+        uri: Url,
+        diags: Vec<Diagnostic>,
+        version: Option<i64>,
+    ) {
         self.send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
             uri, diags, version,
-        ));
+        ))
+        .await;
     }
 
     /// Sends a custom notification to the client.
@@ -242,11 +250,34 @@ impl Client {
     /// # Initialization
     ///
     /// This notification will only be sent if the server is initialized.
-    pub fn send_custom_notification<N>(&self, params: N::Params)
+    pub async fn send_custom_notification<N>(&self, params: N::Params)
     where
         N: Notification,
     {
-        self.send_notification_initialized::<N>(params);
+        self.send_notification_initialized::<N>(params).await;
+    }
+
+    async fn send_notification<N>(&self, params: N::Params)
+    where
+        N: Notification,
+    {
+        let mut sender = self.inner.sender.clone();
+        let message = Outgoing::Request(ClientRequest::notification::<N>(params));
+        if sender.send(message).await.is_err() {
+            error!("failed to send notification")
+        }
+    }
+
+    async fn send_notification_initialized<N>(&self, params: N::Params)
+    where
+        N: Notification,
+    {
+        if let State::Initialized | State::ShutDown = self.inner.state.get() {
+            self.send_notification::<N>(params).await;
+        } else {
+            let msg = ClientRequest::notification::<N>(params);
+            trace!("server not initialized, supressing message: {}", msg);
+        }
     }
 
     async fn send_request<R>(&self, params: R::Params) -> Result<R::Result>
@@ -272,19 +303,6 @@ impl Client {
         })
     }
 
-    fn send_notification<N>(&self, params: N::Params)
-    where
-        N: Notification,
-    {
-        let mut sender = self.inner.sender.clone();
-        let message = Outgoing::Request(ClientRequest::notification::<N>(params));
-        tokio::spawn(async move {
-            if sender.send(message).await.is_err() {
-                error!("failed to send notification")
-            }
-        });
-    }
-
     async fn send_request_initialized<R>(&self, params: R::Params) -> Result<R::Result>
     where
         R: Request,
@@ -298,36 +316,30 @@ impl Client {
             Err(jsonrpc::not_initialized_error())
         }
     }
-
-    fn send_notification_initialized<N>(&self, params: N::Params)
-    where
-        N: Notification,
-    {
-        if let State::Initialized | State::ShutDown = self.inner.state.get() {
-            self.send_notification::<N>(params);
-        } else {
-            let msg = ClientRequest::notification::<N>(params);
-            trace!("server not initialized, supressing message: {}", msg);
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::future::Future;
+
     use futures::channel::mpsc;
     use futures::StreamExt;
     use serde_json::json;
 
     use super::*;
 
-    async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: ClientRequest) {
+    async fn assert_client_messages<F, Fut>(f: F, expected: ClientRequest)
+    where
+        F: FnOnce(Client) -> Fut,
+        Fut: Future,
+    {
         let (request_tx, request_rx) = mpsc::channel(1);
         let pending = Arc::new(ClientRequests::new());
         let state = Arc::new(ServerState::new());
         state.set(State::Initialized);
 
         let client = Client::new(request_tx, pending, state);
-        f(client);
+        f(client).await;
 
         let messages: Vec<_> = request_rx.collect().await;
         assert_eq!(messages, vec![Outgoing::Request(expected)]);
@@ -335,44 +347,44 @@ mod tests {
 
     #[tokio::test]
     async fn log_message() {
-        let (typ, message) = (MessageType::Log, "foo bar".to_owned());
+        let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
         let expected = ClientRequest::notification::<LogMessage>(LogMessageParams {
             typ,
-            message: message.clone(),
+            message: msg.clone(),
         });
 
-        assert_client_messages(|p| p.log_message(typ, message), expected).await;
+        assert_client_messages(|p| async move { p.log_message(typ, msg).await }, expected).await;
     }
 
     #[tokio::test]
     async fn show_message() {
-        let (typ, message) = (MessageType::Log, "foo bar".to_owned());
+        let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
         let expected = ClientRequest::notification::<ShowMessage>(ShowMessageParams {
             typ,
-            message: message.clone(),
+            message: msg.clone(),
         });
 
-        assert_client_messages(|p| p.show_message(typ, message), expected).await;
+        assert_client_messages(|p| async move { p.show_message(typ, msg).await }, expected).await;
     }
 
     #[tokio::test]
     async fn telemetry_event() {
         let null = json!(null);
         let expected = ClientRequest::notification::<TelemetryEvent>(null.clone());
-        assert_client_messages(|p| p.telemetry_event(null), expected).await;
+        assert_client_messages(|p| async move { p.telemetry_event(null).await }, expected).await;
 
         let array = json!([1, 2, 3]);
         let expected = ClientRequest::notification::<TelemetryEvent>(array.clone());
-        assert_client_messages(|p| p.telemetry_event(array), expected).await;
+        assert_client_messages(|p| async move { p.telemetry_event(array).await }, expected).await;
 
         let object = json!({});
         let expected = ClientRequest::notification::<TelemetryEvent>(object.clone());
-        assert_client_messages(|p| p.telemetry_event(object), expected).await;
+        assert_client_messages(|p| async move { p.telemetry_event(object).await }, expected).await;
 
-        let anything_else = json!("hello");
-        let wrapped = Value::Array(vec![anything_else.clone()]);
+        let other = json!("hello");
+        let wrapped = Value::Array(vec![other.clone()]);
         let expected = ClientRequest::notification::<TelemetryEvent>(wrapped);
-        assert_client_messages(|p| p.telemetry_event(anything_else), expected).await;
+        assert_client_messages(|p| async move { p.telemetry_event(other).await }, expected).await;
     }
 
     #[tokio::test]
@@ -383,6 +395,10 @@ mod tests {
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);
         let expected = ClientRequest::notification::<PublishDiagnostics>(params);
 
-        assert_client_messages(|p| p.publish_diagnostics(uri, diagnostics, None), expected).await;
+        assert_client_messages(
+            |p| async move { p.publish_diagnostics(uri, diagnostics, None).await },
+            expected,
+        )
+        .await;
     }
 }
