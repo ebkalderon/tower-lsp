@@ -4,7 +4,6 @@ use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter, Result as FmtResult};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -16,7 +15,7 @@ use tower_service::Service;
 
 use super::client::Client;
 use super::jsonrpc::{self, ClientRequests, Incoming, Outgoing, Response, ServerRequests};
-use super::{generated_impl, LanguageServer};
+use super::{generated_impl, LanguageServer, ServerState, State};
 
 /// Error that occurs when attempting to call the language server after it has already exited.
 #[derive(Clone, Debug, PartialEq)]
@@ -73,9 +72,7 @@ pub struct LspService {
     server: Arc<dyn LanguageServer>,
     pending_server: ServerRequests,
     pending_client: Arc<ClientRequests>,
-    initialized: Arc<AtomicBool>,
-    shut_down: AtomicBool,
-    stopped: AtomicBool,
+    state: Arc<ServerState>,
 }
 
 impl LspService {
@@ -86,20 +83,18 @@ impl LspService {
         F: FnOnce(Client) -> T,
         T: LanguageServer,
     {
-        let initialized = Arc::new(AtomicBool::new(false));
+        let state = Arc::new(ServerState::new());
         let (tx, rx) = mpsc::channel(1);
         let messages = MessageStream(rx);
 
         let pending_client = Arc::new(ClientRequests::new());
-        let client = Client::new(tx, pending_client.clone(), initialized.clone());
+        let client = Client::new(tx, pending_client.clone(), state.clone());
 
         let service = LspService {
             server: Arc::from(init(client)),
             pending_server: ServerRequests::new(),
             pending_client,
-            initialized,
-            shut_down: AtomicBool::new(false),
-            stopped: AtomicBool::new(false),
+            state,
         };
 
         (service, messages)
@@ -112,7 +107,7 @@ impl Service<Incoming> for LspService {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
-        if self.stopped.load(Ordering::SeqCst) {
+        if self.state.get() == State::Exited {
             Poll::Ready(Err(ExitedError))
         } else {
             Poll::Ready(Ok(()))
@@ -120,15 +115,13 @@ impl Service<Incoming> for LspService {
     }
 
     fn call(&mut self, request: Incoming) -> Self::Future {
-        if self.stopped.load(Ordering::SeqCst) {
+        if self.state.get() == State::Exited {
             future::err(ExitedError).boxed()
         } else {
             match request {
                 Incoming::Request(req) => generated_impl::handle_request(
                     self.server.clone(),
-                    &self.initialized,
-                    &self.shut_down,
-                    &self.stopped,
+                    &self.state,
                     &self.pending_server,
                     req,
                 ),
@@ -163,9 +156,7 @@ impl Debug for LspService {
         f.debug_struct(stringify!(LspService))
             .field("pending_server", &self.pending_server)
             .field("pending_client", &self.pending_client)
-            .field("initialized", &self.initialized)
-            .field("shut_down", &self.shut_down)
-            .field("stopped", &self.stopped)
+            .field("state", &self.state)
             .finish()
     }
 }
