@@ -128,11 +128,11 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
         .map(|(method, variant_name)| {
             let rpc_name = method.rpc_name.as_str();
             let handler = &method.handler_name;
-            match (rpc_name, method.result.is_some(), method.params.is_some()) {
-                ("initialize", true, true) => quote! {
-                    ServerMethod::#variant_name { params, id } if !is_init && !is_shut_down => {
+            match (method.result.is_some(), method.params.is_some()) {
+                (true, true) if rpc_name == "initialize" => quote! {
+                    (ServerMethod::#variant_name { params, id }, State::Uninitialized) => {
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
-                        let initialized = initialized.clone();
+                        let state = state.clone();
                         Box::pin(async move {
                             let params = match params {
                                 Params::Valid(p) => p,
@@ -147,7 +147,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                                 Ok(result) => {
                                     let result = serde_json::to_value(result).unwrap();
                                     info!("language server initialized");
-                                    initialized.store(true, Ordering::SeqCst);
+                                    state.set(State::Initialized);
                                     Response::ok(id, result)
                                 }
                             };
@@ -155,41 +155,35 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                             Ok(Some(Outgoing::Response(res)))
                         })
                     },
-                    ServerMethod::#variant_name { id, .. } if !is_shut_down => {
-                        trace!("received server request {:?} (ID: {})", #rpc_name, id);
-                        let res = Response::error(Some(id), Error::invalid_request());
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    },
                 },
-                ("shutdown", true, false) => quote! {
-                    ServerMethod::#variant_name { id } if is_init && !is_shut_down => {
+                (true, false) if rpc_name == "shutdown" => quote! {
+                    (ServerMethod::#variant_name { id }, State::Initialized) => {
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
                         info!("shutdown request received, shutting down");
-                        let shut_down = shut_down.clone();
-                        shut_down.store(true, Ordering::SeqCst);
+                        state.set(State::ShutDown);
                         pending
                             .execute(id, async move { server.#handler().await })
                             .map(|v| Ok(Some(Outgoing::Response(v))))
                             .boxed()
                     },
                 },
-                (_, true, true) => quote! {
-                    ServerMethod::#variant_name { params: Params::Valid(p), id } if is_init && !is_shut_down => {
+                (true, true) => quote! {
+                    (ServerMethod::#variant_name { params: Params::Valid(p), id }, State::Initialized) => {
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
                         pending
                             .execute(id, async move { server.#handler(p).await })
                             .map(|v| Ok(Some(Outgoing::Response(v))))
                             .boxed()
                     },
-                    ServerMethod::#variant_name { params: Params::Invalid(_), id } if is_init && !is_shut_down => {
+                    (ServerMethod::#variant_name { params: Params::Invalid(_), id }, State::Initialized) => {
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
                         warn!("invalid parameters for {:?} (ID: {})", #rpc_name, id);
                         let res = Response::error(Some(id), Error::invalid_params());
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     },
                 },
-                (_, true, false) => quote! {
-                    ServerMethod::#variant_name { id } if is_init && !is_shut_down => {
+                (true, false) => quote! {
+                    (ServerMethod::#variant_name { id }, State::Initialized) => {
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
                         pending
                             .execute(id, async move { server.#handler().await })
@@ -197,19 +191,19 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                             .boxed()
                     },
                 },
-                (_, false, true) => quote! {
-                    ServerMethod::#variant_name { params: Params::Valid(p) } if is_init && !is_shut_down => {
+                (false, true) => quote! {
+                    (ServerMethod::#variant_name { params: Params::Valid(p) }, State::Initialized) => {
                         trace!("received server notification {:?}", #rpc_name);
                         Box::pin(async move { server.#handler(p).await; Ok(None) })
                     },
-                    ServerMethod::#variant_name { params: Params::Invalid(_) } if is_init && !is_shut_down => {
+                    (ServerMethod::#variant_name { params: Params::Invalid(_) }, State::Initialized) => {
                         trace!("received server notification {:?}", #rpc_name);
                         warn!("invalid parameters for {:?}", #rpc_name);
                         future::ok(None).boxed()
                     },
                 },
-                (_, false, false) => quote! {
-                    ServerMethod::#variant_name if is_init && !is_shut_down => {
+                (false, false) => quote! {
+                    (ServerMethod::#variant_name, State::Initialized) => {
                         trace!("received server notification {:?}", #rpc_name);
                         Box::pin(async move { server.#handler().await; Ok(None) })
                     },
@@ -232,7 +226,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                 GotoDeclarationParams, GotoImplementationParams, GotoTypeDefinitionParams,
             };
 
-            use super::#trait_name;
+            use super::{#trait_name, ServerState, State};
             use crate::jsonrpc::{
                 not_initialized_error, Error, ErrorCode, Id, Outgoing, Response, ServerRequests,
                 Version,
@@ -277,36 +271,32 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                 Invalid(serde_json::Value),
             }
 
-            pub fn handle_request<T: #trait_name>(
+            pub(crate) fn handle_request<T: #trait_name>(
                 server: T,
-                initialized: &Arc<AtomicBool>,
-                shut_down: &AtomicBool,
-                stopped: &AtomicBool,
+                state: &Arc<ServerState>,
                 pending: &ServerRequests,
                 incoming: ServerRequest,
             ) -> Pin<Box<dyn Future<Output = Result<Option<Outgoing>, ExitedError>> + Send>> {
-                let is_init = initialized.load(Ordering::SeqCst);
-                let is_shut_down = shut_down.load(Ordering::SeqCst);
-                match incoming.inner {
+                match (incoming.inner, state.get()) {
                     #route_match_arms
-                    ServerMethod::CancelRequest { id } if !is_shut_down => {
+                    (ServerMethod::CancelRequest { id }, State::Initialized) => {
                         pending.cancel(&id);
                         future::ok(None).boxed()
                     },
-                    ServerMethod::Exit if !is_shut_down => {
+                    (ServerMethod::Exit, _) => {
                         info!("exit notification received, stopping");
-                        stopped.store(true, Ordering::SeqCst);
+                        state.set(State::Exited);
                         pending.cancel_all();
                         future::ok(None).boxed()
                     },
-                    other if !is_shut_down => Box::pin(match other.id().cloned() {
+                    (other, State::Uninitialized) => Box::pin(match other.id().cloned() {
                         None => future::ok(None),
                         Some(id) => {
                             let response = Response::error(Some(id), not_initialized_error());
                             future::ok(Some(Outgoing::Response(response)))
                         },
                     }),
-                    other => Box::pin(match other.id().cloned() {
+                    (other, _) => Box::pin(match other.id().cloned() {
                         None => future::ok(None),
                         Some(id) => {
                             let response = Response::error(Some(id), Error::invalid_request());

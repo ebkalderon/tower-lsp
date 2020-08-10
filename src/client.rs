@@ -1,7 +1,7 @@
 //! Types for sending data to and from the language client.
 
 use std::fmt::Display;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use futures::channel::mpsc::Sender;
@@ -14,13 +14,14 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::jsonrpc::{self, ClientRequest, ClientRequests, Error, ErrorCode, Id, Outgoing, Result};
+use super::{ServerState, State};
 
 #[derive(Debug)]
 struct ClientInner {
     sender: Sender<Outgoing>,
-    initialized: Arc<AtomicBool>,
     request_id: AtomicU64,
     pending_requests: Arc<ClientRequests>,
+    state: Arc<ServerState>,
 }
 
 /// Handle for communicating with the language client.
@@ -33,14 +34,14 @@ impl Client {
     pub(super) fn new(
         sender: Sender<Outgoing>,
         pending_requests: Arc<ClientRequests>,
-        initialized: Arc<AtomicBool>,
+        state: Arc<ServerState>,
     ) -> Self {
         Client {
             inner: Arc::new(ClientInner {
                 sender,
-                initialized,
                 request_id: AtomicU64::new(0),
                 pending_requests,
+                state,
             }),
         }
     }
@@ -288,7 +289,7 @@ impl Client {
     where
         R: Request,
     {
-        if self.inner.initialized.load(Ordering::SeqCst) {
+        if self.inner.state.get() == State::Initialized {
             self.send_request::<R>(params).await
         } else {
             let id = self.inner.request_id.load(Ordering::SeqCst) + 1;
@@ -302,7 +303,7 @@ impl Client {
     where
         N: Notification,
     {
-        if self.inner.initialized.load(Ordering::SeqCst) {
+        if self.inner.state.get() == State::Initialized {
             self.send_notification::<N>(params);
         } else {
             let msg = ClientRequest::notification::<N>(params);
@@ -322,8 +323,10 @@ mod tests {
     async fn assert_client_messages<F: FnOnce(Client)>(f: F, expected: ClientRequest) {
         let (request_tx, request_rx) = mpsc::channel(1);
         let pending = Arc::new(ClientRequests::new());
+        let state = Arc::new(ServerState::new());
+        state.set(State::Initialized);
 
-        let client = Client::new(request_tx, pending, Arc::new(AtomicBool::new(true)));
+        let client = Client::new(request_tx, pending, state);
         f(client);
 
         let messages: Vec<_> = request_rx.collect().await;
