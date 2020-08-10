@@ -289,7 +289,7 @@ impl Client {
     where
         R: Request,
     {
-        if self.inner.state.get() == State::Initialized {
+        if let State::Initialized | State::ShutDown = self.inner.state.get() {
             self.send_request::<R>(params).await
         } else {
             let id = self.inner.request_id.load(Ordering::SeqCst) + 1;
@@ -303,7 +303,7 @@ impl Client {
     where
         N: Notification,
     {
-        if self.inner.state.get() == State::Initialized {
+        if let State::Initialized | State::ShutDown = self.inner.state.get() {
             self.send_notification::<N>(params);
         } else {
             let msg = ClientRequest::notification::<N>(params);
