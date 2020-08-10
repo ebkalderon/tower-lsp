@@ -131,29 +131,40 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             match (method.result.is_some(), method.params.is_some()) {
                 (true, true) if rpc_name == "initialize" => quote! {
                     (ServerMethod::#variant_name { params, id }, State::Uninitialized) => {
+                        state.set(State::Initializing);
                         trace!("received server request {:?} (ID: {})", #rpc_name, id);
                         let state = state.clone();
                         Box::pin(async move {
                             let params = match params {
                                 Params::Valid(p) => p,
                                 Params::Invalid(_) => {
+                                    state.set(State::Uninitialized);
                                     let res = Response::error(Some(id), Error::invalid_params());
                                     return Ok(Some(Outgoing::Response(res)));
                                 }
                             };
 
                             let res = match server.initialize(params).await {
-                                Err(error) => Response::error(Some(id), error),
                                 Ok(result) => {
                                     let result = serde_json::to_value(result).unwrap();
                                     info!("language server initialized");
                                     state.set(State::Initialized);
                                     Response::ok(id, result)
                                 }
+                                Err(error) => {
+                                    state.set(State::Uninitialized);
+                                    Response::error(Some(id), error)
+                                },
                             };
 
                             Ok(Some(Outgoing::Response(res)))
                         })
+                    },
+                    (ServerMethod::#variant_name { id, .. }, State::Initializing) => {
+                        trace!("received server request {:?} (ID: {})", #rpc_name, id);
+                        warn!("received duplicate `initialize` request, ignoring");
+                        let response = Response::error(Some(id), Error::invalid_request());
+                        future::ok(Some(Outgoing::Response(response))).boxed()
                     },
                 },
                 (true, false) if rpc_name == "shutdown" => quote! {

@@ -789,9 +789,10 @@ impl ServerState {
     fn get(&self) -> State {
         match self.0.load(Ordering::SeqCst) {
             0 => State::Uninitialized,
-            1 => State::Initialized,
-            2 => State::ShutDown,
-            3 => State::Exited,
+            1 => State::Initializing,
+            2 => State::Initialized,
+            3 => State::ShutDown,
+            4 => State::Exited,
             _ => unreachable!(),
         }
     }
@@ -808,10 +809,12 @@ impl Debug for ServerState {
 enum State {
     /// Server has not received an `initialize` request.
     Uninitialized = 0,
-    /// Server received and responded to an `initialize` request.
-    Initialized = 1,
+    /// Server received an `initialize` request, but has not yet responded.
+    Initializing = 1,
+    /// Server received and responded success to an `initialize` request.
+    Initialized = 2,
     /// Server received a `shutdown` request.
-    ShutDown = 2,
+    ShutDown = 3,
     /// Server received an `exit` notification.
-    Exited = 3,
+    Exited = 4,
 }
