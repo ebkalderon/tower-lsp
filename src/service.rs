@@ -132,16 +132,12 @@ impl Service<Incoming> for LspService {
                 }
                 Incoming::Invalid { id, method } => match (id, method) {
                     (None, Some(method)) if method.starts_with("$/") => future::ok(None).boxed(),
-                    (Some(id), Some(method)) => {
-                        error!("received invalid JSON message {:?} with ID: {}", method, id);
-                        let res = Response::error(Some(id), jsonrpc::Error::method_not_found());
+                    (id, Some(method)) => {
+                        error!("method {:?} not found", method);
+                        let res = Response::error(id, jsonrpc::Error::method_not_found());
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     }
-                    (id, _) => {
-                        match &id {
-                            Some(id) => error!("received invalid JSON message with ID: {}", id),
-                            None => error!("received invalid JSON message"),
-                        }
+                    (id, None) => {
                         let res = Response::error(id, jsonrpc::Error::invalid_request());
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     }
