@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.1] - 2020-08-11]
+
+### Fixed
+
+* Reject multiple `initialize` requests sent in quick succession (PR #208).
+* Fix bug deserializing `jsonrpc` field from `serde_json::Value` (PR #209).
+
 ## [0.12.0] - 2020-08-09]
 
 ### Added
@@ -326,7 +333,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.0...v0.10.1
