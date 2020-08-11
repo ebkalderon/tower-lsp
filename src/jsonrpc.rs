@@ -222,12 +222,12 @@ impl<'a, 'b> std::io::Write for WriterFormatter<'a, 'b> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Version;
 
-impl<'a> Deserialize<'a> for Version {
+impl<'de> Deserialize<'de> for Version {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
-        D: Deserializer<'a>,
+        D: Deserializer<'de>,
     {
-        match Deserialize::deserialize(deserializer)? {
+        match Cow::<'de, str>::deserialize(deserializer)?.as_ref() {
             "2.0" => Ok(Version),
             _ => Err(de::Error::custom("expected JSON-RPC version \"2.0\"")),
         }
@@ -252,5 +252,28 @@ pub(crate) fn not_initialized_error() -> Error {
         code: ErrorCode::ServerError(-32002),
         message: "Server not initialized".to_string(),
         data: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn incoming_from_str_or_value() {
+        let v = json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1});
+        let from_str: Incoming = serde_json::from_str(&v.to_string()).unwrap();
+        let from_value: Incoming = serde_json::from_value(v).unwrap();
+        assert_eq!(from_str, from_value);
+    }
+
+    #[test]
+    fn outgoing_from_str_or_value() {
+        let v = json!({"jsonrpc":"2.0","result":{},"id":1});
+        let from_str: Outgoing = serde_json::from_str(&v.to_string()).unwrap();
+        let from_value: Outgoing = serde_json::from_value(v).unwrap();
+        assert_eq!(from_str, from_value);
     }
 }
