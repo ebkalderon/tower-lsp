@@ -154,13 +154,7 @@ impl Error {
 
     /// Creates a new "invalid params" error (`-32602`).
     #[inline]
-    pub fn invalid_params() -> Self {
-        Error::new(ErrorCode::InvalidParams)
-    }
-
-    /// Creates a new "invalid params" error (`-32602`) with the given message.
-    #[inline]
-    pub fn invalid_params_message<M>(message: M) -> Self
+    pub fn invalid_params<M>(message: M) -> Self
     where
         M: Into<String>,
     {
