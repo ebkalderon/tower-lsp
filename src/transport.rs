@@ -91,11 +91,11 @@ where
         T::Error: Into<Box<dyn Error + Send + Sync>>,
         T::Future: Send,
     {
-        let (mut sender, receiver) = mpsc::channel(1);
+        let (mut sender, receiver) = mpsc::channel(16);
 
         let framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
         let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
-        let responses = receiver.buffer_unordered(4).filter_map(future::ready);
+        let responses = receiver.buffered(4).filter_map(future::ready);
         let interleave = self.interleave.fuse();
 
         let mut messages = framed_stdin
