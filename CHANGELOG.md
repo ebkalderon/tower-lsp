@@ -7,14 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.1] - 2020-08-11]
+## [0.13.0] - 2020-08-20
+
+### Changed
+
+* Improve log message quality and reduce noise.
+* Return responses in corresponding request order to make things easier on the
+  client side (PR #212).
+* Change remaining `Client` notification methods to `async fn` (PR #213).
+* Bump minimum supported Rust version to 1.41.0 (PR #213).
+
+### Fixed
+
+* Report missing params as "invalid params" instead of "parse error" (PR #211).
+
+## [0.12.1] - 2020-08-11
 
 ### Fixed
 
 * Reject multiple `initialize` requests sent in quick succession (PR #208).
 * Fix bug deserializing `jsonrpc` field from `serde_json::Value` (PR #209).
 
-## [0.12.0] - 2020-08-09]
+## [0.12.0] - 2020-08-09
 
 ### Added
 
@@ -333,7 +347,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.0...HEAD
+[0.12.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.10.1...v0.11.0
