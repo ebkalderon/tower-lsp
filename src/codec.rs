@@ -135,7 +135,7 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
         }
 
         let (msg, len) = match parse_message(src) {
-            Ok((remaining, msg)) => (str::from_utf8(msg)?, src.len() - remaining.len()),
+            Ok((remaining, msg)) => (str::from_utf8(msg), src.len() - remaining.len()),
             Err(Err::Incomplete(Needed::Size(min))) => {
                 self.remaining_msg_bytes = min;
                 return Ok(None);
@@ -156,13 +156,17 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
             },
         };
 
-        trace!("<- {}", msg);
-        let result = match serde_json::from_str(msg) {
-            Ok(parsed) => Ok(Some(parsed)),
+        let result = match msg {
             Err(err) => Err(err.into()),
+            Ok(msg) => {
+                trace!("<- {}", msg);
+                match serde_json::from_str(msg) {
+                    Ok(parsed) => Ok(Some(parsed)),
+                    Err(err) => Err(err.into()),
+                }
+            }
         };
 
-        drop(msg);
         src.advance(len);
         self.remaining_msg_bytes = 0;
 
