@@ -1,7 +1,7 @@
 //! Service abstraction for language servers.
 
 use std::error::Error;
-use std::fmt::{self, Debug, Display, Formatter, Result as FmtResult};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -22,8 +22,8 @@ use super::{generated_impl, LanguageServer, ServerState, State};
 pub struct ExitedError;
 
 impl Display for ExitedError {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "language server has exited")
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("language server has exited")
     }
 }
 
