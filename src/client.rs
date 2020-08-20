@@ -1,6 +1,6 @@
 //! Types for sending data to and from the language client.
 
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -16,7 +16,6 @@ use serde_json::Value;
 use super::jsonrpc::{self, ClientRequest, ClientRequests, Error, ErrorCode, Id, Outgoing, Result};
 use super::{ServerState, State};
 
-#[derive(Debug)]
 struct ClientInner {
     sender: Sender<Outgoing>,
     request_id: AtomicU64,
@@ -30,7 +29,7 @@ struct ClientInner {
 /// and pass it around as needed.
 ///
 /// [`Clone`]: trait@std::clone::Clone
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Client {
     inner: Arc<ClientInner>,
 }
@@ -320,6 +319,16 @@ impl Client {
             trace!("server not initialized, supressing message: {}", msg);
             Err(jsonrpc::not_initialized_error())
         }
+    }
+}
+
+impl Debug for Client {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct(stringify!(Client))
+            .field("request_id", &self.inner.request_id)
+            .field("pending_requests", &self.inner.pending_requests)
+            .field("state", &self.inner.state)
+            .finish()
     }
 }
 
