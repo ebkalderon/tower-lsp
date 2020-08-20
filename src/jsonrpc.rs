@@ -245,7 +245,7 @@ impl Serialize for Version {
 
 /// Error response returned for every request received before the server is initialized.
 ///
-/// See [here](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize)
+/// See [here](https://microsoft.github.io/language-server-protocol/specification#initialize)
 /// for reference.
 pub(crate) fn not_initialized_error() -> Error {
     Error {

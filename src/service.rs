@@ -63,11 +63,11 @@ impl FusedStream for MessageStream {
 ///
 /// Pending requests can be canceled by issuing a [`$/cancelRequest`] notification.
 ///
-/// [`$/cancelRequest`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#cancelRequest
+/// [`$/cancelRequest`]: https://microsoft.github.io/language-server-protocol/specification#cancelRequest
 ///
 /// The service shuts down and stops serving requests after the [`exit`] notification is received.
 ///
-/// [`exit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#exit
+/// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
 pub struct LspService {
     server: Arc<dyn LanguageServer>,
     pending_server: ServerRequests,

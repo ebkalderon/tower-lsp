@@ -54,7 +54,7 @@ impl Client {
     ///
     /// This corresponds to the [`window/logMessage`] notification.
     ///
-    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_logMessage
+    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
     pub async fn log_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification::<LogMessage>(LogMessageParams {
             typ,
@@ -67,7 +67,7 @@ impl Client {
     ///
     /// This corresponds to the [`window/showMessage`] notification.
     ///
-    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessage
+    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
     pub async fn show_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification::<ShowMessage>(ShowMessageParams {
             typ,
@@ -83,14 +83,14 @@ impl Client {
     ///
     /// This corresponds to the [`window/showMessageRequest`] request.
     ///
-    /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessageRequest
+    /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessageRequest
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn show_message_request<M: Display>(
         &self,
         typ: MessageType,
@@ -109,7 +109,7 @@ impl Client {
     ///
     /// This corresponds to the [`telemetry/event`] notification.
     ///
-    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#telemetry_event
+    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
     pub async fn telemetry_event<S: Serialize>(&self, data: S) {
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
@@ -126,14 +126,14 @@ impl Client {
     ///
     /// This corresponds to the [`client/registerCapability`] request.
     ///
-    /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_registerCapability
+    /// [`client/registerCapability`]: https://microsoft.github.io/language-server-protocol/specification#client_registerCapability
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn register_capability(&self, registrations: Vec<Registration>) -> Result<()> {
         self.send_request_initialized::<RegisterCapability>(RegistrationParams { registrations })
             .await
@@ -143,14 +143,14 @@ impl Client {
     ///
     /// This corresponds to the [`client/unregisterCapability`] request.
     ///
-    /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_unregisterCapability
+    /// [`client/unregisterCapability`]: https://microsoft.github.io/language-server-protocol/specification#client_unregisterCapability
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn unregister_capability(&self, unregisterations: Vec<Unregistration>) -> Result<()> {
         self.send_request_initialized::<UnregisterCapability>(UnregistrationParams {
             unregisterations,
@@ -165,14 +165,14 @@ impl Client {
     ///
     /// This corresponds to the [`workspace/workspaceFolders`] request.
     ///
-    /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_workspaceFolders
+    /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_workspaceFolders
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     ///
     /// # Compatibility
     ///
@@ -193,14 +193,14 @@ impl Client {
     ///
     /// This corresponds to the [`workspace/configuration`] request.
     ///
-    /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_configuration
+    /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specification#workspace_configuration
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     ///
     /// # Compatibility
     ///
@@ -215,14 +215,14 @@ impl Client {
     ///
     /// This corresponds to the [`workspace/applyEdit`] request.
     ///
-    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
+    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
     ///
     /// # Initialization
     ///
     /// If the request is sent to client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn apply_edit(&self, edit: WorkspaceEdit) -> Result<ApplyWorkspaceEditResponse> {
         self.send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit })
             .await
@@ -232,7 +232,7 @@ impl Client {
     ///
     /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
     ///
-    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_publishDiagnostics
+    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
     ///
     /// # Initialization
     ///
