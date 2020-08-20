@@ -1,7 +1,7 @@
 //! Encoder and decoder for Language Server Protocol messages.
 
 use std::error::Error;
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{self, Display, Formatter};
 use std::io::{Error as IoError, Write};
 use std::marker::PhantomData;
 use std::str::{self, Utf8Error};
@@ -38,14 +38,14 @@ pub enum ParseError {
 }
 
 impl Display for ParseError {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
-            ParseError::MissingHeader => write!(fmt, "missing required `Content-Length` header"),
-            ParseError::InvalidLength => write!(fmt, "unable to parse content length"),
-            ParseError::InvalidType => write!(fmt, "unable to parse content type"),
-            ParseError::Body(ref e) => write!(fmt, "unable to parse JSON body: {}", e),
-            ParseError::Encode(ref e) => write!(fmt, "failed to encode response: {}", e),
-            ParseError::Utf8(ref e) => write!(fmt, "request contains invalid UTF8: {}", e),
+            ParseError::MissingHeader => write!(f, "missing required `Content-Length` header"),
+            ParseError::InvalidLength => write!(f, "unable to parse content length"),
+            ParseError::InvalidType => write!(f, "unable to parse content type"),
+            ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {}", e),
+            ParseError::Encode(ref e) => write!(f, "failed to encode response: {}", e),
+            ParseError::Utf8(ref e) => write!(f, "request contains invalid UTF8: {}", e),
         }
     }
 }
