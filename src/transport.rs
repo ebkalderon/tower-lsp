@@ -7,8 +7,8 @@ use std::task::{Context, Poll};
 use futures::channel::mpsc;
 use futures::future::{self, Either, FutureExt, TryFutureExt};
 use futures::sink::SinkExt;
-use futures::stream::{self, Empty, Stream, StreamExt, TryStreamExt};
-use log::{error, trace};
+use futures::stream::{self, Empty, Stream, StreamExt};
+use log::error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tower_service::Service;
@@ -93,29 +93,22 @@ where
     {
         let (mut sender, receiver) = mpsc::channel(16);
 
-        let framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
+        let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
         let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
         let responses = receiver.buffered(4).filter_map(future::ready);
         let interleave = self.interleave.fuse();
 
-        let mut messages = framed_stdin
-            .inspect_ok(|msg| trace!("<- {}", msg))
-            .inspect_err(|err| error!("failed to decode message: {}", err))
-            .map(Result::ok)
-            .filter_map(future::ready);
-
         let printer = stream::select(responses, interleave)
-            .inspect(|msg| trace!("-> {}", msg))
-            .map(|msg| Ok(msg.to_string()))
+            .map(Ok)
             .forward(framed_stdout.sink_map_err(|e| error!("failed to encode message: {}", e)))
             .map(|_| ());
 
         let reader = async move {
-            while let Some(msg) = messages.next().await {
-                let request = match serde_json::from_str(&msg) {
+            while let Some(msg) = framed_stdin.next().await {
+                let request = match msg {
                     Ok(req) => req,
                     Err(err) => {
-                        error!("failed to parse JSON payload: {}", err);
+                        error!("failed to decode message: {}", err);
                         let response = Response::error(None, jsonrpc::Error::parse_error());
                         let response_fut = future::ready(Some(Outgoing::Response(response)));
                         sender.send(Either::Right(response_fut)).await.unwrap();

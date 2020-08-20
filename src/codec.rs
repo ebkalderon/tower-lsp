@@ -3,10 +3,12 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::io::{Error as IoError, Write};
+use std::marker::PhantomData;
 use std::str::{self, Utf8Error};
 
 use bytes::buf::ext::BufMutExt;
 use bytes::{Buf, BytesMut};
+use log::trace;
 use nom::branch::alt;
 use nom::bytes::streaming::{is_not, tag};
 use nom::character::streaming::{char, crlf, digit1, space0};
@@ -15,6 +17,7 @@ use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::{delimited, terminated, tuple};
 use nom::{Err, IResult, Needed};
+use serde::{de::DeserializeOwned, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 
 /// Errors that can occur when processing an LSP request.
@@ -26,6 +29,8 @@ pub enum ParseError {
     InvalidLength,
     /// The media type in the `Content-Type` header is invalid.
     InvalidType,
+    /// Failed to parse the JSON body.
+    Body(serde_json::Error),
     /// Failed to encode the response.
     Encode(IoError),
     /// Request contains invalid UTF8.
@@ -38,6 +43,7 @@ impl Display for ParseError {
             ParseError::MissingHeader => write!(fmt, "missing required `Content-Length` header"),
             ParseError::InvalidLength => write!(fmt, "unable to parse content length"),
             ParseError::InvalidType => write!(fmt, "unable to parse content type"),
+            ParseError::Body(ref e) => write!(fmt, "unable to parse JSON body: {}", e),
             ParseError::Encode(ref e) => write!(fmt, "failed to encode response: {}", e),
             ParseError::Utf8(ref e) => write!(fmt, "request contains invalid UTF8: {}", e),
         }
@@ -47,10 +53,17 @@ impl Display for ParseError {
 impl Error for ParseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
+            ParseError::Body(ref e) => Some(e),
             ParseError::Encode(ref e) => Some(e),
             ParseError::Utf8(ref e) => Some(e),
             _ => None,
         }
+    }
+}
+
+impl From<serde_json::Error> for ParseError {
+    fn from(error: serde_json::Error) -> Self {
+        ParseError::Body(error)
     }
 }
 
@@ -67,27 +80,34 @@ impl From<Utf8Error> for ParseError {
 }
 
 /// Encodes and decodes Language Server Protocol messages.
-///
-/// # Encoding
-///
-/// If the message length is zero, then the codec will skip encoding the message.
-#[derive(Clone, Debug, Default)]
-pub struct LanguageServerCodec {
+#[derive(Clone, Debug)]
+pub struct LanguageServerCodec<T> {
     remaining_msg_bytes: usize,
+    _marker: PhantomData<T>,
 }
 
-impl Encoder<String> for LanguageServerCodec {
+impl<T> Default for LanguageServerCodec<T> {
+    fn default() -> Self {
+        LanguageServerCodec {
+            remaining_msg_bytes: 0,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T: Serialize> Encoder<T> for LanguageServerCodec<T> {
     type Error = ParseError;
 
-    fn encode(&mut self, item: String, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        if !item.is_empty() {
-            // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
-            // the length of the message, and the message body.
-            dst.reserve(item.len() + number_of_digits(item.len()) + 20);
-            let mut writer = dst.writer();
-            write!(writer, "Content-Length: {}\r\n\r\n{}", item.len(), item)?;
-            writer.flush()?;
-        }
+    fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let msg = serde_json::to_string(&item)?;
+        trace!("-> {}", msg);
+
+        // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
+        // the length of the message, and the message body.
+        dst.reserve(msg.len() + number_of_digits(msg.len()) + 20);
+        let mut writer = dst.writer();
+        write!(writer, "Content-Length: {}\r\n\r\n{}", msg.len(), msg)?;
+        writer.flush()?;
 
         Ok(())
     }
@@ -105,8 +125,8 @@ fn number_of_digits(mut n: usize) -> usize {
     num_digits
 }
 
-impl Decoder for LanguageServerCodec {
-    type Item = String;
+impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
+    type Item = T;
     type Error = ParseError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -114,11 +134,8 @@ impl Decoder for LanguageServerCodec {
             return Ok(None);
         }
 
-        let (message, len) = match parse_message(&src) {
-            Ok((remaining, message)) => (
-                str::from_utf8(message)?.to_string(),
-                src.len() - remaining.len(),
-            ),
+        let (msg, len) = match parse_message(src) {
+            Ok((remaining, msg)) => (str::from_utf8(msg)?, src.len() - remaining.len()),
             Err(Err::Incomplete(Needed::Size(min))) => {
                 self.remaining_msg_bytes = min;
                 return Ok(None);
@@ -128,7 +145,7 @@ impl Decoder for LanguageServerCodec {
             }
             Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => loop {
                 use ParseError::*;
-                match parse_message(&src) {
+                match parse_message(src) {
                     Err(_) if !src.is_empty() => src.advance(1),
                     _ => match err {
                         ErrorKind::Digit | ErrorKind::MapRes => return Err(InvalidLength),
@@ -139,10 +156,17 @@ impl Decoder for LanguageServerCodec {
             },
         };
 
+        trace!("<- {}", msg);
+        let result = match serde_json::from_str(msg) {
+            Ok(parsed) => Ok(Some(parsed)),
+            Err(err) => Err(err.into()),
+        };
+
+        drop(msg);
         src.advance(len);
         self.remaining_msg_bytes = 0;
 
-        Ok(Some(message))
+        result
     }
 }
 
@@ -164,6 +188,7 @@ fn parse_message(input: &[u8]) -> IResult<&[u8], &[u8]> {
 #[cfg(test)]
 mod tests {
     use bytes::BytesMut;
+    use serde_json::Value;
 
     use super::*;
 
@@ -174,20 +199,14 @@ mod tests {
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::new();
-        codec.encode(decoded.clone(), &mut buffer).unwrap();
+        let item: Value = serde_json::from_str(&decoded).unwrap();
+        codec.encode(item, &mut buffer).unwrap();
         assert_eq!(buffer, BytesMut::from(encoded.as_str()));
 
         let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
+        let decoded = serde_json::from_str(&decoded).unwrap();
         assert_eq!(message, Some(decoded));
-    }
-
-    #[test]
-    fn skips_encoding_empty_message() {
-        let mut codec = LanguageServerCodec::default();
-        let mut buffer = BytesMut::new();
-        codec.encode("".to_string(), &mut buffer).unwrap();
-        assert_eq!(buffer, BytesMut::new());
     }
 
     #[test]
@@ -200,6 +219,7 @@ mod tests {
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
+        let decoded: Value = serde_json::from_str(&decoded).unwrap();
         assert_eq!(message, Some(decoded));
     }
 
@@ -218,6 +238,7 @@ mod tests {
         }
 
         let message = codec.decode(&mut buffer).unwrap();
+        let decoded: Value = serde_json::from_str(&decoded).unwrap();
         assert_eq!(message, Some(decoded));
     }
 }
