@@ -25,6 +25,11 @@ struct ClientInner {
 }
 
 /// Handle for communicating with the language client.
+///
+/// This type provides a very cheap implementation of [`Clone`] so API consumers can cheaply clone
+/// and pass it around as needed.
+///
+/// [`Clone`]: trait@std::clone::Clone
 #[derive(Clone, Debug)]
 pub struct Client {
     inner: Arc<ClientInner>,
@@ -72,9 +77,9 @@ impl Client {
         .await;
     }
 
-    /// Asks the client to display a particular message in the user interface.
+    /// Requests the client to display a particular message in the user interface.
     ///
-    /// In addition to the `show_message` notification, the request allows to pass actions and to
+    /// Unlike the `show_message` notification, this request can also pass a list of actions and
     /// wait for an answer from the client.
     ///
     /// This corresponds to the [`window/showMessageRequest`] request.
