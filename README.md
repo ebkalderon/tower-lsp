@@ -81,7 +81,8 @@ async fn main() {
 ## License
 
 `tower-lsp` is free and open source software distributed under the terms of
-both the [MIT](LICENSE-MIT) and the [Apache 2.0](LICENSE-APACHE) licenses.
+either the [MIT](LICENSE-MIT) or the [Apache 2.0](LICENSE-APACHE) license, at
+your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
