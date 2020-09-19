@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.3] - 2020-09-19
+
+* Increase `lsp-types` semantic version range to `>=0.79, <0.82`. This is safe
+  because the upstream changes only concern proposed LSP features, which this
+  library does not currently support.
+
 ## [0.13.2] - 2020-09-03
 
 ### Changed
 
-* Increase `lsp-types` semantic version range to `>=0.79,<0.81`. This is safe
-  because the changes only concern proposed LSP changes, which this library does
-  not currently support.
+* Increase `lsp-types` semantic version range to `>=0.79, <0.81`. This is safe
+  because the upstream changes only concern proposed LSP features, which this
+  library does not currently support.
 
 ## [0.13.1] - 2020-08-21
 
@@ -367,7 +373,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...HEAD
+[0.13.3]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.12.1...v0.13.0
