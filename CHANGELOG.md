@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.13.3] - 2020-09-19
 
+### Changed
+
 * Increase `lsp-types` semantic version range to `>=0.79, <0.82`. This is safe
   because the upstream changes only concern proposed LSP features, which this
   library does not currently support.
