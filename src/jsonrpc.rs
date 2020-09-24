@@ -115,15 +115,6 @@ pub enum Incoming {
     Request(ServerRequest),
     /// Response to a server-to-client request.
     Response(Response),
-    /// An invalid JSON-RPC request.
-    Invalid {
-        /// Request ID, if known.
-        #[serde(default)]
-        id: Option<Id>,
-        /// Method name, if known.
-        #[serde(default)]
-        method: Option<String>,
-    },
 }
 
 /// A server-to-client LSP request.
@@ -275,5 +266,20 @@ mod tests {
         let from_str: Outgoing = serde_json::from_str(&v.to_string()).unwrap();
         let from_value: Outgoing = serde_json::from_value(v).unwrap();
         assert_eq!(from_str, from_value);
+    }
+
+    #[test]
+    fn parses_invalid_server_request() {
+        let unknown_method = json!({"jsonrpc":"2.0","method":"foo"});
+        let _: Incoming = serde_json::from_value(unknown_method).unwrap();
+
+        let unknown_method_with_id = json!({"jsonrpc":"2.0","method":"foo","id":1});
+        let _: Incoming = serde_json::from_value(unknown_method_with_id).unwrap();
+
+        let missing_method = json!({"jsonrpc":"2.0"});
+        let _: Incoming = serde_json::from_value(missing_method).unwrap();
+
+        let missing_method_with_id = json!({"jsonrpc":"2.0","id":1});
+        let _: Incoming = serde_json::from_value(missing_method_with_id).unwrap();
     }
 }
