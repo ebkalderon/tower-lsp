@@ -84,20 +84,13 @@ impl Client {
     /// This corresponds to the [`window/showMessageRequest`] request.
     ///
     /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessageRequest
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn show_message_request<M: Display>(
         &self,
         typ: MessageType,
         message: M,
         actions: Option<Vec<MessageActionItem>>,
     ) -> Result<Option<MessageActionItem>> {
-        self.send_request_initialized::<ShowMessageRequest>(ShowMessageRequestParams {
+        self.send_request::<ShowMessageRequest>(ShowMessageRequestParams {
             typ,
             message: message.to_string(),
             actions,
