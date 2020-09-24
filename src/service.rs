@@ -10,11 +10,11 @@ use std::task::{Context, Poll};
 use futures::channel::mpsc::{self, Receiver};
 use futures::stream::FusedStream;
 use futures::{future, FutureExt, Stream};
-use log::{error, trace};
+use log::trace;
 use tower_service::Service;
 
 use super::client::Client;
-use super::jsonrpc::{self, ClientRequests, Incoming, Outgoing, Response, ServerRequests};
+use super::jsonrpc::{ClientRequests, Incoming, Outgoing, ServerRequests};
 use super::{generated_impl, LanguageServer, ServerState, State};
 
 /// Error that occurs when attempting to call the language server after it has already exited.
@@ -130,18 +130,6 @@ impl Service<Incoming> for LspService {
                     self.pending_client.insert(res);
                     future::ok(None).boxed()
                 }
-                Incoming::Invalid { id, method } => match (id, method) {
-                    (None, Some(method)) if method.starts_with("$/") => future::ok(None).boxed(),
-                    (id, Some(method)) => {
-                        error!("method {:?} not found", method);
-                        let res = Response::error(id, jsonrpc::Error::method_not_found());
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    }
-                    (id, None) => {
-                        let res = Response::error(id, jsonrpc::Error::invalid_request());
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    }
-                },
             }
         }
     }
