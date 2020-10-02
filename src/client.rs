@@ -265,6 +265,18 @@ impl Client {
         }
     }
 
+    /// Sends a custom request to the client.
+    ///
+    /// # Initialization
+    ///
+    /// This request will only be sent if the server is initialized.
+    pub async fn send_custom_request<R>(&self, params: R::Params) -> Result<R::Result>
+    where
+        R: Request,
+    {
+        self.send_request_initialized::<R>(params).await
+    }
+
     async fn send_notification_initialized<N>(&self, params: N::Params)
     where
         N: Notification,
