@@ -72,7 +72,7 @@ impl LanguageServer for Backend {
             .log_message(MessageType::Info, "command executed!")
             .await;
 
-        match self.client.apply_edit(WorkspaceEdit::default()).await {
+        match self.client.apply_edit(WorkspaceEdit::default(), None).await {
             Ok(res) if res.applied => self.client.log_message(MessageType::Info, "applied").await,
             Ok(_) => self.client.log_message(MessageType::Info, "rejected").await,
             Err(err) => self.client.log_message(MessageType::Error, err).await,

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* Bump minimum supported Rust version to 1.43.0 (PR #238).
+* Bump minimum supported Rust version to 1.44.0 (PR #243).
+* Update `lsp-types` crate from `>=0.79, <0.82` to `0.85` (PR #243).
+* Update `tokio` crate from `0.2` to `0.3` (PR #243).
 
 ## [0.13.3] - 2020-09-19
 

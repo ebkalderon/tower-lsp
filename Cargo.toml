@@ -17,10 +17,10 @@ exclude = ["./tower-lsp-macros"]
 async-trait = "0.1"
 auto_impl = "0.4"
 bytes = "0.6"
-dashmap = "3.5.1"
+dashmap = "3.11.10"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 log = "0.4"
-lsp-types = "0.83"
+lsp-types = "0.85.0"
 nom = { version = "5.1", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
