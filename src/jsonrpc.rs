@@ -275,11 +275,5 @@ mod tests {
 
         let unknown_method_with_id = json!({"jsonrpc":"2.0","method":"foo","id":1});
         let _: Incoming = serde_json::from_value(unknown_method_with_id).unwrap();
-
-        let missing_method = json!({"jsonrpc":"2.0"});
-        let _: Incoming = serde_json::from_value(missing_method).unwrap();
-
-        let missing_method_with_id = json!({"jsonrpc":"2.0","id":1});
-        let _: Incoming = serde_json::from_value(missing_method_with_id).unwrap();
     }
 }

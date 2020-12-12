@@ -244,7 +244,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             #[serde(untagged)]
             enum RequestKind {
                 Valid(ServerMethod),
-                Invalid { id: Option<Id>, method: Option<String> },
+                Invalid { id: Option<Id>, method: String },
             }
 
             #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
@@ -298,17 +298,13 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
 
                 let method = match request.kind {
                     RequestKind::Valid(method) => method,
-                    RequestKind::Invalid { id: Some(id), method: Some(m) } => {
-                        error!("method {:?} not found", m);
+                    RequestKind::Invalid { id: Some(id), method } => {
+                        error!("method {:?} not found", method);
                         let res = Response::error(Some(id), Error::method_not_found());
                         return future::ok(Some(Outgoing::Response(res))).boxed();
                     }
-                    RequestKind::Invalid { id: Some(id), .. } => {
-                        let res = Response::error(Some(id), Error::invalid_request());
-                        return future::ok(Some(Outgoing::Response(res))).boxed();
-                    }
-                    RequestKind::Invalid { id: None, method: Some(m) } if !m.starts_with("$/") => {
-                        error!("method {:?} not found", m);
+                    RequestKind::Invalid { id: None, method } if !method.starts_with("$/") => {
+                        error!("method {:?} not found", method);
                         return future::ok(None).boxed();
                     }
                     RequestKind::Invalid { id: None, .. } => return future::ok(None).boxed(),
