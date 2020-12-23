@@ -16,7 +16,7 @@ exclude = ["./tower-lsp-macros"]
 [dependencies]
 async-trait = "0.1"
 auto_impl = "0.4"
-bytes = "0.5"
+bytes = "1.0"
 dashmap = "3.5.1"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 log = "0.4"
