@@ -24,14 +24,14 @@ lsp-types = "0.82"
 nom = { version = "5.1", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "0.2", features = ["rt-core"] }
+tokio = { version = "1.4", features = ["rt-core"] }
 tokio-util = { version = "0.3", features = ["codec"] }
 tower-lsp-macros = { version = "0.3", path = "./tower-lsp-macros" }
 tower-service = "0.3"
 
 [dev-dependencies]
 env_logger = "0.7"
-tokio = { version = "0.2", features = ["io-std", "io-util", "macros", "net", "test-util"] }
+tokio = { version = "1.4", features = ["io-std", "io-util", "macros", "net", "test-util"] }
 tower-test = "0.3"
 
 [workspace]
