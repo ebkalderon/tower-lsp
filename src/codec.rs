@@ -6,7 +6,7 @@ use std::io::{Error as IoError, Write};
 use std::marker::PhantomData;
 use std::str::{self, Utf8Error};
 
-use bytes::buf::ext::BufMutExt;
+use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
 use log::trace;
 use nom::branch::alt;
