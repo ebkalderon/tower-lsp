@@ -162,11 +162,11 @@ mod tests {
 
         let id = Id::Number(1);
         let handler_fut = tokio::spawn(pending.execute(id.clone(), async {
-            tokio::time::delay_for(Duration::from_secs(50)).await;
+            tokio::time::sleep(Duration::from_secs(50)).await;
             Ok(json!({}))
         }));
 
-        tokio::time::delay_for(Duration::from_millis(30)).await;
+        tokio::time::sleep(Duration::from_millis(30)).await;
         pending.cancel(&id);
 
         let res = handler_fut.await.expect("task panicked");
