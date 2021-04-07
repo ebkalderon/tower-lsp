@@ -21,18 +21,18 @@ impl LanguageServer for Backend {
                     resolve_provider: Some(false),
                     trigger_characters: Some(vec![".".to_string()]),
                     work_done_progress_options: Default::default(),
+                    all_commit_characters: None,
                 }),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: vec!["dummy.do_something".to_string()],
                     work_done_progress_options: Default::default(),
                 }),
-                workspace: Some(WorkspaceCapability {
-                    workspace_folders: Some(WorkspaceFolderCapability {
+                workspace: Some(WorkspaceServerCapabilities {
+                    workspace_folders: Some(WorkspaceFoldersServerCapabilities {
                         supported: Some(true),
-                        change_notifications: Some(
-                            WorkspaceFolderCapabilityChangeNotifications::Bool(true),
-                        ),
+                        change_notifications: Some(OneOf::Left(true)),
                     }),
+                    file_operations: None,
                 }),
                 ..ServerCapabilities::default()
             },
