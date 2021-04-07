@@ -137,23 +137,26 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
         let (msg, len) = match parse_message(src) {
             Ok((remaining, msg)) => (str::from_utf8(msg), src.len() - remaining.len()),
             Err(Err::Incomplete(Needed::Size(min))) => {
-                self.remaining_msg_bytes = min;
+                self.remaining_msg_bytes = min.get();
                 return Ok(None);
             }
             Err(Err::Incomplete(_)) => {
                 return Ok(None);
             }
-            Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => loop {
-                use ParseError::*;
-                match parse_message(src) {
-                    Err(_) if !src.is_empty() => src.advance(1),
-                    _ => match err {
-                        ErrorKind::Digit | ErrorKind::MapRes => return Err(InvalidLength),
-                        ErrorKind::Char | ErrorKind::IsNot => return Err(InvalidType),
-                        _ => return Err(MissingHeader),
-                    },
+            Err(Err::Error(err)) | Err(Err::Failure(err)) => {
+                let code = err.code;
+                loop {
+                    use ParseError::*;
+                    match parse_message(src) {
+                        Err(_) if !src.is_empty() => src.advance(1),
+                        _ => match code {
+                            ErrorKind::Digit | ErrorKind::MapRes => return Err(InvalidLength),
+                            ErrorKind::Char | ErrorKind::IsNot => return Err(InvalidType),
+                            _ => return Err(MissingHeader),
+                        },
+                    }
                 }
-            },
+            }
         };
 
         let result = match msg {
@@ -184,7 +187,7 @@ fn parse_message(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let header = terminated(terminated(content_len, opt(content_type)), crlf);
     let header = map_res(header, |s: &[u8]| str::from_utf8(s));
     let length = map_res(header, |s: &str| s.parse::<usize>());
-    let message = length_data(length);
+    let mut message = length_data(length);
 
     message(input)
 }
