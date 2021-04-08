@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+* Update `lsp-types` from `0.82` to `0.89`
+* Update `tokio` from `0.2` to `1.4.0`
+* Update `bytes` from `0.5` to `1.0.1`
+* Update `dashmap` from `3.5.1` to `4.0.2`
+* Update `nom` from `5.1` to `6.1.2`
+* Update `env_logger` from `0.7` to `0.8.3` (dev-dependencies)
+* Update `tower-test` from `0.3` to `0.4` (dev-dependencies)
+
 ## [0.13.3] - 2020-09-19
 
 ### Changed
