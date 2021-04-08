@@ -30,9 +30,9 @@ tower-lsp-macros = { version = "0.3", path = "./tower-lsp-macros" }
 tower-service = "0.3"
 
 [dev-dependencies]
-env_logger = "0.7"
+env_logger = "0.8.3"
 tokio = { version = "1.4.0", features = ["io-std", "io-util", "macros", "net", "test-util"] }
-tower-test = "0.3"
+tower-test = "0.4"
 
 [workspace]
 members = [".", "./tower-lsp-macros"]
