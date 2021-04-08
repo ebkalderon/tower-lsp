@@ -9,14 +9,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* Update `lsp-types` from `0.82` to `0.89`
-* Update `tokio` from `0.2` to `1.4.0`
-* Update `tokio-util` from `0.3` to `0.6.5`
-* Update `bytes` from `0.5` to `1.0.1`
-* Update `dashmap` from `3.5.1` to `4.0.2`
-* Update `nom` from `5.1` to `6.1.2`
-* Update `env_logger` from `0.7` to `0.8.3` (dev-dependencies)
-* Update `tower-test` from `0.3` to `0.4` (dev-dependencies)
+* Bump minimum supported Rust version from `1.41.0` to `1.45.0` (PR #264).
+* Update `lsp-types` from `0.82` to `0.89` (PR #264)
+* Update `tokio` from `0.2` to `1.4.0` (PR #264)
+* Update `tokio-util` from `0.3` to `0.6.5` (PR #264)
+* Update `bytes` from `0.5` to `1.0.1` (PR #264)
+* Update `dashmap` from `3.5.1` to `4.0.2` (PR #264)
+* Update `nom` from `5.1` to `6.1.2` (PR #264)
+* Update `env_logger` from `0.7` to `0.8.3` (dev-dependencies) (PR #264)
+* Update `tower-test` from `0.3` to `0.4` (dev-dependencies) (PR #264)
 
 ## [0.13.3] - 2020-09-19
 
