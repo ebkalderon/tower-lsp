@@ -287,12 +287,14 @@ impl Client {
         let id = self.inner.request_id.fetch_add(1, Ordering::Relaxed);
         let message = Outgoing::Request(ClientRequest::request::<R>(id, params));
 
+        let response_waiter = self.inner.pending_requests.wait(Id::Number(id));
+
         if self.inner.sender.clone().send(message).await.is_err() {
             error!("failed to send request");
             return Err(Error::internal_error());
         }
 
-        let response = self.inner.pending_requests.wait(Id::Number(id)).await;
+        let response = response_waiter.await;
         let (_, result) = response.into_parts();
         result.and_then(|v| {
             serde_json::from_value(v).map_err(|e| Error {
