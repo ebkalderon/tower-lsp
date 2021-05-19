@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Bump minimum supported Rust version from `1.41.0` to `1.45.0` (PR #264).
 * Update `lsp-types` from `0.82` to `0.89` (PR #264)
-* Update `tokio` from `0.2` to `1.4.0` (PR #264)
+* Update `tokio` from `0.2` to `1.6.0` (PR #264, PR #268)
 * Update `tokio-util` from `0.3` to `0.6.5` (PR #264)
 * Update `bytes` from `0.5` to `1.0.1` (PR #264)
 * Update `dashmap` from `3.5.1` to `4.0.2` (PR #264)
