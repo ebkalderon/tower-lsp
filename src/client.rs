@@ -311,6 +311,21 @@ impl Client {
         self.send_notification_initialized::<N>(params).await;
     }
 
+    /// Sends a custom request to the client.
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    pub async fn send_custom_request<R>(&self, params: R::Params) -> Result<R::Result>
+    where
+        R: Request,
+    {
+        self.send_request_initialized::<R>(params).await
+    }
+
     async fn send_notification<N>(&self, params: N::Params)
     where
         N: Notification,
