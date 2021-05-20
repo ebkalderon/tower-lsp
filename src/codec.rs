@@ -10,9 +10,9 @@ use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
 use log::trace;
 use nom::branch::alt;
-use nom::bytes::streaming::{is_not, tag};
+use nom::bytes::streaming::{is_not, tag, take_until};
 use nom::character::streaming::{char, crlf, digit1, space0};
-use nom::combinator::{map_res, opt};
+use nom::combinator::{map, map_res, opt};
 use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::{delimited, terminated, tuple};
@@ -145,16 +145,18 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
             }
             Err(Err::Error(err)) | Err(Err::Failure(err)) => {
                 let code = err.code;
-                loop {
-                    use ParseError::*;
-                    match parse_message(src) {
-                        Err(_) if !src.is_empty() => src.advance(1),
-                        _ => match code {
-                            ErrorKind::Digit | ErrorKind::MapRes => return Err(InvalidLength),
-                            ErrorKind::Char | ErrorKind::IsNot => return Err(InvalidType),
-                            _ => return Err(MissingHeader),
-                        },
-                    }
+                let parsed_bytes = src.len() - err.input.len();
+                src.advance(parsed_bytes);
+
+                match find_next_message(src) {
+                    Ok((_, position)) => src.advance(position),
+                    Err(_) => src.advance(src.len()),
+                }
+
+                match code {
+                    ErrorKind::Digit | ErrorKind::MapRes => return Err(ParseError::InvalidLength),
+                    ErrorKind::Char | ErrorKind::IsNot => return Err(ParseError::InvalidType),
+                    _ => return Err(ParseError::MissingHeader),
                 }
             }
         };
@@ -191,6 +193,10 @@ fn parse_message(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let mut message = length_data(length);
 
     message(input)
+}
+
+fn find_next_message(input: &[u8]) -> IResult<&[u8], usize> {
+    map(take_until("Content-Length"), |s: &[u8]| s.len())(input)
 }
 
 #[cfg(test)]
