@@ -123,7 +123,7 @@ impl Client {
     ///
     /// # Initialization
     ///
-    /// If the request is sent to client before the server has been initialized, this will
+    /// If the request is sent to the client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -140,7 +140,7 @@ impl Client {
     ///
     /// # Initialization
     ///
-    /// If the request is sent to client before the server has been initialized, this will
+    /// If the request is sent to the client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -162,7 +162,7 @@ impl Client {
     ///
     /// # Initialization
     ///
-    /// If the request is sent to client before the server has been initialized, this will
+    /// If the request is sent to the client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -190,7 +190,7 @@ impl Client {
     ///
     /// # Initialization
     ///
-    /// If the request is sent to client before the server has been initialized, this will
+    /// If the request is sent to the client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -212,7 +212,7 @@ impl Client {
     ///
     /// # Initialization
     ///
-    /// If the request is sent to client before the server has been initialized, this will
+    /// If the request is sent to the client before the server has been initialized, this will
     /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
@@ -243,6 +243,33 @@ impl Client {
             uri, diags, version,
         ))
         .await;
+    }
+
+    /// Asks the client to refresh the code lenses currently shown in editors. As a result, the
+    /// client should ask the server to recompute the code lenses for these editors.
+    ///
+    /// This is useful if a server detects a configuration change which requires a re-calculation
+    /// of all code lenses.
+    ///
+    /// Note that the client still has the freedom to delay the re-calculation of the code lenses
+    /// if for example an editor is currently not visible.
+    ///
+    /// This corresponds to the [`workspace/codeLens/refresh`] request.
+    ///
+    /// [`workspace/codeLens/refresh`]: https://microsoft.github.io/language-server-protocol/specification#codeLens_refresh
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    pub async fn code_lens_refresh(&self) -> Result<()> {
+        self.send_request_initialized::<CodeLensRefresh>(()).await
     }
 
     /// Sends a custom notification to the client.
