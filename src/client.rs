@@ -280,7 +280,7 @@ impl Client {
     /// Note that the client still has the freedom to delay the re-calculation of the semantic
     /// tokens if for example an editor is currently not visible.
     ///
-    /// This corresponds to the [`workspace/semanticTokens/refresh`] notification.
+    /// This corresponds to the [`workspace/semanticTokens/refresh`] request.
     ///
     /// [`workspace/semanticTokens/refresh`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
     ///
