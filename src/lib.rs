@@ -216,6 +216,97 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`workspace/willCreateFiles`] request is sent from the client to the server before
+    /// files are actually created as long as the creation is triggered from within the client.
+    ///
+    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// files are created. Please note that clients might drop results if computing the edit took
+    /// too long or if a server constantly fails on this request. This is done to keep creates fast
+    /// and reliable.
+    ///
+    /// [`workspace/willCreateFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willCreateFiles
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "workspace/willCreateFiles")]
+    async fn will_create_files(&self, params: CreateFilesParams) -> Result<Option<WorkspaceEdit>> {
+        let _ = params;
+        error!("Got a workspace/willCreateFiles request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`workspace/didCreateFiles`] request is sent from the client to the server when files
+    /// were created from within the client.
+    ///
+    /// [`workspace/didCreateFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didCreateFiles
+    #[rpc(name = "workspace/didCreateFiles")]
+    async fn did_create_files(&self, params: CreateFilesParams) {
+        let _ = params;
+        warn!("Got a workspace/didCreateFiles notification, but it is not implemented");
+    }
+
+    /// The [`workspace/willRenameFiles`] request is sent from the client to the server before
+    /// files are actually renamed as long as the rename is triggered from within the client.
+    ///
+    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// files are renamed. Please note that clients might drop results if computing the edit took
+    /// too long or if a server constantly fails on this request. This is done to keep creates fast
+    /// and reliable.
+    ///
+    /// [`workspace/willRenameFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willRenameFiles
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "workspace/willRenameFiles")]
+    async fn will_rename_files(&self, params: RenameFilesParams) -> Result<Option<WorkspaceEdit>> {
+        let _ = params;
+        error!("Got a workspace/willRenameFiles request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`workspace/didRenameFiles`] notification is sent from the client to the server when
+    /// files were renamed from within the client.
+    ///
+    /// [`workspace/didRenameFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didRenameFiles
+    #[rpc(name = "workspace/didRenameFiles")]
+    async fn did_rename_files(&self, params: RenameFilesParams) {
+        let _ = params;
+        warn!("Got a workspace/didRenameFiles notification, but it is not implemented");
+    }
+
+    /// The [`workspace/willDeleteFiles`] request is sent from the client to the server before
+    /// files are actually deleted as long as the deletion is triggered from within the client
+    /// either by a user action or by applying a workspace edit.
+    ///
+    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// files are deleted. Please note that clients might drop results if computing the edit took
+    /// too long or if a server constantly fails on this request. This is done to keep deletions
+    /// fast and reliable.
+    ///
+    /// [`workspace/willDeleteFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willDeleteFiles
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "workspace/willDeleteFiles")]
+    async fn will_delete_files(&self, params: DeleteFilesParams) -> Result<Option<WorkspaceEdit>> {
+        let _ = params;
+        error!("Got a workspace/willDeleteFiles request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`workspace/didDeleteFiles`] notification is sent from the client to the server when
+    /// files were deleted from within the client.
+    ///
+    /// [`workspace/didDeleteFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didDeleteFiles
+    #[rpc(name = "workspace/didDeleteFiles")]
+    async fn did_delete_files(&self, params: DeleteFilesParams) {
+        let _ = params;
+        warn!("Got a workspace/didDeleteFiles notification, but it is not implemented");
+    }
+
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
     /// that a new text document has been opened by the client.
     ///
