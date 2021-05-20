@@ -1023,6 +1023,36 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/linkedEditingRange request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/moniker`] request is sent from the client to the server to get the
+    /// symbol monikers for a given text document position.
+    ///
+    /// [`textDocument/moniker`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_moniker
+    ///
+    /// An array of `Moniker` types is returned as response to indicate possible monikers at the
+    /// given location. If no monikers can be calculated, `Some(vec![])` or `None` should be
+    /// returned.
+    ///
+    /// # Concept
+    ///
+    /// The Language Server Index Format (LSIF) introduced the concept of _symbol monikers_ to help
+    /// associate symbols across different indexes. This request adds capability for LSP server
+    /// implementations to provide the same symbol moniker information given a text document
+    /// position.
+    ///
+    /// Clients can utilize this method to get the moniker at the current location in a file the
+    /// user is editing and do further code navigation queries in other services that rely on LSIF
+    /// indexes and link symbols together.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/moniker")]
+    async fn moniker(&self, params: MonikerParams) -> Result<Option<Vec<Moniker>>> {
+        let _ = params;
+        error!("Got a textDocument/moniker request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 fn _assert_object_safe() {
