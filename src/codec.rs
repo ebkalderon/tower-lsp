@@ -206,10 +206,23 @@ mod tests {
 
     use super::*;
 
+    fn encode_message(content_type: Option<&str>, message: &str) -> String {
+        let content_type = content_type
+            .map(|ty| format!("\r\nContent-Type: {}", ty))
+            .unwrap_or_default();
+
+        format!(
+            "Content-Length: {}{}\r\n\r\n{}",
+            message.len(),
+            content_type,
+            message
+        )
+    }
+
     #[test]
     fn encode_and_decode() {
-        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
-        let encoded = format!("Content-Length: {}\r\n\r\n{}", decoded.len(), decoded);
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
+        let encoded = encode_message(None, &decoded);
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::new();
@@ -225,10 +238,9 @@ mod tests {
 
     #[test]
     fn decodes_optional_content_type() {
-        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
-        let content_len = format!("Content-Length: {}", decoded.len());
-        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8".to_string();
-        let encoded = format!("{}\r\n{}\r\n\r\n{}", content_len, content_type, decoded);
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
+        let content_type = "application/vscode-jsonrpc; charset=utf-8";
+        let encoded = encode_message(Some(content_type), decoded);
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
@@ -239,8 +251,8 @@ mod tests {
 
     #[test]
     fn decodes_zero_length_message() {
-        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8".to_string();
-        let encoded = format!("Content-Length: 0\r\n{}\r\n\r\n", content_type);
+        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8";
+        let encoded = encode_message(Some(content_type), "");
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
@@ -250,9 +262,9 @@ mod tests {
 
     #[test]
     fn recovers_from_parse_error() {
-        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
-        let encoded = format!("Content-Length: {}\r\n\r\n{}", decoded.len(), decoded);
-        let mixed = format!("1234567890abcdefgh{}", encoded);
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
+        let encoded = encode_message(None, decoded);
+        let mixed = format!("foobar{}Content-Length: foobar\r\n\r\n{}", encoded, encoded);
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(mixed.as_str());
@@ -262,8 +274,20 @@ mod tests {
             other => panic!("expected `Err(ParseError::MissingHeader)`, got {:?}", other),
         }
 
+        let message: Option<Value> = codec.decode(&mut buffer).unwrap();
+        let first_valid = serde_json::from_str(&decoded).unwrap();
+        assert_eq!(message, Some(first_valid));
+
+        match codec.decode(&mut buffer) {
+            Err(ParseError::InvalidLength) => {}
+            other => panic!("expected `Err(ParseError::InvalidLength)`, got {:?}", other),
+        }
+
         let message = codec.decode(&mut buffer).unwrap();
-        let decoded: Value = serde_json::from_str(&decoded).unwrap();
-        assert_eq!(message, Some(decoded));
+        let second_valid = serde_json::from_str(&decoded).unwrap();
+        assert_eq!(message, Some(second_valid));
+
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, None);
     }
 }
