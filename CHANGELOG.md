@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Update `bytes` from `0.5` to `1.0.1` (PR #264).
 * Update `dashmap` from `3.5.1` to `4.0.2` (PR #264).
 * Update `nom` from `5.1` to `6.1.2` (PR #264).
+* Eliminate looping, message reparsing in codec using SIMD accelerated
+  `take_until` combinator (PR #274).
 
 ## Fixed
 
@@ -43,8 +45,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Permit `window/showMessageRequest` while server is uninitialized (PR #288).
 * Fix client request futures hanging by fixing `serde` overlap (PR #269).
 * Correctly handle incoming zero-length messages (PR #271).
-* Eliminate looping, message reparsing in codec using SIMD accelerated
-  `take_until` combinator (PR #274).
 * Clean up documentation, fix broken intra-doc and external doc links.
 
 ## [0.13.3] - 2020-09-19
