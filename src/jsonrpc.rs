@@ -111,10 +111,10 @@ enum ResponseKind {
 #[cfg_attr(test, derive(Serialize))]
 #[serde(untagged)]
 pub enum Incoming {
-    /// Request intended for the language server.
-    Request(ServerRequest),
     /// Response to a server-to-client request.
     Response(Response),
+    /// Request intended for the language server.
+    Request(ServerRequest),
 }
 
 /// A server-to-client LSP request.
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn incoming_from_str_or_value() {
-        let v = json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1});
+        let v = json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":0});
         let from_str: Incoming = serde_json::from_str(&v.to_string()).unwrap();
         let from_value: Incoming = serde_json::from_value(v).unwrap();
         assert_eq!(from_str, from_value);
@@ -269,17 +269,52 @@ mod tests {
     }
 
     #[test]
+    fn parses_incoming_message() {
+        let server_request =
+            json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":0});
+        let incoming = serde_json::from_value(server_request).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
+
+        let server_notif = json!({"jsonrpc":"2.0","method":"initialized","params":{}});
+        let incoming = serde_json::from_value(server_notif).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
+
+        let client_request = json!({"jsonrpc":"2.0","id":0,"result":[null]});
+        let incoming = serde_json::from_value(client_request).unwrap();
+        assert!(matches!(incoming, Incoming::Response(_)));
+    }
+
+    #[test]
+    fn parses_outgoing_message() {
+        let client_request = json!({"jsonrpc":"2.0","method":"workspace/configuration","params":{"scopeUri":null,"section":"foo"},"id":0});
+        let outgoing = serde_json::from_value(client_request).unwrap();
+        assert!(matches!(outgoing, Outgoing::Request(_)));
+
+        let client_notif = json!({"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"foo","type":0}});
+        let outgoing = serde_json::from_value(client_notif).unwrap();
+        assert!(matches!(outgoing, Outgoing::Request(_)));
+
+        let server_response = json!({"jsonrpc":"2.0","id":0,"result":[null]});
+        let outgoing = serde_json::from_value(server_response).unwrap();
+        assert!(matches!(outgoing, Outgoing::Response(_)));
+    }
+
+    #[test]
     fn parses_invalid_server_request() {
         let unknown_method = json!({"jsonrpc":"2.0","method":"foo"});
-        let _: Incoming = serde_json::from_value(unknown_method).unwrap();
+        let incoming = serde_json::from_value(unknown_method).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
 
-        let unknown_method_with_id = json!({"jsonrpc":"2.0","method":"foo","id":1});
-        let _: Incoming = serde_json::from_value(unknown_method_with_id).unwrap();
+        let unknown_method_with_id = json!({"jsonrpc":"2.0","method":"foo","id":0});
+        let incoming = serde_json::from_value(unknown_method_with_id).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
 
         let missing_method = json!({"jsonrpc":"2.0"});
-        let _: Incoming = serde_json::from_value(missing_method).unwrap();
+        let incoming = serde_json::from_value(missing_method).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
 
-        let missing_method_with_id = json!({"jsonrpc":"2.0","id":1});
-        let _: Incoming = serde_json::from_value(missing_method_with_id).unwrap();
+        let missing_method_with_id = json!({"jsonrpc":"2.0","id":0});
+        let incoming = serde_json::from_value(missing_method_with_id).unwrap();
+        assert!(matches!(incoming, Incoming::Request(_)));
     }
 }
