@@ -272,6 +272,35 @@ impl Client {
         self.send_request_initialized::<CodeLensRefresh>(()).await
     }
 
+    /// Asks the client to refresh the editors for which this server provides semantic tokens. As a
+    /// result, the client should ask the server to recompute the semantic tokens for these
+    /// editors.
+    ///
+    /// This is useful if a server detects a project-wide configuration change which requires a
+    /// re-calculation of all semantic tokens.
+    ///
+    /// Note that the client still has the freedom to delay the re-calculation of the semantic
+    /// tokens if for example an editor is currently not visible.
+    ///
+    /// This corresponds to the [`workspace/semanticTokens/refresh`] notification.
+    ///
+    /// [`workspace/semanticTokens/refresh`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    pub async fn semantic_tokens_refresh(&self) -> Result<()> {
+        self.send_request_initialized::<SemanticTokensRefesh>(())
+            .await
+    }
+
     /// Sends a custom notification to the client.
     ///
     /// # Initialization
