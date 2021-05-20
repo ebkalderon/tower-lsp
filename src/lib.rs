@@ -998,6 +998,31 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/semanticTokens/range request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/linkedEditingRange`] request is sent from the client to the server to
+    /// return for a given position in a document the range of the symbol at the position and all
+    /// ranges that have the same content.
+    ///
+    /// [`textDocument/linkedEditingRange`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_linkedEditingRange
+    ///
+    /// Optionally a word pattern can be returned to describe valid contents.
+    ///
+    /// A rename to one of the ranges can be applied to all other ranges if the new content is
+    /// valid. If no result-specific word pattern is provided, the word pattern from the client's
+    /// language configuration is used.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/linkedEditingRange")]
+    async fn linked_editing_range(
+        &self,
+        params: LinkedEditingRangeParams,
+    ) -> Result<Option<LinkedEditingRanges>> {
+        let _ = params;
+        error!("Got a textDocument/linkedEditingRange request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 fn _assert_object_safe() {
