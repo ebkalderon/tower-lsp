@@ -622,7 +622,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// Since version 3.8.0: support for `CodeAction` literals to enable the following scenarios:
+    /// Since version 3.8.0: support for [`CodeAction`] literals to enable the following scenarios:
     ///
     /// * The ability to directly return a workspace edit from the code action request.
     ///   This avoids having another server roundtrip to execute an actual code action.
@@ -640,6 +640,25 @@ pub trait LanguageServer: Send + Sync + 'static {
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let _ = params;
         error!("Got a textDocument/codeAction request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`codeAction/resolve`] request is sent from the client to the server to resolve
+    /// additional information for a given code action.
+    ///
+    /// [`codeAction/resolve`]: https://microsoft.github.io/language-server-protocol/specification#codeAction_resolve
+    ///
+    /// This is usually used to compute the edit property of a [`CodeAction`] to avoid its
+    /// unnecessary computation during the [`textDocument/codeAction`](#method.code_action)
+    /// request.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "codeAction/resolve")]
+    async fn code_action_resolve(&self, params: CodeAction) -> Result<CodeAction> {
+        let _ = params;
+        error!("Got a codeAction/resolve request, but it is not implemented");
         Err(Error::method_not_found())
     }
 
