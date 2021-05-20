@@ -161,6 +161,7 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
 
         let result = match msg {
             Err(err) => Err(err.into()),
+            Ok(msg) if msg.is_empty() => Ok(None),
             Ok(msg) => {
                 trace!("<- {}", msg);
                 match serde_json::from_str(msg) {
@@ -228,6 +229,17 @@ mod tests {
         let message = codec.decode(&mut buffer).unwrap();
         let decoded: Value = serde_json::from_str(&decoded).unwrap();
         assert_eq!(message, Some(decoded));
+    }
+
+    #[test]
+    fn decodes_zero_length_message() {
+        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8".to_string();
+        let encoded = format!("Content-Length: 0\r\n{}\r\n\r\n", content_type);
+
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::from(encoded.as_str());
+        let message: Option<Value> = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, None);
     }
 
     #[test]
