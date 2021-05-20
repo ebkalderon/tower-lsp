@@ -927,6 +927,77 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a callHierarchy/outgoingCalls request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/semanticTokens/full`] request is sent from the client to the server to
+    /// resolve the semantic tokens of a given file.
+    ///
+    /// Semantic tokens are used to add additional color information to a file that depends on
+    /// language specific symbol information. A semantic token request usually produces a large
+    /// result. The protocol therefore supports encoding tokens with numbers. In addition, optional
+    /// support for deltas is available, i.e. [`semantic_tokens_full_delta`].
+    ///
+    /// [`textDocument/semanticTokens/full`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    /// [`semantic_tokens_full_delta`]: #method.semantic_tokens_full_delta
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/semanticTokens/full")]
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens/full request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`textDocument/semanticTokens/full/delta`] request is sent from the client to the server to
+    /// resolve the semantic tokens of a given file, **returning only the delta**.
+    ///
+    /// Similar to [`semantic_tokens_full`](#method.semantic_tokens_full), except it returns a
+    /// sequence of [`SemanticTokensEdit`] to transform a previous result into a new result.
+    ///
+    /// [`textDocument/semanticTokens/full/delta`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/semanticTokens/full/delta")]
+    async fn semantic_tokens_full_delta(
+        &self,
+        params: SemanticTokensDeltaParams,
+    ) -> Result<Option<SemanticTokensFullDeltaResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens/full/delta request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`textDocument/semanticTokens/range`] request is sent from the client to the server to
+    /// resolve the semantic tokens **for the visible range** of a given file.
+    ///
+    /// When a user opens a file, it can be beneficial to only compute the semantic tokens for the
+    /// visible range (faster rendering of the tokens in the user interface). If a server can
+    /// compute these tokens faster than for the whole file, it can implement this method to handle
+    /// this special case.
+    ///
+    /// See [`semantic_tokens_full`] for more details.
+    ///
+    /// [`textDocument/semanticTokens/range`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    /// [`semantic_tokens_full`]: #method.semantic_tokens_full
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/semanticTokens/range")]
+    async fn semantic_tokens_range(
+        &self,
+        params: SemanticTokensRangeParams,
+    ) -> Result<Option<SemanticTokensRangeResult>> {
+        let _ = params;
+        error!("Got a textDocument/semanticTokens/range request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 }
 
 fn _assert_object_safe() {
