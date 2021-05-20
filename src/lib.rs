@@ -147,7 +147,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// server to inform about workspace folder configuration changes.
     ///
     /// The notification is sent by default if both of these boolean fields were set to `true` in
-    /// the [`initialize`] method:
+    /// the [`initialize`](LanguageServer::initialize) method:
     ///
     /// * `InitializeParams::capabilities::workspace::workspace_folders`
     /// * `InitializeResult::capabilities::workspace::workspace_folders::supported`
@@ -156,7 +156,6 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// notification.
     ///
     /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "workspace/didChangeWorkspaceFolders")]
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
@@ -177,11 +176,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// when the client detects changes to files watched by the language client.
     ///
     /// It is recommended that servers register for these file events using the registration
-    /// mechanism. This can be done here or in the [`initialized`] method using
-    /// `Client::register_capability()`.
+    /// mechanism. This can be done here or in the [`initialized`](LanguageServer::initialized)
+    /// method using [`Client::register_capability`].
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
-    /// [`initialized`]: #method.initialized
     #[rpc(name = "workspace/didChangeWatchedFiles")]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
@@ -205,7 +203,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
     /// command execution on the server.
     ///
-    /// In most cases, the server creates a `WorkspaceEdit` structure and applies the changes to
+    /// In most cases, the server creates a [`WorkspaceEdit`] structure and applies the changes to
     /// the workspace using `Client::apply_edit()` before returning from this function.
     ///
     /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
@@ -219,7 +217,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/willCreateFiles`] request is sent from the client to the server before
     /// files are actually created as long as the creation is triggered from within the client.
     ///
-    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are created. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep creates fast
     /// and reliable.
@@ -249,7 +247,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/willRenameFiles`] request is sent from the client to the server before
     /// files are actually renamed as long as the rename is triggered from within the client.
     ///
-    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are renamed. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep creates fast
     /// and reliable.
@@ -280,7 +278,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// files are actually deleted as long as the deletion is triggered from within the client
     /// either by a user action or by applying a workspace edit.
     ///
-    /// The request can return a `WorkspaceEdit` which will be applied to workspace before the
+    /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are deleted. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep deletions
     /// fast and reliable.
@@ -445,16 +443,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.14.0.
     ///
-    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
-    /// client set the following field to `true` in the [`initialize`] method:
+    /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
+    /// was introduced in specification version 3.14.0 and requires client-side support in order to
+    /// be used. It can be returned if the client set the following field to `true` in the
+    /// [`initialize`](LanguageServer::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
-    ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/declaration")]
     async fn goto_declaration(
         &self,
@@ -472,16 +468,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// # Compatibility
     ///
-    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
-    /// client set the following field to `true` in the [`initialize`] method:
+    /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
+    /// was introduced in specification version 3.14.0 and requires client-side support in order to
+    /// be used. It can be returned if the client set the following field to `true` in the
+    /// [`initialize`](LanguageServer::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::definition::link_support
     /// ```
-    ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/definition")]
     async fn goto_definition(
         &self,
@@ -501,16 +495,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.6.0.
     ///
-    /// The [`GotoDefinitionResponse::Link`] return value was introduced in specification version
-    /// 3.14.0 and requires client-side support in order to be used. It can be returned if the
-    /// client set the following field to `true` in the [`initialize`] method:
+    /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
+    /// was introduced in specification version 3.14.0 and requires client-side support in order to
+    /// be used. It can be returned if the client set the following field to `true` in the
+    /// [`initialize`](LanguageServer::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::type_definition::link_support
     /// ```
-    ///
-    /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/typeDefinition")]
     async fn goto_type_definition(
         &self,
@@ -530,16 +522,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.6.0.
     ///
-    /// The [`GotoImplementationResponse::Link`] return value was introduced in specification
-    /// version 3.14.0 and requires client-side support in order to be used. It can be returned if
-    /// the client set the following field to `true` in the [`initialize`] method:
+    /// The [`GotoImplementationResponse::Link`](lsp_types::GotoDefinitionResponse)
+    /// return value was introduced in specification version 3.14.0 and requires client-side
+    /// support in order to be used. It can be returned if the client set the following field to
+    /// `true` in the [`initialize`](LanguageServer::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::implementation::link_support
     /// ```
-    ///
-    /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/implementation")]
     async fn goto_implementation(
         &self,
@@ -593,8 +583,6 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///   document.
     ///
     /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol
-    /// [`DocumentSymbolResponse::Flat`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Flat
-    /// [`DocumentSymbolResponse::Nested`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.DocumentSymbolResponse.html#variant.Nested
     #[rpc(name = "textDocument/documentSymbol")]
     async fn document_symbol(
         &self,
@@ -649,7 +637,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`codeAction/resolve`]: https://microsoft.github.io/language-server-protocol/specification#codeAction_resolve
     ///
     /// This is usually used to compute the edit property of a [`CodeAction`] to avoid its
-    /// unnecessary computation during the [`textDocument/codeAction`](#method.code_action)
+    /// unnecessary computation during the [`textDocument/codeAction`](LanguageServer::code_action)
     /// request.
     ///
     /// # Compatibility
@@ -696,13 +684,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// The [`DocumentLink::tooltip`] field was introduced in specification version 3.15.0 and
     /// requires client-side support in order to be used. It can be returned if the client set the
-    /// following field to `true` in the [`initialize`] method:
+    /// following field to `true` in the [`initialize`](LanguageServer::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::document_link::tooltip_support
     /// ```
-    ///
-    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/documentLink")]
     async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
         let _ = params;
@@ -758,9 +744,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request was introduced in specification version 3.6.0.
     ///
     /// This request has no special capabilities and registration options since it is sent as a
-    /// resolve request for the [`textDocument/documentColor`] request.
-    ///
-    /// [`textDocument/documentColor`]: #method.document_color
+    /// resolve request for the [`textDocument/documentColor`](LanguageServer::document_color)
+    /// request.
     #[rpc(name = "textDocument/colorPresentation")]
     async fn color_presentation(
         &self,
@@ -887,8 +872,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// 1. First, a call hierarchy item is resolved for the given text document position (this
     ///    method).
     /// 2. For a call hierarchy item, the incoming or outgoing call hierarchy items are resolved
-    ///    inside [`incoming_calls()`](#method.incoming_calls) and
-    ///    [`outgoing_calls()`](#method.outgoing_calls), respectively.
+    ///    inside [`incoming_calls`] and [`outgoing_calls`], respectively.
+    ///
+    /// [`incoming_calls`]: LanguageServer::incoming_calls
+    /// [`outgoing_calls`]: LanguageServer::outgoing_calls
     ///
     /// # Compatibility
     ///
@@ -910,7 +897,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// server registers for the [`textDocument/prepareCallHierarchy`] request.
     ///
     /// [`callHierarchy/incomingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_incomingCalls
-    /// [`textDocument/prepareCallHierarchy`]: #method.prepare_call_hierarchy
+    /// [`textDocument/prepareCallHierarchy`]: LanguageServer::prepare_call_hierarchy
     ///
     /// # Compatibility
     ///
@@ -932,7 +919,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// server registers for the [`textDocument/prepareCallHierarchy`] request.
     ///
     /// [`callHierarchy/outgoingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_outgoingCalls
-    /// [`textDocument/prepareCallHierarchy`]: #method.prepare_call_hierarchy
+    /// [`textDocument/prepareCallHierarchy`]: LanguageServer::prepare_call_hierarchy
     ///
     /// # Compatibility
     ///
@@ -956,7 +943,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// support for deltas is available, i.e. [`semantic_tokens_full_delta`].
     ///
     /// [`textDocument/semanticTokens/full`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
-    /// [`semantic_tokens_full_delta`]: #method.semantic_tokens_full_delta
+    /// [`semantic_tokens_full_delta`]: LanguageServer::semantic_tokens_full_delta
     ///
     /// # Compatibility
     ///
@@ -974,8 +961,9 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/semanticTokens/full/delta`] request is sent from the client to the server to
     /// resolve the semantic tokens of a given file, **returning only the delta**.
     ///
-    /// Similar to [`semantic_tokens_full`](#method.semantic_tokens_full), except it returns a
-    /// sequence of [`SemanticTokensEdit`] to transform a previous result into a new result.
+    /// Similar to [`semantic_tokens_full`](LanguageServer::semantic_tokens_full), except it
+    /// returns a sequence of [`SemanticTokensEdit`] to transform a previous result into a new
+    /// result.
     ///
     /// [`textDocument/semanticTokens/full/delta`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
     ///
@@ -1000,10 +988,9 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// compute these tokens faster than for the whole file, it can implement this method to handle
     /// this special case.
     ///
-    /// See [`semantic_tokens_full`] for more details.
+    /// See [`semantic_tokens_full`](LanguageServer::semantic_tokens_full) for more details.
     ///
     /// [`textDocument/semanticTokens/range`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
-    /// [`semantic_tokens_full`]: #method.semantic_tokens_full
     ///
     /// # Compatibility
     ///
