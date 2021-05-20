@@ -156,7 +156,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// notification.
     ///
     /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "workspace/didChangeWorkspaceFolders")]
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
@@ -181,7 +181,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// `Client::register_capability()`.
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
-    /// [`initialized`]: #tymethod.initialized
+    /// [`initialized`]: #method.initialized
     #[rpc(name = "workspace/didChangeWatchedFiles")]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
@@ -454,7 +454,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/declaration")]
     async fn goto_declaration(
         &self,
@@ -481,7 +481,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/definition")]
     async fn goto_definition(
         &self,
@@ -510,7 +510,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```
     ///
     /// [`GotoDefinitionResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/typeDefinition")]
     async fn goto_type_definition(
         &self,
@@ -539,7 +539,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// ```
     ///
     /// [`GotoImplementationResponse::Link`]: https://docs.rs/lsp-types/0.74.0/lsp_types/enum.GotoDefinitionResponse.html#variant.Link
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/implementation")]
     async fn goto_implementation(
         &self,
@@ -683,7 +683,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::document_link::tooltip_support
     /// ```
     ///
-    /// [`initialize`]: #tymethod.initialize
+    /// [`initialize`]: #method.initialize
     #[rpc(name = "textDocument/documentLink")]
     async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
         let _ = params;
@@ -741,7 +741,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request has no special capabilities and registration options since it is sent as a
     /// resolve request for the [`textDocument/documentColor`] request.
     ///
-    /// [`textDocument/documentColor`]: #tymethod.document_color
+    /// [`textDocument/documentColor`]: #method.document_color
     #[rpc(name = "textDocument/colorPresentation")]
     async fn color_presentation(
         &self,
@@ -855,6 +855,76 @@ pub trait LanguageServer: Send + Sync + 'static {
     ) -> Result<Option<Vec<SelectionRange>>> {
         let _ = params;
         error!("Got a textDocument/selectionRange request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`textDocument/prepareCallHierarchy`] request is sent from the client to the server to
+    /// return a call hierarchy for the language element of given text document positions.
+    ///
+    /// [`textDocument/prepareCallHierarchy`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_prepareCallHierarchy
+    ///
+    /// The call hierarchy requests are executed in two steps:
+    ///
+    /// 1. First, a call hierarchy item is resolved for the given text document position (this
+    ///    method).
+    /// 2. For a call hierarchy item, the incoming or outgoing call hierarchy items are resolved
+    ///    inside [`incoming_calls()`](#method.incoming_calls) and
+    ///    [`outgoing_calls()`](#method.outgoing_calls), respectively.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "textDocument/prepareCallHierarchy")]
+    async fn prepare_call_hierarchy(
+        &self,
+        params: CallHierarchyPrepareParams,
+    ) -> Result<Option<Vec<CallHierarchyItem>>> {
+        let _ = params;
+        error!("Got a textDocument/prepareCallHierarchy request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`callHierarchy/incomingCalls`] request is sent from the client to the server to
+    /// resolve **incoming** calls for a given call hierarchy item.
+    ///
+    /// The request doesn't define its own client and server capabilities. It is only issued if a
+    /// server registers for the [`textDocument/prepareCallHierarchy`] request.
+    ///
+    /// [`callHierarchy/incomingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_incomingCalls
+    /// [`textDocument/prepareCallHierarchy`]: #method.prepare_call_hierarchy
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "callHierarchy/incomingCalls")]
+    async fn incoming_calls(
+        &self,
+        params: CallHierarchyIncomingCallsParams,
+    ) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
+        let _ = params;
+        error!("Got a callHierarchy/incomingCalls request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`callHierarchy/outgoingCalls`] request is sent from the client to the server to
+    /// resolve **outgoing** calls for a given call hierarchy item.
+    ///
+    /// The request doesn't define its own client and server capabilities. It is only issued if a
+    /// server registers for the [`textDocument/prepareCallHierarchy`] request.
+    ///
+    /// [`callHierarchy/outgoingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_outgoingCalls
+    /// [`textDocument/prepareCallHierarchy`]: #method.prepare_call_hierarchy
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    #[rpc(name = "callHierarchy/outgoingCalls")]
+    async fn outgoing_calls(
+        &self,
+        params: CallHierarchyOutgoingCallsParams,
+    ) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
+        let _ = params;
+        error!("Got a callHierarchy/outgoingCalls request, but it is not implemented");
         Err(Error::method_not_found())
     }
 }
