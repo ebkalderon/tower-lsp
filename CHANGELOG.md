@@ -7,17 +7,45 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.0] - 2021-05-20
+
+### Added
+
+* Add support for Language Server Protocol 3.16.0 (PR #270):
+  * Implement `workspace/willCreateFiles` server request.
+  * Implement `workspace/willRenameFiles` server request.
+  * Implement `workspace/willDeleteFiles` server request.
+  * Implement `workspace/didCreateFiles` server notification.
+  * Implement `workspace/didRenameFiles` server notification.
+  * Implement `workspace/didDeleteFiles` server notification.
+  * Implement call hierarchy server requests.
+  * Implement semantic tokens server requests.
+  * Implement `workspace/codeLens/refresh` client request.
+  * Implement `workspace/semanticTokens/refresh` client request.
+  * Implement `textDocument/linkedEditingRange` server request.
+  * Implement `textDocument/moniker` request.
+  * Implement `codeAction/resolve` request.
+* Add support for custom server-to-client requests (PR #275).
+
 ### Changed
 
 * Bump minimum supported Rust version from `1.41.0` to `1.45.0` (PR #264).
-* Update `lsp-types` from `0.82` to `0.89` (PR #264)
-* Update `tokio` from `0.2` to `1.6.0` (PR #264, PR #268)
-* Update `tokio-util` from `0.3` to `0.6.5` (PR #264)
-* Update `bytes` from `0.5` to `1.0.1` (PR #264)
-* Update `dashmap` from `3.5.1` to `4.0.2` (PR #264)
-* Update `nom` from `5.1` to `6.1.2` (PR #264)
-* Update `env_logger` from `0.7` to `0.8.3` (dev-dependencies) (PR #264)
-* Update `tower-test` from `0.3` to `0.4` (dev-dependencies) (PR #264)
+* Update `lsp-types` from `0.82` to `0.89` (PR #264).
+* Update `tokio` from `0.2` to `1.6` (PR #264, PR #268).
+* Update `tokio-util` from `0.3` to `0.6.5` (PR #264).
+* Update `bytes` from `0.5` to `1.0.1` (PR #264).
+* Update `dashmap` from `3.5.1` to `4.0.2` (PR #264).
+* Update `nom` from `5.1` to `6.1.2` (PR #264).
+
+## Fixed
+
+* Fix race when sending requests to the client (PR #245).
+* Permit `window/showMessageRequest` while server is uninitialized (PR #288).
+* Fix client request futures hanging by fixing `serde` overlap (PR #269).
+* Correctly handle incoming zero-length messages (PR #271).
+* Eliminate looping, message reparsing in codec using SIMD accelerated
+  `take_until` combinator (PR #274).
+* Clean up documentation, fix broken intra-doc and external doc links.
 
 ## [0.13.3] - 2020-09-19
 
@@ -387,7 +415,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.0...v0.13.1
