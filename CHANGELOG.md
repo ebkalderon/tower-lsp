@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.1] - 2021-05-21
+
+### Fixed
+
+* Fix regression in server-side `$/cancelRequest` support (PR #280).
+
 ## [0.14.0] - 2021-05-20
 
 ### Added
@@ -415,7 +421,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.1...v0.13.2
