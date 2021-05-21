@@ -10,6 +10,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
+use lsp_types::NumberOrString;
 use serde::de::{self, Deserializer};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,15 @@ impl Display for Id {
         match self {
             Id::Number(id) => Display::fmt(id, f),
             Id::String(id) => Debug::fmt(id, f),
+        }
+    }
+}
+
+impl From<NumberOrString> for Id {
+    fn from(num_or_str: NumberOrString) -> Self {
+        match num_or_str {
+            NumberOrString::Number(num) => Id::Number(num as u64),
+            NumberOrString::String(s) => Id::String(s),
         }
     }
 }

@@ -172,6 +172,11 @@ mod tests {
         async fn shutdown(&self) -> Result<()> {
             Ok(())
         }
+
+        // This handler should never resolve...
+        async fn code_action_resolve(&self, _: CodeAction) -> Result<CodeAction> {
+            future::pending().await
+        }
     }
 
     #[tokio::test]
@@ -229,5 +234,33 @@ mod tests {
 
         assert_eq!(service.poll_ready(), Poll::Ready(Err(ExitedError)));
         assert_eq!(service.call(initialized).await, Err(ExitedError));
+    }
+
+    #[tokio::test]
+    async fn cancels_pending_requests() {
+        let (service, _) = LspService::new(|_| Mock::default());
+        let mut service = Spawn::new(service);
+
+        let initialize: Incoming = serde_json::from_str(INITIALIZE_REQUEST).unwrap();
+        let raw = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
+        let ok = serde_json::from_str(raw).unwrap();
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        assert_eq!(service.call(initialize.clone()).await, Ok(Some(ok)));
+
+        let raw = r#"{"jsonrpc":"2.0","method":"codeAction/resolve","params":{"title":""},"id":1}"#;
+        let code_action_resolve: Incoming = serde_json::from_str(raw).unwrap();
+        let raw = r#"{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":1}}"#;
+        let cancel_request: Incoming = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        let pending_future = service.call(code_action_resolve);
+        assert_eq!(service.poll_ready(), Poll::Ready(Ok(())));
+        let cancel_future = service.call(cancel_request);
+
+        let (pending_response, cancel_response) = futures::join!(pending_future, cancel_future);
+        let raw = r#"{"jsonrpc":"2.0","error":{"code":-32800,"message":"Canceled"},"id":1}"#;
+        let canceled: Outgoing = serde_json::from_str(raw).unwrap();
+        assert_eq!(pending_response, Ok(Some(canceled)));
+        assert_eq!(cancel_response, Ok(None));
     }
 }

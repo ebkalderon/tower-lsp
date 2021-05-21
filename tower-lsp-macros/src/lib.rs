@@ -253,7 +253,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             enum ServerMethod {
                 #variants
                 #[serde(rename = "$/cancelRequest")]
-                CancelRequest { id: Id },
+                CancelRequest { params: CancelParams },
                 #[serde(rename = "exit")]
                 Exit,
             }
@@ -316,8 +316,8 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
 
                 match (method, state.get()) {
                     #route_match_arms
-                    (ServerMethod::CancelRequest { id }, State::Initialized) => {
-                        pending.cancel(&id);
+                    (ServerMethod::CancelRequest { params }, State::Initialized) => {
+                        pending.cancel(&params.id.into());
                         future::ok(None).boxed()
                     }
                     (ServerMethod::Exit, _) => {
