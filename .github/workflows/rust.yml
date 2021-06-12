@@ -25,8 +25,8 @@ jobs:
         rustup component add rustfmt
         cargo fmt --all -- --check
     - name: Build
-      continue-on-error: ${{ matrix.continue-on-error }}
+      continue-on-error: ${{ matrix.continue-on-error || false }}
       run: cargo build --all --verbose
     - name: Run tests
-      continue-on-error: ${{ matrix.continue-on-error }}
+      continue-on-error: ${{ matrix.continue-on-error || false }}
       run: cargo test --all --verbose
