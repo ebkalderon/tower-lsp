@@ -143,7 +143,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                                 }
                                 Err(error) => {
                                     state.set(State::Uninitialized);
-                                    Response::error(Some(id), error)
+                                    Response::error(id, error)
                                 },
                             };
 
@@ -152,12 +152,12 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                     }
                     (ServerMethod::#var_name { params: Invalid(e), id }, State::Uninitialized) => {
                         error!("invalid parameters for {:?} request", #rpc_name);
-                        let res = Response::error(Some(id), Error::invalid_params(e));
+                        let res = Response::error(id, Error::invalid_params(e));
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     }
                     (ServerMethod::#var_name { id, .. }, State::Initializing) => {
                         warn!("received duplicate `initialize` request, ignoring");
-                        let res = Response::error(Some(id), Error::invalid_request());
+                        let res = Response::error(id, Error::invalid_request());
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     }
                 },
@@ -180,7 +180,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                     }
                     (ServerMethod::#var_name { params: Invalid(e), id }, State::Initialized) => {
                         error!("invalid parameters for {:?} request", #rpc_name);
-                        let res = Response::error(Some(id), Error::invalid_params(e));
+                        let res = Response::error(id, Error::invalid_params(e));
                         future::ok(Some(Outgoing::Response(res))).boxed()
                     }
                 },
@@ -244,7 +244,19 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             #[serde(untagged)]
             enum RequestKind {
                 Valid(ServerMethod),
-                Invalid { id: Option<Id>, method: Option<String> },
+                Invalid {
+                    #[serde(default, deserialize_with = "deserialize_some")]
+                    id: Option<Id>,
+                    method: Option<String>,
+                },
+            }
+
+            fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+            where
+                T: serde::Deserialize<'de>,
+                D: serde::Deserializer<'de>,
+            {
+                T::deserialize(deserializer).map(Some)
             }
 
             #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
@@ -300,11 +312,11 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                     RequestKind::Valid(method) => method,
                     RequestKind::Invalid { id: Some(id), method: Some(m) } => {
                         error!("method {:?} not found", m);
-                        let res = Response::error(Some(id), Error::method_not_found());
+                        let res = Response::error(id, Error::method_not_found());
                         return future::ok(Some(Outgoing::Response(res))).boxed();
                     }
                     RequestKind::Invalid { id: Some(id), .. } => {
-                        let res = Response::error(Some(id), Error::invalid_request());
+                        let res = Response::error(id, Error::invalid_request());
                         return future::ok(Some(Outgoing::Response(res))).boxed();
                     }
                     RequestKind::Invalid { id: None, method: Some(m) } if !m.starts_with("$/") => {
@@ -329,14 +341,14 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                     (other, State::Uninitialized) => Box::pin(match other.id().cloned() {
                         None => future::ok(None),
                         Some(id) => {
-                            let res = Response::error(Some(id), not_initialized_error());
+                            let res = Response::error(id, not_initialized_error());
                             future::ok(Some(Outgoing::Response(res)))
                         }
                     }),
                     (other, _) => Box::pin(match other.id().cloned() {
                         None => future::ok(None),
                         Some(id) => {
-                            let res = Response::error(Some(id), Error::invalid_request());
+                            let res = Response::error(id, Error::invalid_request());
                             future::ok(Some(Outgoing::Response(res)))
                         }
                     }),
