@@ -1,7 +1,7 @@
 //! Types for sending data to and from the language client.
 
 use std::fmt::{self, Debug, Display, Formatter};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 use futures::channel::mpsc::Sender;
@@ -18,7 +18,7 @@ use super::{ServerState, State};
 
 struct ClientInner {
     sender: Sender<Outgoing>,
-    request_id: AtomicU64,
+    request_id: AtomicU32,
     pending_requests: Arc<ClientRequests>,
     state: Arc<ServerState>,
 }
@@ -43,7 +43,7 @@ impl Client {
         Client {
             inner: Arc::new(ClientInner {
                 sender,
-                request_id: AtomicU64::new(0),
+                request_id: AtomicU32::new(0),
                 pending_requests,
                 state,
             }),
@@ -356,7 +356,7 @@ impl Client {
         let id = self.inner.request_id.fetch_add(1, Ordering::Relaxed);
         let message = Outgoing::Request(ClientRequest::request::<R>(id, params));
 
-        let response_waiter = self.inner.pending_requests.wait(Id::Number(id));
+        let response_waiter = self.inner.pending_requests.wait(Id::Number(id as i64));
 
         if self.inner.sender.clone().send(message).await.is_err() {
             error!("failed to send request");

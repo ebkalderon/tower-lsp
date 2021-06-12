@@ -29,14 +29,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[serde(untagged)]
 pub enum Id {
     /// Numeric ID.
-    Number(u64),
+    Number(i64),
     /// String ID.
     String(String),
     /// Null ID.
     ///
-    /// While the use of `null` as a request ID is permitted by the JSON-RPC 2.0 specification, it
-    /// is _strongly_ discouraged because the specification also uses a `null` value to indicate an
-    /// unknown ID in the `Response` object.
+    /// While `null` is considered a valid request ID by the JSON-RPC 2.0 specification, its use is
+    /// _strongly_ discouraged because the specification also uses a `null` value to indicate an
+    /// unknown ID in the [`Response`] object.
     Null,
 }
 
@@ -59,7 +59,7 @@ impl Display for Id {
 impl From<NumberOrString> for Id {
     fn from(num_or_str: NumberOrString) -> Self {
         match num_or_str {
-            NumberOrString::Number(num) => Id::Number(num as u64),
+            NumberOrString::Number(num) => Id::Number(num as i64),
             NumberOrString::String(s) => Id::String(s),
         }
     }
@@ -152,7 +152,7 @@ pub struct ClientRequest {
 
 impl ClientRequest {
     /// Constructs a JSON-RPC request from its corresponding LSP type.
-    pub(crate) fn request<R: Request>(id: u64, params: R::Params) -> Self {
+    pub(crate) fn request<R: Request>(id: u32, params: R::Params) -> Self {
         // Since `R::Params` come from the `lsp-types` crate and validity is enforced via the
         // `Request` trait, the `unwrap()` call below should never fail.
         ClientRequest {
@@ -160,7 +160,7 @@ impl ClientRequest {
             method: R::METHOD.into(),
             kind: ClientMethod::Request {
                 params: serde_json::to_value(params).unwrap(),
-                id: Id::Number(id),
+                id: Id::Number(id as i64),
             },
         }
     }
@@ -339,5 +339,17 @@ mod tests {
         let missing_method_with_id = json!({"jsonrpc":"2.0","id":0});
         let incoming = serde_json::from_value(missing_method_with_id).unwrap();
         assert!(matches!(incoming, Incoming::Request(_)));
+    }
+
+    #[test]
+    fn accepts_null_request_id() {
+        let request_id: Id = serde_json::from_value(json!(null)).unwrap();
+        assert_eq!(request_id, Id::Null);
+    }
+
+    #[test]
+    fn accepts_negative_integer_request_id() {
+        let request_id: Id = serde_json::from_value(json!(-1)).unwrap();
+        assert_eq!(request_id, Id::Number(-1));
     }
 }
