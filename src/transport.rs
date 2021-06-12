@@ -203,7 +203,7 @@ mod tests {
         (Cursor::new(mock_request()), Vec::new())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn serves_on_stdio() {
         let (mut stdin, mut stdout) = mock_stdio();
         Server::new(&mut stdin, &mut stdout)
@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(stdout, mock_response());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn interleaves_messages() {
         let message = Outgoing::Response(serde_json::from_str(RESPONSE).unwrap());
         let messages = stream::iter(vec![message]);
@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(stdout, output);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn handles_invalid_json() {
         let invalid = r#"{"jsonrpc":"2.0","method":"#;
         let message = format!("Content-Length: {}\r\n\r\n{}", invalid.len(), invalid).into_bytes();

@@ -426,7 +426,7 @@ mod tests {
         assert_eq!(messages, vec![Outgoing::Request(expected)]);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn log_message() {
         let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
         let expected = ClientRequest::notification::<LogMessage>(LogMessageParams {
@@ -437,7 +437,7 @@ mod tests {
         assert_client_messages(|p| async move { p.log_message(typ, msg).await }, expected).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn show_message() {
         let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
         let expected = ClientRequest::notification::<ShowMessage>(ShowMessageParams {
@@ -448,7 +448,7 @@ mod tests {
         assert_client_messages(|p| async move { p.show_message(typ, msg).await }, expected).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn telemetry_event() {
         let null = json!(null);
         let expected = ClientRequest::notification::<TelemetryEvent>(null.clone());
@@ -468,7 +468,7 @@ mod tests {
         assert_client_messages(|p| async move { p.telemetry_event(other).await }, expected).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn publish_diagnostics() {
         let uri: Url = "file:///path/to/file".parse().unwrap();
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
