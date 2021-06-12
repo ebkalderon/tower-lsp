@@ -179,7 +179,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn initializes_only_once() {
         let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
@@ -196,7 +196,7 @@ mod tests {
         assert_eq!(service.call(initialize).await, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn refuses_requests_after_shutdown() {
         let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(service.call(shutdown).await, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn exit_notification() {
         let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);
@@ -236,7 +236,7 @@ mod tests {
         assert_eq!(service.call(initialized).await, Err(ExitedError));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn cancels_pending_requests() {
         let (service, _) = LspService::new(|_| Mock::default());
         let mut service = Spawn::new(service);

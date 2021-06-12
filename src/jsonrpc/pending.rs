@@ -146,7 +146,7 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn executes_server_request() {
         let pending = ServerRequests::new();
 
@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(response, Response::ok(id, json!({})));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn cancels_server_request() {
         let pending = ServerRequests::new();
 
@@ -173,7 +173,7 @@ mod tests {
         assert_eq!(res, Response::error(Some(id), Error::request_cancelled()));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn waits_for_client_response() {
         let pending = ClientRequests::new();
 
