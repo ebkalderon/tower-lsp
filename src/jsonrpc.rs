@@ -32,6 +32,18 @@ pub enum Id {
     Number(u64),
     /// String ID.
     String(String),
+    /// Null ID.
+    ///
+    /// While the use of `null` as a request ID is permitted by the JSON-RPC 2.0 specification, it
+    /// is _strongly_ discouraged because the specification also uses a `null` value to indicate an
+    /// unknown ID in the `Response` object.
+    Null,
+}
+
+impl Default for Id {
+    fn default() -> Self {
+        Id::Null
+    }
 }
 
 impl Display for Id {
@@ -39,6 +51,7 @@ impl Display for Id {
         match self {
             Id::Number(id) => Display::fmt(id, f),
             Id::String(id) => Debug::fmt(id, f),
+            Id::Null => f.write_str("null"),
         }
     }
 }
@@ -58,6 +71,7 @@ pub struct Response {
     jsonrpc: Version,
     #[serde(flatten)]
     kind: ResponseKind,
+    id: Id,
 }
 
 impl Response {
@@ -66,16 +80,18 @@ impl Response {
     pub const fn ok(id: Id, result: Value) -> Self {
         Response {
             jsonrpc: Version,
-            kind: ResponseKind::Ok { result, id },
+            kind: ResponseKind::Ok { result },
+            id,
         }
     }
 
     /// Creates a new error response from a request ID and `Error` object.
     #[inline]
-    pub const fn error(id: Option<Id>, error: Error) -> Self {
+    pub const fn error(id: Id, error: Error) -> Self {
         Response {
             jsonrpc: Version,
-            kind: ResponseKind::Err { error, id },
+            kind: ResponseKind::Err { error },
+            id,
         }
     }
 
@@ -84,27 +100,24 @@ impl Response {
     pub fn from_parts(id: Id, body: Result<Value>) -> Self {
         match body {
             Ok(result) => Response::ok(id, result),
-            Err(error) => Response::error(Some(id), error),
+            Err(error) => Response::error(id, error),
         }
     }
 
     /// Splits the response into a request ID paired with either an `Ok(Value)` or `Err(Error)` to
     /// signify whether the response is a success or failure.
     #[inline]
-    pub fn into_parts(self) -> (Option<Id>, Result<Value>) {
+    pub fn into_parts(self) -> (Id, Result<Value>) {
         match self.kind {
-            ResponseKind::Ok { id, result } => (Some(id), Ok(result)),
-            ResponseKind::Err { id, error } => (id, Err(error)),
+            ResponseKind::Ok { result } => (self.id, Ok(result)),
+            ResponseKind::Err { error } => (self.id, Err(error)),
         }
     }
 
-    /// Returns the corresponding request ID, if any.
+    /// Returns the corresponding request ID, if known.
     #[inline]
-    pub fn id(&self) -> Option<&Id> {
-        match self.kind {
-            ResponseKind::Ok { ref id, .. } => Some(id),
-            ResponseKind::Err { ref id, .. } => id.as_ref(),
-        }
+    pub fn id(&self) -> &Id {
+        &self.id
     }
 }
 
@@ -112,8 +125,8 @@ impl Response {
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 enum ResponseKind {
-    Ok { result: Value, id: Id },
-    Err { error: Error, id: Option<Id> },
+    Ok { result: Value },
+    Err { error: Error },
 }
 
 /// An incoming JSON-RPC message.

@@ -44,11 +44,11 @@ impl ServerRequests {
                     let result = handler_result.map(|v| serde_json::to_value(v).unwrap());
                     Response::from_parts(id, result)
                 } else {
-                    Response::error(Some(id), Error::request_cancelled())
+                    Response::error(id, Error::request_cancelled())
                 }
             })
         } else {
-            Either::Right(async { Response::error(Some(id), Error::invalid_request()) })
+            Either::Right(async { Response::error(id, Error::invalid_request()) })
         }
     }
 
@@ -103,8 +103,8 @@ impl ClientRequests {
     #[inline]
     pub fn insert(&self, r: Response) {
         match r.id() {
-            None => warn!("received response with request ID of `null`, ignoring"),
-            Some(id) => match self.0.remove(id) {
+            Id::Null => warn!("received response with request ID of `null`, ignoring"),
+            id => match self.0.remove(id) {
                 Some((_, tx)) => tx.send(r).expect("receiver already dropped"),
                 None => warn!("received response with unknown request ID: {}", id),
             },
@@ -170,7 +170,7 @@ mod tests {
         pending.cancel(&id);
 
         let res = handler_fut.await.expect("task panicked");
-        assert_eq!(res, Response::error(Some(id), Error::request_cancelled()));
+        assert_eq!(res, Response::error(id, Error::request_cancelled()));
     }
 
     #[tokio::test(flavor = "current_thread")]

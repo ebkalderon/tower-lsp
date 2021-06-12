@@ -14,7 +14,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use tower_service::Service;
 
 use super::codec::LanguageServerCodec;
-use super::jsonrpc::{self, Incoming, Outgoing, Response};
+use super::jsonrpc::{self, Id, Incoming, Outgoing, Response};
 
 /// Server for processing requests and responses on standard I/O or TCP.
 #[derive(Debug)]
@@ -109,7 +109,7 @@ where
                     Ok(req) => req,
                     Err(err) => {
                         error!("failed to decode message: {}", err);
-                        let response = Response::error(None, jsonrpc::Error::parse_error());
+                        let response = Response::error(Id::Null, jsonrpc::Error::parse_error());
                         let response_fut = future::ready(Some(Outgoing::Response(response)));
                         sender.send(Either::Right(response_fut)).await.unwrap();
                         continue;
