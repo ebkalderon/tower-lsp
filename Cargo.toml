@@ -20,7 +20,7 @@ bytes = "1.0.1"
 dashmap = "4.0.2"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 log = "0.4"
-lsp-types = "0.89.0"
+lsp-types = "0.90.0"
 nom = { version = "6.1.2", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
