@@ -61,7 +61,7 @@ impl LanguageServer for Backend {
                 .await;
             self.client
                 .log_message(
-                    MessageType::Info,
+                    MessageType::INFO,
                     format!("Command executed with params: {:?}", params),
                 )
                 .await;

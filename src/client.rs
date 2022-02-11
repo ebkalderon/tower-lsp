@@ -428,7 +428,7 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn log_message() {
-        let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
+        let (typ, msg) = (MessageType::LOG, "foo bar".to_owned());
         let expected = ClientRequest::notification::<LogMessage>(LogMessageParams {
             typ,
             message: msg.clone(),
@@ -439,7 +439,7 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn show_message() {
-        let (typ, msg) = (MessageType::Log, "foo bar".to_owned());
+        let (typ, msg) = (MessageType::LOG, "foo bar".to_owned());
         let expected = ClientRequest::notification::<ShowMessage>(ShowMessageParams {
             typ,
             message: msg.clone(),
