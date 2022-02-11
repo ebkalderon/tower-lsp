@@ -4,7 +4,7 @@
 
 extern crate proc_macro;
 
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -91,7 +91,7 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
 fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_macro2::TokenStream {
     let variant_names: Vec<syn::Ident> = methods
         .iter()
-        .map(|method| syn::parse_str(&method.handler_name.to_string().to_camel_case()).unwrap())
+        .filter_map(|m| syn::parse_str(&m.handler_name.to_string().to_upper_camel_case()).ok())
         .collect();
 
     let variants: proc_macro2::TokenStream = methods
