@@ -295,7 +295,7 @@ impl Client {
     ///
     /// This request was introduced in specification version 3.16.0.
     pub async fn semantic_tokens_refresh(&self) -> Result<()> {
-        self.send_request_initialized::<SemanticTokensRefesh>(())
+        self.send_request_initialized::<SemanticTokensRefresh>(())
             .await
     }
 
