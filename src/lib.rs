@@ -22,7 +22,7 @@
 //!
 //!     async fn initialized(&self, _: InitializedParams) {
 //!         self.client
-//!             .log_message(MessageType::Info, "server initialized!")
+//!             .log_message(MessageType::INFO, "server initialized!")
 //!             .await;
 //!     }
 //!
