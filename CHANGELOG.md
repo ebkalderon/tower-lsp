@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.0] - 2022-02-10
+
+### Changed
+
+* Bump minimum supported Rust version from `1.45.0` to `1.52.0` (PR #300).
+* Update `lsp-types` from `0.89` to `0.92` (PR #300).
+* Update `auto_impl` from `0.4` to `0.5` (PR #298).
+* Update `dashmap` from `4.0.2` to `5.0.0` (PR #298).
+* Update `nom` from `6.1.2` to `7.1.0` (PR #298).
+
+### Fixed
+
+* Support `null` and negative integer values as request IDs (PR #285).
+
 ## [0.14.1] - 2021-05-21
 
 ### Fixed
@@ -421,7 +435,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.2...v0.13.3
