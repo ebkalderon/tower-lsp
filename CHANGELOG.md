@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Fix semver incompatibility in release of `tower-lsp-macros` (PR #306).
   * Re-released `tower-lsp-macros` 0.4.2 -> 0.5.0.
   * Re-released `tower-lsp` 0.15.0 -> 0.15.1.
+* Update `tokio-util` from `0.6.5` to `0.7.0` (PR #303).
 
 ## [0.15.0] - 2022-02-10 [YANKED]
 
