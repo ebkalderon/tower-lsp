@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.15.0] - 2022-02-10
+## [0.15.1] - 2022-02-14
+
+### Fixed
+
+* Fix semver incompatibility in release of `tower-lsp-macros` (PR #306).
+  * Re-released `tower-lsp-macros` 0.4.2 -> 0.5.0.
+  * Re-released `tower-lsp` 0.15.0 -> 0.15.1.
+
+## [0.15.0] - 2022-02-10 [YANKED]
 
 ### Changed
 
@@ -435,7 +443,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.13.3...v0.14.0
