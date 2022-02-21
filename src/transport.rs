@@ -9,9 +9,17 @@ use futures::future::{self, Either, FutureExt, TryFutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{self, Empty, Stream, StreamExt};
 use log::error;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_util::codec::{FramedRead, FramedWrite};
 use tower_service::Service;
+
+#[cfg(feature = "runtime-agnostic")]
+use async_codec_lite::{FramedRead, FramedWrite};
+#[cfg(feature = "runtime-agnostic")]
+use futures::io::{AsyncRead, AsyncWrite};
+
+#[cfg(feature = "runtime-tokio")]
+use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(feature = "runtime-tokio")]
+use tokio_util::codec::{FramedRead, FramedWrite};
 
 use super::codec::LanguageServerCodec;
 use super::jsonrpc::{self, Id, Incoming, Outgoing, Response};
@@ -37,9 +45,12 @@ where
     ///
     /// ```no_run
     /// # async fn docs() -> std::io::Result<()> {
+    /// # #[cfg(feature = "runtime-agnostic")]
+    /// # use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
     /// # use tower_lsp::Server;
-    /// let stdin = tokio::io::stdin();
-    /// let stdout = tokio::io::stdout();
+    /// let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+    /// # #[cfg(feature = "runtime-agnostic")]
+    /// # let (stdin, stdout) = (stdin.compat(), stdout.compat_write());
     /// let server = Server::new(stdin, stdout);
     /// # Ok(())
     /// # }
@@ -49,10 +60,14 @@ where
     ///
     /// ```no_run
     /// # async fn docs() -> std::io::Result<()> {
+    /// # #[cfg(feature = "runtime-agnostic")]
+    /// # use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
     /// # use tower_lsp::Server;
     /// let mut listener = tokio::net::TcpListener::bind("127.0.0.1:9257").await?;
     /// let (stream, _) = listener.accept().await?;
     /// let (read, write) = tokio::io::split(stream);
+    /// # #[cfg(feature = "runtime-agnostic")]
+    /// # let (read, write) = (read.compat(), write.compat_write());
     /// let server = Server::new(read, write);
     /// # Ok(())
     /// # }
@@ -163,6 +178,9 @@ impl Stream for Nothing {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "runtime-agnostic")]
+    use futures::io::Cursor;
+    #[cfg(feature = "runtime-tokio")]
     use std::io::Cursor;
 
     use futures::future::Ready;

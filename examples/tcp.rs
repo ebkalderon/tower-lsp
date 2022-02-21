@@ -116,11 +116,16 @@ impl LanguageServer for Backend {
 
 #[tokio::main]
 async fn main() {
+    #[cfg(feature = "runtime-agnostic")]
+    use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
+
     env_logger::init();
 
     let listener = TcpListener::bind("127.0.0.1:9257").await.unwrap();
     let (stream, _) = listener.accept().await.unwrap();
     let (read, write) = tokio::io::split(stream);
+    #[cfg(feature = "runtime-agnostic")]
+    let (read, write) = (read.compat(), write.compat_write());
 
     let (service, messages) = LspService::new(|client| Backend { client });
     Server::new(read, write)
