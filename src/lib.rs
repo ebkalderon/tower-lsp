@@ -56,12 +56,14 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
+//! #   #[cfg(feature = "runtime-agnostic")]
+//! #   use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 //! #   use std::io::Cursor;
-//!     let stdin = tokio::io::stdin();
 //! #   let message = r#"{"jsonrpc":"2.0","method":"exit"}"#;
-//! #   let stdin = Cursor::new(format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes());
-//!     let stdout = tokio::io::stdout();
-//! #   let stdout = Cursor::new(Vec::new());
+//!     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+//! #   let (stdin, stdout) = (Cursor::new(format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes()), Cursor::new(Vec::new()));
+//! #   #[cfg(feature = "runtime-agnostic")]
+//! #   let (stdin, stdout) = (stdin.compat(), stdout.compat_write());
 //!
 //!     let (service, messages) = LspService::new(|client| Backend { client });
 //!     Server::new(stdin, stdout)

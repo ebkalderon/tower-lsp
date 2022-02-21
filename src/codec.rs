@@ -18,6 +18,10 @@ use nom::multi::length_data;
 use nom::sequence::{delimited, terminated, tuple};
 use nom::{Err, IResult, Needed};
 use serde::{de::DeserializeOwned, Serialize};
+
+#[cfg(feature = "runtime-agnostic")]
+use async_codec_lite::{Decoder, Encoder};
+#[cfg(feature = "runtime-tokio")]
 use tokio_util::codec::{Decoder, Encoder};
 
 /// Errors that can occur when processing an LSP request.
@@ -95,6 +99,27 @@ impl<T> Default for LanguageServerCodec<T> {
     }
 }
 
+#[cfg(feature = "runtime-agnostic")]
+impl<T: Serialize> Encoder for LanguageServerCodec<T> {
+    type Item = T;
+    type Error = ParseError;
+
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let msg = serde_json::to_string(&item)?;
+        trace!("-> {}", msg);
+
+        // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
+        // the length of the message, and the message body.
+        dst.reserve(msg.len() + number_of_digits(msg.len()) + 20);
+        let mut writer = dst.writer();
+        write!(writer, "Content-Length: {}\r\n\r\n{}", msg.len(), msg)?;
+        writer.flush()?;
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "runtime-tokio")]
 impl<T: Serialize> Encoder<T> for LanguageServerCodec<T> {
     type Error = ParseError;
 
