@@ -37,10 +37,12 @@ tower-lsp-macros = { version = "0.5", path = "./tower-lsp-macros" }
 tower-service = "0.3"
 
 [dev-dependencies]
+async-tungstenite = { version = "0.16", features = ["tokio-runtime"] }
 env_logger = "0.9"
 tokio = { version = "1.17", features = ["io-util", "io-std", "macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7", features = ["compat"] }
 tower-test = "0.4"
+ws_stream_tungstenite = { version = "0.7", features = ["tokio_io"] }
 
 [workspace]
 members = [".", "./tower-lsp-macros"]
