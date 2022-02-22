@@ -4,19 +4,11 @@ use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::io::{Error as IoError, Write};
 use std::marker::PhantomData;
-use std::str::{self, Utf8Error};
+use std::str::Utf8Error;
 
 use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
 use log::trace;
-use nom::branch::alt;
-use nom::bytes::streaming::{is_not, tag, take_until};
-use nom::character::streaming::{char, crlf, digit1, space0};
-use nom::combinator::{map, map_res, opt};
-use nom::error::ErrorKind;
-use nom::multi::length_data;
-use nom::sequence::{delimited, terminated, tuple};
-use nom::{Err, IResult, Needed};
 use serde::{de::DeserializeOwned, Serialize};
 
 #[cfg(feature = "runtime-agnostic")]
@@ -27,16 +19,16 @@ use tokio_util::codec::{Decoder, Encoder};
 /// Errors that can occur when processing an LSP request.
 #[derive(Debug)]
 pub enum ParseError {
-    /// Request lacks the required `Content-Length` header.
-    MissingHeader,
-    /// The length value in the `Content-Length` header is invalid.
-    InvalidLength,
-    /// The media type in the `Content-Type` header is invalid.
-    InvalidType,
     /// Failed to parse the JSON body.
     Body(serde_json::Error),
     /// Failed to encode the response.
     Encode(IoError),
+    /// Failed to parse headers.
+    Httparse(httparse::Error),
+    /// Request lacks the required `Content-Length` header.
+    MissingHeader,
+    /// The length value in the `Content-Length` header is invalid.
+    InvalidLength,
     /// Request contains invalid UTF8.
     Utf8(Utf8Error),
 }
@@ -44,11 +36,11 @@ pub enum ParseError {
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
-            ParseError::MissingHeader => write!(f, "missing required `Content-Length` header"),
-            ParseError::InvalidLength => write!(f, "unable to parse content length"),
-            ParseError::InvalidType => write!(f, "unable to parse content type"),
             ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {}", e),
             ParseError::Encode(ref e) => write!(f, "failed to encode response: {}", e),
+            ParseError::Httparse(ref e) => write!(f, "failed to parse headers: {}", e),
+            ParseError::InvalidLength => write!(f, "unable to parse content length"),
+            ParseError::MissingHeader => write!(f, "missing required `Content-Length` header"),
             ParseError::Utf8(ref e) => write!(f, "request contains invalid UTF8: {}", e),
         }
     }
@@ -86,14 +78,12 @@ impl From<Utf8Error> for ParseError {
 /// Encodes and decodes Language Server Protocol messages.
 #[derive(Clone, Debug)]
 pub struct LanguageServerCodec<T> {
-    remaining_msg_bytes: usize,
     _marker: PhantomData<T>,
 }
 
 impl<T> Default for LanguageServerCodec<T> {
     fn default() -> Self {
         LanguageServerCodec {
-            remaining_msg_bytes: 0,
             _marker: PhantomData,
         }
     }
@@ -155,73 +145,102 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
     type Error = ParseError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if self.remaining_msg_bytes > src.len() {
-            return Ok(None);
+        let mut http_headers_err = None;
+        let mut http_headers_len = None;
+        let mut http_content_len = None::<usize>;
+
+        // Placeholder used for parsing headers into
+        let dst = &mut [httparse::EMPTY_HEADER; 2];
+
+        // Parse the headers and try to extract values
+        match httparse::parse_headers(src, dst) {
+            // A complete set of headers was parsed succesfully
+            Ok(httparse::Status::Complete((headers_len, headers))) => {
+                // If some headers were parsed successefully, set the headers length
+                http_headers_len = Some(headers_len);
+                // If the "Content-Length" header exists, parse the value as a `usize`.
+                if let Some(header) = headers.iter().find(|h| h.name == "Content-Length") {
+                    match std::str::from_utf8(header.value) {
+                        Ok(content_len) => match content_len.parse() {
+                            // Successfully set `content_len` from the parsed "Content-Length"
+                            // value.
+                            Ok(content_len) => http_content_len = Some(content_len),
+                            // If there was an error parsing the "Content-Length" UTF-8 as a
+                            // `usize`, return the error.
+                            Err(_) => {
+                                src.advance(headers_len);
+                                return Err(ParseError::InvalidLength);
+                            }
+                        },
+                        // If there was an error parsing the "Content-Length" value as UTF-8,
+                        // return the error.
+                        Err(err) => {
+                            src.advance(headers_len);
+                            return Err(ParseError::Utf8(err));
+                        }
+                    }
+                }
+            }
+            // No errors occurred during parsing yet but no complete set of headers were parsed
+            Ok(httparse::Status::Partial) => return Ok(None),
+            // An error occurred during parsing of the headers
+            Err(err) => {
+                http_headers_err = Some(err);
+            }
         }
 
-        let (msg, len) = match parse_message(src) {
-            Ok((remaining, msg)) => (str::from_utf8(msg), src.len() - remaining.len()),
-            Err(Err::Incomplete(Needed::Size(min))) => {
-                self.remaining_msg_bytes = min.get();
+        // If "Content-Length" has been parsed
+        if let (Some(headers_len), Some(content_len)) = (http_headers_len, http_content_len) {
+            let message_len = headers_len + content_len;
+
+            // Source doesn't contain the full content yet so return and wait for more input
+            if src.len() < message_len {
                 return Ok(None);
             }
-            Err(Err::Incomplete(_)) => {
-                return Ok(None);
-            }
-            Err(Err::Error(err)) | Err(Err::Failure(err)) => {
-                let code = err.code;
-                let parsed_bytes = src.len() - err.input.len();
-                src.advance(parsed_bytes);
 
-                match find_next_message(src) {
-                    Ok((_, position)) => src.advance(position),
-                    Err(_) => src.advance(src.len()),
+            // Parse the JSON-RPC message bytes as JSON
+            let message = &src[headers_len..message_len];
+            let message = std::str::from_utf8(message)?;
+
+            trace!("<- {}", message);
+
+            // Deserialize the JSON-RPC message data
+            let data = {
+                // For zero-length data just return None
+                if message.is_empty() {
+                    Ok(None)
+                // Otherwise deserialize data as JSON text
+                } else {
+                    match serde_json::from_str(message) {
+                        Ok(parsed) => Ok(Some(parsed)),
+                        Err(err) => Err(err.into()),
+                    }
                 }
+            };
 
-                match code {
-                    ErrorKind::Digit | ErrorKind::MapRes => return Err(ParseError::InvalidLength),
-                    ErrorKind::Char | ErrorKind::IsNot => return Err(ParseError::InvalidType),
-                    _ => return Err(ParseError::MissingHeader),
-                }
+            // Advance the buffer
+            src.advance(message_len);
+
+            // Return the deserialized data
+            data
+
+        // else if headers were parsed but "Content-Length" wasn't found
+        } else {
+            // Maybe there are garbage bytes so try to scan ahead for another "Content-Length"
+            if let Some(offset) = memchr::memmem::find(src, b"Content-Length") {
+                src.advance(offset);
             }
-        };
 
-        let result = match msg {
-            Err(err) => Err(err.into()),
-            Ok(msg) if msg.is_empty() => Ok(None),
-            Ok(msg) => {
-                trace!("<- {}", msg);
-                match serde_json::from_str(msg) {
-                    Ok(parsed) => Ok(Some(parsed)),
-                    Err(err) => Err(err.into()),
-                }
+            // Handle the conditions that caused decoding to fail
+            if let Some(err) = http_headers_err {
+                // There was an error parsing the headers
+                Err(ParseError::Httparse(err))
+            } else {
+                // There was no "Content-Length" header found
+                Err(ParseError::MissingHeader)
             }
-        };
-
-        src.advance(len);
-        self.remaining_msg_bytes = 0;
-
-        result
+        }
     }
-}
-
-fn parse_message(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let content_len = delimited(tag("Content-Length: "), digit1, crlf);
-
-    let utf8 = alt((tag("utf-8"), tag("utf8")));
-    let charset = tuple((char(';'), space0, tag("charset="), utf8));
-    let content_type = tuple((tag("Content-Type:"), is_not(";\r"), opt(charset), crlf));
-
-    let header = terminated(terminated(content_len, opt(content_type)), crlf);
-    let header = map_res(header, |s: &[u8]| str::from_utf8(s));
-    let length = map_res(header, |s: &str| s.parse::<usize>());
-    let mut message = length_data(length);
-
-    message(input)
-}
-
-fn find_next_message(input: &[u8]) -> IResult<&[u8], usize> {
-    map(take_until("Content-Length"), |s: &[u8]| s.len())(input)
 }
 
 #[cfg(test)]
