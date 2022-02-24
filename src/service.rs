@@ -72,6 +72,7 @@ pub struct LspService {
     server: Arc<dyn LanguageServer>,
     pending_server: ServerRequests,
     pending_client: Arc<ClientRequests>,
+    client: Client,
     state: Arc<ServerState>,
 }
 
@@ -91,10 +92,11 @@ impl LspService {
         let client = Client::new(tx, pending_client.clone(), state.clone());
 
         let service = LspService {
-            server: Arc::from(init(client)),
+            server: Arc::from(init(client.clone())),
             pending_server: ServerRequests::new(),
             pending_client,
             state,
+            client,
         };
 
         (service, messages)
@@ -124,6 +126,7 @@ impl Service<Incoming> for LspService {
                     &self.state,
                     &self.pending_server,
                     req,
+                    self.client.clone(),
                 ),
                 Incoming::Response(res) => {
                     trace!("received client response: {:?}", res);

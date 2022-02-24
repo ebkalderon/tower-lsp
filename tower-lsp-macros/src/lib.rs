@@ -224,9 +224,12 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             };
 
             use super::{#trait_name, ServerState, State};
-            use crate::jsonrpc::{
-                not_initialized_error, Error, ErrorCode, Id, Outgoing, Response, ServerRequests,
-                Version,
+            use crate::{
+                client::Client,
+                jsonrpc::{
+                    not_initialized_error, Error, ErrorCode, Id, Outgoing, Response, ServerRequests,
+                    Version,
+                }
             };
             use crate::service::ExitedError;
 
@@ -305,6 +308,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                 state: &Arc<ServerState>,
                 pending: &ServerRequests,
                 request: ServerRequest,
+                client: Client,
             ) -> Pin<Box<dyn Future<Output = Result<Option<Outgoing>, ExitedError>> + Send>> {
                 use Params::*;
 
@@ -336,6 +340,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
                         info!("exit notification received, stopping");
                         state.set(State::Exited);
                         pending.cancel_all();
+                        client.close();
                         future::ok(None).boxed()
                     }
                     (other, State::Uninitialized) => Box::pin(match other.id().cloned() {
