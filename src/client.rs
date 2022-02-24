@@ -50,6 +50,18 @@ impl Client {
         }
     }
 
+    /// Close the client.
+    /// Closing the client is not required but doing so will ensure that no more messages can be
+    /// produced. The receiver of the messages will be able to consume any in-flight messages and
+    /// then will observe the end of the stream.
+    ///
+    /// If the client is never closed and never dropped the reveiver of the messages will never observe the end of
+    /// the stream.
+    pub(crate) fn close(&self) {
+        let mut sender = self.inner.sender.clone();
+        sender.close_channel();
+    }
+
     /// Notifies the client to log a particular message.
     ///
     /// This corresponds to the [`window/logMessage`] notification.
