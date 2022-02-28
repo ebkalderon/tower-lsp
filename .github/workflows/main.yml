@@ -35,6 +35,28 @@ jobs:
     - run: echo "${{ runner.tool_cache }}/cargo-audit/bin" >> $GITHUB_PATH
     - run: cargo audit
 
+  # verify that project passes clippy lints
+  cargo-clippy:
+    name: Run cargo clippy
+    needs: []
+    runs-on: ubuntu-latest
+    env:
+      RUST_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: clippy
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      - name: Run cargo clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-targets --workspace -- -D warnings
+
   # verify that code is formatted
   cargo-fmt:
     name: Run cargo fmt
