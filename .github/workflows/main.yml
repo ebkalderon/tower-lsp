@@ -11,6 +11,31 @@ on:
     - release/*
 
 jobs:
+  cargo-test:
+    name: Run cargo test (${{ matrix.os }} / ${{ matrix.rust-version }} / ${{ matrix.runtime }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust-version: [1.52.0, beta, nightly]
+        runtime: [runtime-tokio, runtime-agnostic]
+        include:
+        - rust-version: nightly
+          continue-on-error: true
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust-version }}
+    - name: Run cargo test
+      continue-on-error: ${{ matrix.continue-on-error || false }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --no-default-features --features ${{ matrix.runtime }}
+
   # verify that Cargo.lock passes audit
   cargo-audit:
     name: Run cargo audit
@@ -78,55 +103,3 @@ jobs:
         toolchain: ${{ env.RUST_TOOLCHAIN }}
         command: fmt
         args: --all -- --check
-
-  # verify that tests pass
-  cargo-test-agnostic:
-    name: Run cargo test (runtime-agnostic)
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        rust-version: [1.52.0, beta, nightly]
-        include:
-        - rust-version: nightly
-          continue-on-error: true
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust-version }}
-        override: yes
-    - name: Run cargo test
-      continue-on-error: ${{ matrix.continue-on-error || false }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --workspace --no-default-features --features runtime-agnostic
-
-  # verify that tests pass
-  cargo-test-tokio:
-    name: Run cargo test (runtime-tokio)
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        rust-version: [1.52.0, beta, nightly]
-        include:
-        - rust-version: nightly
-          continue-on-error: true
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust-version }}
-        override: yes
-    - name: Run cargo test
-      continue-on-error: ${{ matrix.continue-on-error || false }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --workspace --no-default-features --features runtime-tokio
