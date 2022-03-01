@@ -188,8 +188,8 @@ mod tests {
 
     use super::*;
 
-    const REQUEST: &'static str = r#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#;
-    const RESPONSE: &'static str = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
+    const REQUEST: &str = r#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#;
+    const RESPONSE: &str = r#"{"jsonrpc":"2.0","result":{"capabilities":{}},"id":1}"#;
 
     #[derive(Debug)]
     struct MockService;

@@ -130,6 +130,7 @@ enum ResponseKind {
 }
 
 /// An incoming JSON-RPC message.
+#[allow(clippy::large_enum_variant)] // Ignore for now, since this will be replaced soon.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[cfg_attr(test, derive(Serialize))]
 #[serde(untagged)]

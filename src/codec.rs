@@ -266,17 +266,17 @@ mod tests {
     #[test]
     fn encode_and_decode() {
         let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
-        let encoded = encode_message(None, &decoded);
+        let encoded = encode_message(None, decoded);
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::new();
-        let item: Value = serde_json::from_str(&decoded).unwrap();
+        let item: Value = serde_json::from_str(decoded).unwrap();
         codec.encode(item, &mut buffer).unwrap();
         assert_eq!(buffer, BytesMut::from(encoded.as_str()));
 
         let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
-        let decoded = serde_json::from_str(&decoded).unwrap();
+        let decoded = serde_json::from_str(decoded).unwrap();
         assert_eq!(message, Some(decoded));
     }
 
@@ -289,7 +289,7 @@ mod tests {
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
-        let decoded: Value = serde_json::from_str(&decoded).unwrap();
+        let decoded: Value = serde_json::from_str(decoded).unwrap();
         assert_eq!(message, Some(decoded));
     }
 
@@ -319,7 +319,7 @@ mod tests {
         }
 
         let message: Option<Value> = codec.decode(&mut buffer).unwrap();
-        let first_valid = serde_json::from_str(&decoded).unwrap();
+        let first_valid = serde_json::from_str(decoded).unwrap();
         assert_eq!(message, Some(first_valid));
 
         match codec.decode(&mut buffer) {
@@ -328,7 +328,7 @@ mod tests {
         }
 
         let message = codec.decode(&mut buffer).unwrap();
-        let second_valid = serde_json::from_str(&decoded).unwrap();
+        let second_valid = serde_json::from_str(decoded).unwrap();
         assert_eq!(message, Some(second_valid));
 
         let message = codec.decode(&mut buffer).unwrap();
