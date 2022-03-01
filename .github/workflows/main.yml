@@ -36,7 +36,6 @@ jobs:
         command: test
         args: --workspace --no-default-features --features ${{ matrix.runtime }}
 
-  # verify that Cargo.lock passes audit
   cargo-audit:
     name: Run cargo audit
     runs-on: ubuntu-latest
@@ -61,7 +60,6 @@ jobs:
     - run: echo "${{ runner.tool_cache }}/cargo-audit/bin" >> $GITHUB_PATH
     - run: cargo audit
 
-  # verify that project passes clippy lints
   cargo-clippy:
     name: Run cargo clippy
     runs-on: ubuntu-latest
@@ -82,7 +80,6 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all-targets -- -D warnings
 
-  # verify that code is formatted
   cargo-fmt:
     name: Run cargo fmt
     runs-on: ubuntu-latest
