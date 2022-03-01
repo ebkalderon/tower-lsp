@@ -12,7 +12,7 @@ on:
 
 jobs:
   cargo-test:
-    name: Run cargo test (${{ matrix.os }} / ${{ matrix.rust-version }} / ${{ matrix.runtime }})
+    name: cargo test (${{ matrix.os }} / ${{ matrix.rust-version }} / ${{ matrix.runtime }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -37,7 +37,7 @@ jobs:
         args: --workspace --no-default-features --features ${{ matrix.runtime }}
 
   cargo-audit:
-    name: Run cargo audit
+    name: cargo audit
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
@@ -46,7 +46,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
   cargo-clippy:
-    name: Run cargo clippy
+    name: cargo clippy
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -63,7 +63,7 @@ jobs:
         args: --all-targets -- -D warnings
 
   cargo-fmt:
-    name: Run cargo fmt
+    name: cargo fmt
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
