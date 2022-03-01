@@ -3,10 +3,10 @@ name: main
 on:
   push:
     branches:
-      - master
+    - master
   pull_request:
     branches:
-      - master
+    - master
 
 jobs:
   # verify that Cargo.lock passes audit
@@ -43,19 +43,19 @@ jobs:
     env:
       RUST_TOOLCHAIN: stable
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          components: clippy
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-      - name: Run cargo clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets -- -D warnings
+    - uses: actions/checkout@v2
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        components: clippy
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+        override: true
+    - name: Run cargo clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-targets -- -D warnings
 
   # verify that code is formatted
   cargo-fmt:
@@ -65,20 +65,20 @@ jobs:
     env:
       RUST_TOOLCHAIN: nightly
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          components: rustfmt
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          command: fmt
-          args: --all -- --check
+    - uses: actions/checkout@v2
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        components: rustfmt
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+        override: true
+    - name: Run cargo fmt
+      uses: actions-rs/cargo@v1
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+        command: fmt
+        args: --all -- --check
 
   # verify that tests pass
   cargo-test-agnostic:
@@ -93,19 +93,19 @@ jobs:
           continue-on-error: true
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust-version }}
-          override: yes
-      - name: Run cargo test
-        continue-on-error: ${{ matrix.continue-on-error || false }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --no-default-features --features runtime-agnostic
+    - uses: actions/checkout@v2
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust-version }}
+        override: yes
+    - name: Run cargo test
+      continue-on-error: ${{ matrix.continue-on-error || false }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --no-default-features --features runtime-agnostic
 
   # verify that tests pass
   cargo-test-tokio:
@@ -120,16 +120,16 @@ jobs:
           continue-on-error: true
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust-version }}
-          override: yes
-      - name: Run cargo test
-        continue-on-error: ${{ matrix.continue-on-error || false }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --no-default-features --features runtime-tokio
+    - uses: actions/checkout@v2
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust-version }}
+        override: yes
+    - name: Run cargo test
+      continue-on-error: ${{ matrix.continue-on-error || false }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --no-default-features --features runtime-tokio
