@@ -14,7 +14,6 @@ jobs:
   # verify that Cargo.lock passes audit
   cargo-audit:
     name: Run cargo audit
-    needs: []
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -40,7 +39,6 @@ jobs:
   # verify that project passes clippy lints
   cargo-clippy:
     name: Run cargo clippy
-    needs: []
     runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: stable
@@ -62,7 +60,6 @@ jobs:
   # verify that code is formatted
   cargo-fmt:
     name: Run cargo fmt
-    needs: []
     runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: nightly
@@ -85,7 +82,6 @@ jobs:
   # verify that tests pass
   cargo-test-agnostic:
     name: Run cargo test (runtime-agnostic)
-    needs: []
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -112,7 +108,6 @@ jobs:
   # verify that tests pass
   cargo-test-tokio:
     name: Run cargo test (runtime-tokio)
-    needs: []
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
