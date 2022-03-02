@@ -3,6 +3,8 @@
 pub use self::error::{Error, ErrorCode};
 pub use self::router::{FromParams, IntoResponse, Method};
 
+pub(crate) use self::router::Router;
+
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter};
 

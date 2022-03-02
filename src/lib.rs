@@ -82,6 +82,8 @@ pub extern crate lsp_types;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
+pub use self::service::{ExitedError, LspService};
+
 use auto_impl::auto_impl;
 use log::{error, warn};
 use lsp_types::request::{
@@ -97,6 +99,7 @@ use self::jsonrpc::{Error, Result};
 pub mod jsonrpc;
 
 mod codec;
+mod service;
 
 /// Trait implemented by language server backends.
 ///
