@@ -82,7 +82,7 @@ pub extern crate lsp_types;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
-pub use self::service::{ExitedError, LspService};
+pub use self::service::{Client, ClientSocket, ExitedError, LspService};
 
 use auto_impl::auto_impl;
 use log::{error, warn};
@@ -179,7 +179,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// It is recommended that servers register for these file events using the registration
     /// mechanism. This can be done here or in the [`initialized`](LanguageServer::initialized)
-    /// method using [`Client::register_capability`].
+    /// method using [`Client::register_capability`](crate::Client::register_capability).
     ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
     #[rpc(name = "workspace/didChangeWatchedFiles")]
