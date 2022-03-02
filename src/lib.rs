@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,ignore
 //! use tower_lsp::jsonrpc::Result;
 //! use tower_lsp::lsp_types::*;
 //! use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -79,15 +79,8 @@
 
 pub extern crate lsp_types;
 
-pub use self::client::Client;
-pub use self::service::{ExitedError, LspService, MessageStream};
-pub use self::transport::Server;
-
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
-
-use std::fmt::{self, Debug, Formatter};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use auto_impl::auto_impl;
 use log::{error, warn};
@@ -103,10 +96,7 @@ use self::jsonrpc::{Error, Result};
 
 pub mod jsonrpc;
 
-mod client;
 mod codec;
-mod service;
-mod transport;
 
 /// Trait implemented by language server backends.
 ///
@@ -114,7 +104,7 @@ mod transport;
 /// safe and easily testable way without exposing the low-level implementation details.
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
-#[rpc]
+// #[rpc]
 #[async_trait]
 #[auto_impl(Arc, Box)]
 pub trait LanguageServer: Send + Sync + 'static {
@@ -1073,52 +1063,4 @@ pub trait LanguageServer: Send + Sync + 'static {
 fn _assert_object_safe() {
     fn assert_impl<T: LanguageServer>() {}
     assert_impl::<Box<dyn LanguageServer>>();
-}
-
-/// Atomic value which represents the current state of the server.
-struct ServerState(AtomicUsize);
-
-impl ServerState {
-    #[inline]
-    const fn new() -> Self {
-        ServerState(AtomicUsize::new(State::Uninitialized as usize))
-    }
-
-    #[inline]
-    fn set(&self, state: State) {
-        self.0.store(state as usize, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn get(&self) -> State {
-        match self.0.load(Ordering::SeqCst) {
-            0 => State::Uninitialized,
-            1 => State::Initializing,
-            2 => State::Initialized,
-            3 => State::ShutDown,
-            4 => State::Exited,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Debug for ServerState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.get().fmt(f)
-    }
-}
-
-/// A list of possible states the language server can be in.
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum State {
-    /// Server has not received an `initialize` request.
-    Uninitialized = 0,
-    /// Server received an `initialize` request, but has not yet responded.
-    Initializing = 1,
-    /// Server received and responded success to an `initialize` request.
-    Initialized = 2,
-    /// Server received a `shutdown` request.
-    ShutDown = 3,
-    /// Server received an `exit` notification.
-    Exited = 4,
 }
