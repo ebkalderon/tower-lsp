@@ -64,10 +64,13 @@ impl<S: LanguageServer> LspService<S> {
         F: FnOnce(Client) -> S,
     {
         let state = Arc::new(ServerState::new());
+
         let (client, socket) = Client::new(state.clone());
+        let inner = Router::new(init(client.clone()));
+        let pending = Arc::new(Pending::new());
 
         let service = LspService {
-            inner: Router::new(init(client)),
+            inner: crate::generated::register_lsp_methods(inner, state.clone(), pending, client),
             state,
         };
 
@@ -107,5 +110,116 @@ impl<S: LanguageServer> Service<Request> for LspService<S> {
                 _ => Ok(response),
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use async_trait::async_trait;
+    use lsp_types::*;
+    use serde_json::json;
+    use tower::ServiceExt;
+
+    use super::*;
+    use crate::jsonrpc::Result;
+
+    #[derive(Debug)]
+    struct Mock;
+
+    #[async_trait]
+    impl LanguageServer for Mock {
+        async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+            Ok(InitializeResult::default())
+        }
+
+        async fn shutdown(&self) -> Result<()> {
+            Ok(())
+        }
+
+        // This handler should never resolve...
+        async fn code_action_resolve(&self, _: CodeAction) -> Result<CodeAction> {
+            future::pending().await
+        }
+    }
+
+    fn initialize_request(id: i64) -> Request {
+        Request::build("initialize")
+            .params(json!({"capabilities":{}}))
+            .id(id)
+            .finish()
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn initializes_only_once() {
+        let (mut service, _) = LspService::new(|_| Mock);
+
+        let request = initialize_request(1);
+
+        let response = service.ready().await.unwrap().call(request.clone()).await;
+        let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let response = service.ready().await.unwrap().call(request).await;
+        let err = Response::from_error(1.into(), Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn refuses_requests_after_shutdown() {
+        let (mut service, _) = LspService::new(|_| Mock);
+
+        let initialize = initialize_request(1);
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let shutdown = Request::build("shutdown").id(1).finish();
+        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let ok = Response::from_ok(1.into(), json!(null));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let response = service.ready().await.unwrap().call(shutdown).await;
+        let err = Response::from_error(1.into(), Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn exit_notification() {
+        let (mut service, _) = LspService::new(|_| Mock);
+
+        let exit = Request::build("exit").finish();
+        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        assert_eq!(response, Ok(None));
+
+        let ready = future::poll_fn(|cx| service.poll_ready(cx)).await;
+        assert_eq!(ready, Err(ExitedError(())));
+        assert_eq!(service.call(exit).await, Err(ExitedError(())));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn cancels_pending_requests() {
+        let (mut service, _) = LspService::new(|_| Mock);
+
+        let initialize = initialize_request(1);
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let pending_request = Request::build("codeAction/resolve")
+            .params(json!({"title":""}))
+            .id(1)
+            .finish();
+
+        let cancel_request = Request::build("$/cancelRequest")
+            .params(json!({"id":1i32}))
+            .finish();
+
+        let pending_fut = service.ready().await.unwrap().call(pending_request);
+        let cancel_fut = service.ready().await.unwrap().call(cancel_request);
+        let (pending_response, cancel_response) = futures::join!(pending_fut, cancel_fut);
+
+        let canceled = Response::from_error(1.into(), Error::request_cancelled());
+        assert_eq!(pending_response, Ok(Some(canceled)));
+        assert_eq!(cancel_response, Ok(None));
     }
 }

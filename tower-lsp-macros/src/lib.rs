@@ -4,7 +4,6 @@
 
 extern crate proc_macro;
 
-use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -15,7 +14,8 @@ use syn::{
 /// Macro for generating LSP server implementation from [`lsp-types`](https://docs.rs/lsp-types).
 ///
 /// This procedural macro annotates the `tower_lsp::LanguageServer` trait and generates a
-/// corresponding opaque `ServerRequest` struct along with a `handle_request()` function.
+/// corresponding `register_lsp_methods()` function which registers all the methods on that trait
+/// as RPC handlers.
 #[proc_macro_attribute]
 pub fn rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr_args = parse_macro_input!(attr as AttributeArgs);
@@ -89,273 +89,102 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
 }
 
 fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_macro2::TokenStream {
-    let variant_names: Vec<syn::Ident> = methods
+    let route_registrations: proc_macro2::TokenStream = methods
         .iter()
-        .filter_map(|m| syn::parse_str(&m.handler_name.to_string().to_upper_camel_case()).ok())
-        .collect();
-
-    let variants: proc_macro2::TokenStream = methods
-        .iter()
-        .zip(variant_names.iter())
-        .map(|(method, var_name)| {
+        .map(|method| {
             let rpc_name = &method.rpc_name;
-            let variant = match (method.result.is_some(), method.params) {
-                (true, Some(p)) => quote!(#var_name { params: Params<#p>, id: Id },),
-                (true, None) => quote!(#var_name { id: Id },),
-                (false, Some(p)) => quote!(#var_name { params: Params<#p> },),
-                (false, None) => quote!(#var_name,),
+            let handler = &method.handler_name;
+
+            let layer = match &rpc_name[..] {
+                "initialize" => quote! { layers::Initialize::new(state.clone(), pending.clone()) },
+                "shutdown" => quote! { layers::Shutdown::new(state.clone(), pending.clone()) },
+                _ => quote! { layers::Normal::new(state.clone(), pending.clone()) },
             };
 
-            quote! {
-                #[serde(rename = #rpc_name)]
-                #variant
-            }
-        })
-        .collect();
-
-    let id_match_arms: proc_macro2::TokenStream = methods
-        .iter()
-        .zip(variant_names.iter())
-        .filter_map(|(method, var_name)| method.result.map(|_| var_name))
-        .map(|var_name| quote!(ServerMethod::#var_name { ref id, .. } => Some(id),))
-        .collect();
-
-    let route_match_arms: proc_macro2::TokenStream = methods
-        .iter()
-        .zip(variant_names.iter())
-        .map(|(method, var_name)| {
-            let rpc_name = method.rpc_name.as_str();
-            let handler = &method.handler_name;
-            match (method.result.is_some(), method.params.is_some()) {
-                (true, true) if rpc_name == "initialize" => quote! {
-                    (ServerMethod::#var_name { params: Valid(p), id }, State::Uninitialized) => {
-                        state.set(State::Initializing);
-                        let state = state.clone();
-                        Box::pin(async move {
-                            let res = match server.#handler(p).await {
-                                Ok(result) => {
-                                    let result = serde_json::to_value(result).unwrap();
-                                    info!("language server initialized");
-                                    state.set(State::Initialized);
-                                    Response::ok(id, result)
-                                }
-                                Err(error) => {
-                                    state.set(State::Uninitialized);
-                                    Response::error(id, error)
-                                },
-                            };
-
-                            Ok(Some(Outgoing::Response(res)))
-                        })
+            // NOTE: In a perfect world, we could simply loop over each `MethodCall` and emit
+            // `router.method(#rpc_name, S::#handler);` for each. While such an approach
+            // works for inherent async functions and methods, it breaks with `async-trait` methods
+            // due to this unfortunate `rustc` bug:
+            //
+            // https://github.com/rust-lang/rust/issues/64552
+            //
+            // As a workaround, we wrap each `async-trait` method in a regular `async fn` before
+            // passing it to `.method`, as documented in this GitHub issue:
+            //
+            // https://github.com/dtolnay/async-trait/issues/167
+            match (method.params, method.result) {
+                (Some(params), Some(result)) => quote! {
+                    async fn #handler<S: #trait_name>(server: &S, params: #params) -> #result {
+                        server.#handler(params).await
                     }
-                    (ServerMethod::#var_name { params: Invalid(e), id }, State::Uninitialized) => {
-                        error!("invalid parameters for {:?} request", #rpc_name);
-                        let res = Response::error(id, Error::invalid_params(e));
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    }
-                    (ServerMethod::#var_name { id, .. }, State::Initializing) => {
-                        warn!("received duplicate `initialize` request, ignoring");
-                        let res = Response::error(id, Error::invalid_request());
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    }
+                    router.method(#rpc_name, #handler, #layer);
                 },
-                (true, false) if rpc_name == "shutdown" => quote! {
-                    (ServerMethod::#var_name { id }, State::Initialized) => {
-                        info!("shutdown request received, shutting down");
-                        state.set(State::ShutDown);
-                        pending
-                            .execute(id, async move { server.#handler().await })
-                            .map(|v| Ok(Some(Outgoing::Response(v))))
-                            .boxed()
+                (None, Some(result)) => quote! {
+                    async fn #handler<S: #trait_name>(server: &S) -> #result {
+                        server.#handler().await
                     }
+                    router.method(#rpc_name, #handler, #layer);
                 },
-                (true, true) => quote! {
-                    (ServerMethod::#var_name { params: Valid(p), id }, State::Initialized) => {
-                        pending
-                            .execute(id, async move { server.#handler(p).await })
-                            .map(|v| Ok(Some(Outgoing::Response(v))))
-                            .boxed()
+                (Some(params), None) => quote! {
+                    async fn #handler<S: #trait_name>(server: &S, params: #params) {
+                        server.#handler(params).await
                     }
-                    (ServerMethod::#var_name { params: Invalid(e), id }, State::Initialized) => {
-                        error!("invalid parameters for {:?} request", #rpc_name);
-                        let res = Response::error(id, Error::invalid_params(e));
-                        future::ok(Some(Outgoing::Response(res))).boxed()
-                    }
+                    router.method(#rpc_name, #handler, #layer);
                 },
-                (true, false) => quote! {
-                    (ServerMethod::#var_name { id }, State::Initialized) => {
-                        pending
-                            .execute(id, async move { server.#handler().await })
-                            .map(|v| Ok(Some(Outgoing::Response(v))))
-                            .boxed()
+                (None, None) => quote! {
+                    async fn #handler<S: #trait_name>(server: &S) {
+                        server.#handler().await
                     }
-                },
-                (false, true) => quote! {
-                    (ServerMethod::#var_name { params: Valid(p) }, State::Initialized) => {
-                        Box::pin(async move { server.#handler(p).await; Ok(None) })
-                    }
-                    (ServerMethod::#var_name { .. }, State::Initialized) => {
-                        warn!("invalid parameters for {:?} notification", #rpc_name);
-                        future::ok(None).boxed()
-                    }
-                },
-                (false, false) => quote! {
-                    (ServerMethod::#var_name, State::Initialized) => {
-                        Box::pin(async move { server.#handler().await; Ok(None) })
-                    }
+                    router.method(#rpc_name, #handler, #layer);
                 },
             }
         })
         .collect();
 
     quote! {
-        mod generated_impl {
-            use std::future::Future;
-            use std::pin::Pin;
+        mod generated {
             use std::sync::Arc;
+            use std::future::{Future, Ready};
 
-            use futures::{future, FutureExt};
-            use log::{error, info, warn};
+            use log::info;
             use lsp_types::*;
-            use lsp_types::request::{
-                GotoDeclarationParams, GotoImplementationParams, GotoTypeDefinitionParams,
-            };
+            use lsp_types::notification::*;
+            use lsp_types::request::*;
+            use serde_json::Value;
 
-            use super::{#trait_name, ServerState, State};
-            use crate::{
-                client::Client,
-                jsonrpc::{
-                    not_initialized_error, Error, ErrorCode, Id, Outgoing, Response, ServerRequests,
-                    Version,
-                }
-            };
-            use crate::service::ExitedError;
+            use super::#trait_name;
+            use crate::jsonrpc::{Result, Router};
+            use crate::service::{layers, Client, Pending, ServerState, State, ExitedError};
 
-            /// A client-to-server LSP request.
-            #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
-            #[cfg_attr(test, derive(serde::Serialize))]
-            pub struct ServerRequest {
-                jsonrpc: Version,
-                #[serde(flatten)]
-                kind: RequestKind,
+            fn cancel_request(params: CancelParams, p: &Pending) -> Ready<()> {
+                p.cancel(&params.id.into());
+                std::future::ready(())
             }
 
-            #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
-            #[cfg_attr(test, derive(serde::Serialize))]
-            #[serde(untagged)]
-            enum RequestKind {
-                Valid(ServerMethod),
-                Invalid {
-                    #[serde(default, deserialize_with = "deserialize_some")]
-                    id: Option<Id>,
-                    method: Option<String>,
-                },
-            }
-
-            fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-            where
-                T: serde::Deserialize<'de>,
-                D: serde::Deserializer<'de>,
-            {
-                T::deserialize(deserializer).map(Some)
-            }
-
-            #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
-            #[cfg_attr(test, derive(serde::Serialize))]
-            #[serde(tag = "method")]
-            enum ServerMethod {
-                #variants
-                #[serde(rename = "$/cancelRequest")]
-                CancelRequest { params: CancelParams },
-                #[serde(rename = "exit")]
-                Exit,
-            }
-
-            impl ServerMethod {
-                fn id(&self) -> Option<&Id> {
-                    match *self {
-                        #id_match_arms
-                        _ => None,
-                    }
-                }
-            }
-
-            #[derive(Clone, Debug, PartialEq)]
-            #[cfg_attr(test, derive(serde::Serialize))]
-            enum Params<T> {
-                Valid(T),
-                #[cfg_attr(test, serde(skip_serializing))]
-                Invalid(String),
-            }
-
-            impl<'de, T: serde::Deserialize<'de>> serde::Deserialize<'de> for Params<T> {
-                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-                where
-                    D: serde::Deserializer<'de>,
-                {
-                    match serde::Deserialize::deserialize(deserializer) {
-                        Ok(Some(v)) => Ok(Params::Valid(v)),
-                        Ok(None) => Ok(Params::Invalid("Missing params field".to_string())),
-                        Err(e) => Ok(Params::Invalid(e.to_string())),
-                    }
-                }
-            }
-
-            pub(crate) fn handle_request<T: #trait_name>(
-                server: T,
-                state: &Arc<ServerState>,
-                pending: &ServerRequests,
-                request: ServerRequest,
+            pub(crate) fn register_lsp_methods<S>(
+                mut router: Router<S, ExitedError>,
+                state: Arc<ServerState>,
+                pending: Arc<Pending>,
                 client: Client,
-            ) -> Pin<Box<dyn Future<Output = Result<Option<Outgoing>, ExitedError>> + Send>> {
-                use Params::*;
+            ) -> Router<S, ExitedError>
+            where
+                S: #trait_name,
+            {
+                #route_registrations
 
-                let method = match request.kind {
-                    RequestKind::Valid(method) => method,
-                    RequestKind::Invalid { id: Some(id), method: Some(m) } => {
-                        error!("method {:?} not found", m);
-                        let res = Response::error(id, Error::method_not_found());
-                        return future::ok(Some(Outgoing::Response(res))).boxed();
-                    }
-                    RequestKind::Invalid { id: Some(id), .. } => {
-                        let res = Response::error(id, Error::invalid_request());
-                        return future::ok(Some(Outgoing::Response(res))).boxed();
-                    }
-                    RequestKind::Invalid { id: None, method: Some(m) } if !m.starts_with("$/") => {
-                        error!("method {:?} not found", m);
-                        return future::ok(None).boxed();
-                    }
-                    RequestKind::Invalid { id: None, .. } => return future::ok(None).boxed(),
-                };
+                let p = pending.clone();
+                router.method(
+                    "$/cancelRequest",
+                    move |_: &S, params| cancel_request(params, &p),
+                    tower::layer::util::Identity::new(),
+                );
+                router.method(
+                    "exit",
+                    |_: &S| std::future::ready(()),
+                    layers::Exit::new(state.clone(), pending, client.clone()),
+                );
 
-                match (method, state.get()) {
-                    #route_match_arms
-                    (ServerMethod::CancelRequest { params }, State::Initialized) => {
-                        pending.cancel(&params.id.into());
-                        future::ok(None).boxed()
-                    }
-                    (ServerMethod::Exit, _) => {
-                        info!("exit notification received, stopping");
-                        state.set(State::Exited);
-                        pending.cancel_all();
-                        client.close();
-                        future::ok(None).boxed()
-                    }
-                    (other, State::Uninitialized) => Box::pin(match other.id().cloned() {
-                        None => future::ok(None),
-                        Some(id) => {
-                            let res = Response::error(id, not_initialized_error());
-                            future::ok(Some(Outgoing::Response(res)))
-                        }
-                    }),
-                    (other, _) => Box::pin(match other.id().cloned() {
-                        None => future::ok(None),
-                        Some(id) => {
-                            let res = Response::error(id, Error::invalid_request());
-                            future::ok(Some(Outgoing::Response(res)))
-                        }
-                    }),
-                }
+                router
             }
         }
     }

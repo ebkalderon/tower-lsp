@@ -107,7 +107,7 @@ mod service;
 /// safe and easily testable way without exposing the low-level implementation details.
 ///
 /// [Language Server Protocol]: https://microsoft.github.io/language-server-protocol/
-// #[rpc]
+#[rpc]
 #[async_trait]
 #[auto_impl(Arc, Box)]
 pub trait LanguageServer: Send + Sync + 'static {
