@@ -2,6 +2,7 @@
 
 pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink};
 
+pub(crate) use self::pending::Pending;
 pub(crate) use self::state::{ServerState, State};
 
 use std::fmt::{self, Display, Formatter};
@@ -16,6 +17,7 @@ use crate::jsonrpc::{Error, ErrorCode, Request, Response, Router};
 use crate::LanguageServer;
 
 mod client;
+mod pending;
 mod state;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
