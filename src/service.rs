@@ -1,5 +1,7 @@
 //! Service abstraction for language servers.
 
+pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink};
+
 pub(crate) use self::state::{ServerState, State};
 
 use std::fmt::{self, Display, Formatter};
@@ -13,6 +15,7 @@ use tower::Service;
 use crate::jsonrpc::{Error, ErrorCode, Request, Response, Router};
 use crate::LanguageServer;
 
+mod client;
 mod state;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
@@ -47,6 +50,25 @@ impl Display for ExitedError {
 pub struct LspService<S> {
     inner: Router<S, ExitedError>,
     state: Arc<ServerState>,
+}
+
+impl<S: LanguageServer> LspService<S> {
+    /// Creates a new `LspService` with the given server backend, also returning a channel for
+    /// server-to-client communication.
+    pub fn new<F>(init: F) -> (Self, ClientSocket)
+    where
+        F: FnOnce(Client) -> S,
+    {
+        let state = Arc::new(ServerState::new());
+        let (client, socket) = Client::new(state.clone());
+
+        let service = LspService {
+            inner: Router::new(init(client)),
+            state,
+        };
+
+        (service, socket)
+    }
 }
 
 impl<S: LanguageServer> Service<Request> for LspService<S> {
