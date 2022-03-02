@@ -16,6 +16,8 @@ use tower::Service;
 use crate::jsonrpc::{Error, ErrorCode, Request, Response, Router};
 use crate::LanguageServer;
 
+pub(crate) mod layers;
+
 mod client;
 mod pending;
 mod state;
