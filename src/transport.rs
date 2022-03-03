@@ -19,7 +19,8 @@ use crate::codec::LanguageServerCodec;
 use crate::jsonrpc::{Error, Id, Message, Request, Response};
 use crate::service::{ClientSocket, RequestStream, ResponseSink};
 
-const MAX_CONCURRENCY: usize = 4;
+const DEFAULT_MAX_CONCURRENCY: usize = 4;
+const MESSAGE_QUEUE_SIZE: usize = 100;
 
 /// Trait implemented by client loopback sockets.
 ///
@@ -68,7 +69,7 @@ where
             stdin,
             stdout,
             loopback: socket,
-            max_concurrency: MAX_CONCURRENCY,
+            max_concurrency: DEFAULT_MAX_CONCURRENCY,
         }
     }
 
@@ -107,7 +108,7 @@ where
         let (client_requests, mut client_responses) = self.loopback.split();
         let (client_requests, client_abort) = stream::abortable(client_requests);
         let (mut responses_tx, responses_rx) = mpsc::channel(0);
-        let (mut server_tasks_tx, server_tasks_rx) = mpsc::channel(0);
+        let (mut server_tasks_tx, server_tasks_rx) = mpsc::channel(MESSAGE_QUEUE_SIZE);
 
         let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
         let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
