@@ -5,7 +5,7 @@ pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink};
 pub(crate) use self::pending::Pending;
 pub(crate) use self::state::{ServerState, State};
 
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -13,7 +13,9 @@ use futures::future::{self, BoxFuture, FutureExt};
 use serde_json::Value;
 use tower::Service;
 
-use crate::jsonrpc::{Error, ErrorCode, Request, Response, Router};
+use crate::jsonrpc::{
+    Error, ErrorCode, FromParams, IntoResponse, Method, Request, Response, Router,
+};
 use crate::LanguageServer;
 
 pub(crate) mod layers;
@@ -63,18 +65,33 @@ impl<S: LanguageServer> LspService<S> {
     where
         F: FnOnce(Client) -> S,
     {
+        LspService::build(init).finish()
+    }
+
+    /// Starts building a new `LspService`.
+    ///
+    /// Returns an `LspServiceBuilder`, which allows adding custom JSON-RPC methods to the server.
+    pub fn build<F>(init: F) -> LspServiceBuilder<S>
+    where
+        F: FnOnce(Client) -> S,
+    {
         let state = Arc::new(ServerState::new());
 
         let (client, socket) = Client::new(state.clone());
         let inner = Router::new(init(client.clone()));
         let pending = Arc::new(Pending::new());
 
-        let service = LspService {
-            inner: crate::generated::register_lsp_methods(inner, state.clone(), pending, client),
+        LspServiceBuilder {
+            inner: crate::generated::register_lsp_methods(
+                inner,
+                state.clone(),
+                pending.clone(),
+                client,
+            ),
             state,
-        };
-
-        (service, socket)
+            pending,
+            socket,
+        }
     }
 }
 
@@ -113,6 +130,100 @@ impl<S: LanguageServer> Service<Request> for LspService<S> {
     }
 }
 
+/// A builder to customize the properties of an `LspService`.
+///
+/// To construct an `LspServiceBuilder`, refer to [`LspService::build`].
+pub struct LspServiceBuilder<S> {
+    inner: Router<S, ExitedError>,
+    state: Arc<ServerState>,
+    pending: Arc<Pending>,
+    socket: ClientSocket,
+}
+
+impl<S: LanguageServer> LspServiceBuilder<S> {
+    /// Defines a custom JSON-RPC request or notification with the given method `name` and handler.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use serde_json::{json, Value};
+    /// use tower_lsp::jsonrpc::Result;
+    /// use tower_lsp::lsp_types::*;
+    /// use tower_lsp::{LanguageServer, LspService};
+    ///
+    /// struct Mock;
+    ///
+    /// // Implement `LanguageServer` trait...
+    /// # #[tower_lsp::async_trait]
+    /// # impl LanguageServer for Mock {
+    /// #     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    /// #         Ok(InitializeResult::default())
+    /// #     }
+    /// #
+    /// #     async fn shutdown(&self) -> Result<()> {
+    /// #         Ok(())
+    /// #     }
+    /// # }
+    ///
+    /// impl Mock {
+    ///     async fn request(&self) -> Result<i32> {
+    ///         Ok(123)
+    ///     }
+    ///
+    ///     async fn request_params(&self, params: Vec<String>) -> Result<Value> {
+    ///         Ok(json!({"num_elems":params.len()}))
+    ///     }
+    ///
+    ///     async fn notification(&self) {
+    ///         // ...
+    ///     }
+    ///
+    ///     async fn notification_params(&self, params: Value) {
+    ///         // ...
+    /// #       let _ = params;
+    ///     }
+    /// }
+    ///
+    /// let (service, socket) = LspService::build(|_| Mock)
+    ///     .method("custom/request", Mock::request)
+    ///     .method("custom/requestParams", Mock::request_params)
+    ///     .method("custom/notification", Mock::notification)
+    ///     .method("custom/notificationParams", Mock::notification_params)
+    ///     .finish();
+    /// ```
+    pub fn method<P, R, F>(mut self, name: &'static str, handler: F) -> Self
+    where
+        P: FromParams,
+        R: IntoResponse,
+        F: for<'a> Method<&'a S, P, R> + Send + Sync + 'static,
+    {
+        let layer = layers::Normal::new(self.state.clone(), self.pending.clone());
+        self.inner.method(name, handler, layer);
+        self
+    }
+
+    /// Constructs the `LspService` and returns it, along with a channel for server-to-client
+    /// communication.
+    pub fn finish(self) -> (LspService<S>, ClientSocket) {
+        let LspServiceBuilder {
+            inner,
+            state,
+            socket,
+            ..
+        } = self;
+
+        (LspService { inner, state }, socket)
+    }
+}
+
+impl<S: Debug> Debug for LspServiceBuilder<S> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("LspServiceBuilder")
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
@@ -139,6 +250,12 @@ mod tests {
         // This handler should never resolve...
         async fn code_action_resolve(&self, _: CodeAction) -> Result<CodeAction> {
             future::pending().await
+        }
+    }
+
+    impl Mock {
+        async fn custom_request(&self, params: i32) -> Result<i32> {
+            Ok(params)
         }
     }
 
@@ -221,5 +338,22 @@ mod tests {
         let canceled = Response::from_error(1.into(), Error::request_cancelled());
         assert_eq!(pending_response, Ok(Some(canceled)));
         assert_eq!(cancel_response, Ok(None));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn serves_custom_requests() {
+        let (mut service, _) = LspService::build(|_| Mock)
+            .method("custom", Mock::custom_request)
+            .finish();
+
+        let initialize = initialize_request(1);
+        let response = service.ready().await.unwrap().call(initialize).await;
+        let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
+        assert_eq!(response, Ok(Some(ok)));
+
+        let custom = Request::build("custom").params(123i32).id(1).finish();
+        let response = service.ready().await.unwrap().call(custom).await;
+        let ok = Response::from_ok(1.into(), json!(123i32));
+        assert_eq!(response, Ok(Some(ok)));
     }
 }
