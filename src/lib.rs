@@ -83,6 +83,7 @@ pub extern crate lsp_types;
 pub use async_trait::async_trait;
 
 pub use self::service::{Client, ClientSocket, ExitedError, LspService, LspServiceBuilder};
+pub use self::transport::{Loopback, Server};
 
 use auto_impl::auto_impl;
 use log::{error, warn};
@@ -100,6 +101,7 @@ pub mod jsonrpc;
 
 mod codec;
 mod service;
+mod transport;
 
 /// Trait implemented by language server backends.
 ///
