@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```rust
 //! use tower_lsp::jsonrpc::Result;
 //! use tower_lsp::lsp_types::*;
 //! use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -64,12 +64,8 @@
 //! #   let (stdin, stdout) = (Cursor::new(format!("Content-Length: {}\r\n\r\n{}", message.len(), message).into_bytes()), Cursor::new(Vec::new()));
 //! #   #[cfg(feature = "runtime-agnostic")]
 //! #   let (stdin, stdout) = (stdin.compat(), stdout.compat_write());
-//!
-//!     let (service, messages) = LspService::new(|client| Backend { client });
-//!     Server::new(stdin, stdout)
-//!         .interleave(messages)
-//!         .serve(service)
-//!         .await;
+//!     let (service, socket) = LspService::new(|client| Backend { client });
+//!     Server::new(stdin, stdout, socket).serve(service).await;
 //! }
 //! ```
 
