@@ -82,7 +82,7 @@ pub extern crate lsp_types;
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
-pub use self::service::{Client, ClientSocket, ExitedError, LspService};
+pub use self::service::{Client, ClientSocket, ExitedError, LspService, LspServiceBuilder};
 
 use auto_impl::auto_impl;
 use log::{error, warn};
