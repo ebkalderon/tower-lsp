@@ -141,8 +141,8 @@ where
 
                         server_tasks_tx.send(fut).await.unwrap();
                     }
-                    Ok(Message::Response(req)) => {
-                        if let Err(err) = client_responses.send(req).await {
+                    Ok(Message::Response(res)) => {
+                        if let Err(err) = client_responses.send(res).await {
                             error!("{}", display_sources(&err));
                             return;
                         }
