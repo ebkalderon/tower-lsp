@@ -15,7 +15,7 @@ use futures::{future, join, stream, FutureExt, Sink, SinkExt, Stream, StreamExt,
 use log::error;
 use tower::Service;
 
-use crate::codec::LanguageServerCodec;
+use crate::codec::{LanguageServerCodec, ParseError};
 use crate::jsonrpc::{Error, Id, Message, Request, Response};
 use crate::service::{ClientSocket, RequestStream, ResponseSink};
 
@@ -149,7 +149,7 @@ where
                     }
                     Err(err) => {
                         error!("failed to decode message: {}", err);
-                        let res = Response::from_error(Id::Null, Error::parse_error());
+                        let res = Response::from_error(Id::Null, to_jsonrpc_error(err));
                         responses_tx.send(Message::Response(res)).await.unwrap();
                     }
                 }
@@ -169,6 +169,24 @@ fn display_sources(error: &dyn std::error::Error) -> String {
         format!("{}: {}", error, display_sources(source))
     } else {
         error.to_string()
+    }
+}
+
+#[cfg(feature = "runtime-tokio")]
+#[inline]
+fn to_jsonrpc_error(err: ParseError) -> Error {
+    match err {
+        ParseError::Body(err) if err.is_data() => Error::invalid_request(),
+        _ => Error::parse_error(),
+    }
+}
+
+#[cfg(feature = "runtime-agnostic")]
+#[inline]
+fn to_jsonrpc_error(err: impl std::error::Error) -> Error {
+    match err.source().and_then(|e| e.downcast_ref()) {
+        Some(ParseError::Body(err)) if err.is_data() => Error::invalid_request(),
+        _ => Error::parse_error(),
     }
 }
 
