@@ -1,21 +1,32 @@
 //! Service abstraction for language servers.
 
-use std::error::Error;
-use std::fmt::{self, Debug, Display, Formatter};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::{
+    error::Error,
+    fmt::{self, Debug, Display, Formatter},
+    future::Future,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use futures::channel::mpsc::{self, Receiver};
-use futures::stream::FusedStream;
-use futures::{future, FutureExt, Stream};
+use futures::{
+    channel::mpsc::{self, Receiver},
+    future,
+    stream::FusedStream,
+    FutureExt,
+    Stream,
+};
 use log::trace;
 use tower_service::Service;
 
-use super::client::Client;
-use super::jsonrpc::{ClientRequests, Incoming, Outgoing, ServerRequests};
-use super::{generated_impl, LanguageServer, ServerState, State};
+use super::{
+    client::Client,
+    generated_impl,
+    jsonrpc::{ClientRequests, Incoming, Outgoing, ServerRequests},
+    LanguageServer,
+    ServerState,
+    State,
+};
 
 /// Error that occurs when attempting to call the language server after it has already exited.
 #[derive(Clone, Debug, PartialEq)]
@@ -27,7 +38,8 @@ impl Display for ExitedError {
     }
 }
 
-impl Error for ExitedError {}
+impl Error for ExitedError {
+}
 
 /// Stream of messages produced by the language server.
 #[derive(Debug)]
@@ -104,9 +116,9 @@ impl LspService {
 }
 
 impl Service<Incoming> for LspService {
-    type Response = Option<Outgoing>;
     type Error = ExitedError;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Response = Option<Outgoing>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         if self.state.get() == State::Exited {
@@ -132,7 +144,7 @@ impl Service<Incoming> for LspService {
                     trace!("received client response: {:?}", res);
                     self.pending_client.insert(res);
                     future::ok(None).boxed()
-                }
+                },
             }
         }
     }
@@ -157,8 +169,7 @@ mod tests {
     use super::*;
     use crate::jsonrpc::Result;
 
-    const INITIALIZE_REQUEST: &str =
-        r#"{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1}"#;
+    const INITIALIZE_REQUEST: &str = r#"{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":1}"#;
     const INITIALIZED_NOTIF: &str = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#;
     const SHUTDOWN_REQUEST: &str = r#"{"jsonrpc":"2.0","method":"shutdown","id":1}"#;
     const EXIT_NOTIF: &str = r#"{"jsonrpc":"2.0","method":"exit"}"#;

@@ -8,8 +8,16 @@ use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, AttributeArgs, FnArg, ItemTrait, Lit, Meta, MetaNameValue, NestedMeta,
-    ReturnType, TraitItem,
+    parse_macro_input,
+    AttributeArgs,
+    FnArg,
+    ItemTrait,
+    Lit,
+    Meta,
+    MetaNameValue,
+    NestedMeta,
+    ReturnType,
+    TraitItem,
 };
 
 /// Macro for generating LSP server implementation from [`lsp-types`](https://docs.rs/lsp-types).
@@ -21,7 +29,7 @@ pub fn rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr_args = parse_macro_input!(attr as AttributeArgs);
 
     match attr_args.as_slice() {
-        [] => {}
+        [] => {},
         [NestedMeta::Meta(meta)] if meta.path().is_ident("name") => return item,
         _ => panic!("unexpected attribute arguments"),
     }
@@ -60,9 +68,9 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
             .filter_map(|attr| attr.parse_args::<Meta>().ok())
             .filter(|meta| meta.path().is_ident("name"))
             .find_map(|meta| match meta {
-                Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(lit), ..
-                }) => Some(lit.value().trim_matches('"').to_owned()),
+                Meta::NameValue(MetaNameValue { lit: Lit::Str(lit), .. }) => {
+                    Some(lit.value().trim_matches('"').to_owned())
+                },
                 _ => panic!("expected string literal for `#[rpc(name = ???)]` attribute"),
             })
             .expect("expected `#[rpc(name = \"foo\")]` attribute");

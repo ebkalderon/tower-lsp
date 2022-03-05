@@ -1,13 +1,17 @@
 //! `tower` server which multiplexes bidirectional traffic over one connection.
 
-use std::error::Error;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    error::Error,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use futures::channel::mpsc;
-use futures::future::{self, Either, FutureExt, TryFutureExt};
-use futures::sink::SinkExt;
-use futures::stream::{self, Empty, Stream, StreamExt};
+use futures::{
+    channel::mpsc,
+    future::{self, Either, FutureExt, TryFutureExt},
+    sink::SinkExt,
+    stream::{self, Empty, Stream, StreamExt},
+};
 use log::error;
 use tower_service::Service;
 
@@ -21,8 +25,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(feature = "runtime-tokio")]
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use super::codec::LanguageServerCodec;
-use super::jsonrpc::{self, Id, Incoming, Outgoing, Response};
+use super::{
+    codec::LanguageServerCodec,
+    jsonrpc::{self, Id, Incoming, Outgoing, Response},
+};
 
 /// Server for processing requests and responses on standard I/O or TCP.
 #[derive(Debug)]
@@ -128,7 +134,7 @@ where
                         let response_fut = future::ready(Some(Outgoing::Response(response)));
                         sender.send(Either::Right(response_fut)).await.unwrap();
                         continue;
-                    }
+                    },
                 };
 
                 if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
@@ -183,8 +189,7 @@ mod tests {
     #[cfg(feature = "runtime-tokio")]
     use std::io::Cursor;
 
-    use futures::future::Ready;
-    use futures::{future, stream};
+    use futures::{future, future::Ready, stream};
 
     use super::*;
 
@@ -195,9 +200,9 @@ mod tests {
     struct MockService;
 
     impl Service<Incoming> for MockService {
-        type Response = Option<Outgoing>;
         type Error = String;
         type Future = Ready<Result<Self::Response, Self::Error>>;
+        type Response = Option<Outgoing>;
 
         fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
@@ -224,9 +229,7 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn serves_on_stdio() {
         let (mut stdin, mut stdout) = mock_stdio();
-        Server::new(&mut stdin, &mut stdout)
-            .serve(MockService)
-            .await;
+        Server::new(&mut stdin, &mut stdout).serve(MockService).await;
 
         assert_eq!(stdin.position(), 80);
         assert_eq!(stdout, mock_response());
@@ -254,9 +257,7 @@ mod tests {
         let message = format!("Content-Length: {}\r\n\r\n{}", invalid.len(), invalid).into_bytes();
         let (mut stdin, mut stdout) = (Cursor::new(message), Vec::new());
 
-        Server::new(&mut stdin, &mut stdout)
-            .serve(MockService)
-            .await;
+        Server::new(&mut stdin, &mut stdout).serve(MockService).await;
 
         assert_eq!(stdin.position(), 48);
         let err = r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":null}"#;

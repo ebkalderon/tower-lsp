@@ -1,13 +1,14 @@
 //! Encoder and decoder for Language Server Protocol messages.
 
-use std::error::Error;
-use std::fmt::{self, Display, Formatter};
-use std::io::{Error as IoError, Write};
-use std::marker::PhantomData;
-use std::str::Utf8Error;
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    io::{Error as IoError, Write},
+    marker::PhantomData,
+    str::Utf8Error,
+};
 
-use bytes::buf::BufMut;
-use bytes::{Buf, BytesMut};
+use bytes::{buf::BufMut, Buf, BytesMut};
 use log::trace;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -83,16 +84,14 @@ pub struct LanguageServerCodec<T> {
 
 impl<T> Default for LanguageServerCodec<T> {
     fn default() -> Self {
-        LanguageServerCodec {
-            _marker: PhantomData,
-        }
+        LanguageServerCodec { _marker: PhantomData }
     }
 }
 
 #[cfg(feature = "runtime-agnostic")]
 impl<T: Serialize> Encoder for LanguageServerCodec<T> {
-    type Item = T;
     type Error = ParseError;
+    type Item = T;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let msg = serde_json::to_string(&item)?;
@@ -141,8 +140,8 @@ fn number_of_digits(mut n: usize) -> usize {
 }
 
 impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
-    type Item = T;
     type Error = ParseError;
+    type Item = T;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let mut http_headers_err = None;
@@ -170,23 +169,23 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
                             Err(_) => {
                                 src.advance(headers_len);
                                 return Err(ParseError::InvalidLength);
-                            }
+                            },
                         },
                         // If there was an error parsing the "Content-Length" value as UTF-8,
                         // return the error.
                         Err(err) => {
                             src.advance(headers_len);
                             return Err(ParseError::Utf8(err));
-                        }
+                        },
                     }
                 }
-            }
+            },
             // No errors occurred during parsing yet but no complete set of headers were parsed
             Ok(httparse::Status::Partial) => return Ok(None),
             // An error occurred during parsing of the headers
             Err(err) => {
                 http_headers_err = Some(err);
-            }
+            },
         }
 
         // If "Content-Length" has been parsed
@@ -199,7 +198,7 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
             }
 
             // Parse the JSON-RPC message bytes as JSON
-            let message = &src[headers_len..message_len];
+            let message = &src[headers_len .. message_len];
             let message = std::str::from_utf8(message)?;
 
             trace!("<- {}", message);
@@ -255,12 +254,7 @@ mod tests {
             .map(|ty| format!("\r\nContent-Type: {}", ty))
             .unwrap_or_default();
 
-        format!(
-            "Content-Length: {}{}\r\n\r\n{}",
-            message.len(),
-            content_type,
-            message
-        )
+        format!("Content-Length: {}{}\r\n\r\n{}", message.len(), content_type, message)
     }
 
     #[test]
@@ -314,7 +308,7 @@ mod tests {
         let mut buffer = BytesMut::from(mixed.as_str());
 
         match codec.decode(&mut buffer) {
-            Err(ParseError::MissingHeader) => {}
+            Err(ParseError::MissingHeader) => {},
             other => panic!("expected `Err(ParseError::MissingHeader)`, got {:?}", other),
         }
 
@@ -323,7 +317,7 @@ mod tests {
         assert_eq!(message, Some(first_valid));
 
         match codec.decode(&mut buffer) {
-            Err(ParseError::InvalidLength) => {}
+            Err(ParseError::InvalidLength) => {},
             other => panic!("expected `Err(ParseError::InvalidLength)`, got {:?}", other),
         }
 

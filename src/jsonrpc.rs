@@ -5,15 +5,18 @@ pub use crate::generated_impl::ServerRequest;
 
 pub(crate) use self::pending::{ClientRequests, ServerRequests};
 
-use std::borrow::Cow;
-use std::fmt::{self, Debug, Display, Formatter};
+use std::{
+    borrow::Cow,
+    fmt::{self, Debug, Display, Formatter},
+};
 
-use lsp_types::notification::Notification;
-use lsp_types::request::Request;
-use lsp_types::NumberOrString;
-use serde::de::{self, Deserializer};
-use serde::ser::Serializer;
-use serde::{Deserialize, Serialize};
+use lsp_types::{notification::Notification, request::Request, NumberOrString};
+use serde::{
+    de::{self, Deserializer},
+    ser::Serializer,
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 
 mod error;
@@ -294,8 +297,7 @@ mod tests {
 
     #[test]
     fn parses_incoming_message() {
-        let server_request =
-            json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":0});
+        let server_request = json!({"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{}},"id":0});
         let incoming = serde_json::from_value(server_request).unwrap();
         assert!(matches!(incoming, Incoming::Request(_)));
 

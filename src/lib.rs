@@ -79,23 +79,33 @@
 
 pub extern crate lsp_types;
 
-pub use self::client::Client;
-pub use self::service::{ExitedError, LspService, MessageStream};
-pub use self::transport::Server;
+pub use self::{
+    client::Client,
+    service::{ExitedError, LspService, MessageStream},
+    transport::Server,
+};
 
 /// A re-export of [`async-trait`](https://docs.rs/async-trait) for convenience.
 pub use async_trait::async_trait;
 
-use std::fmt::{self, Debug, Formatter};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    fmt::{self, Debug, Formatter},
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use auto_impl::auto_impl;
 use log::{error, warn};
-use lsp_types::request::{
-    GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
-    GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
+use lsp_types::{
+    request::{
+        GotoDeclarationParams,
+        GotoDeclarationResponse,
+        GotoImplementationParams,
+        GotoImplementationResponse,
+        GotoTypeDefinitionParams,
+        GotoTypeDefinitionResponse,
+    },
+    *,
 };
-use lsp_types::*;
 use serde_json::Value;
 use tower_lsp_macros::rpc;
 
@@ -200,10 +210,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specification#workspace_symbol
     #[rpc(name = "workspace/symbol")]
-    async fn symbol(
-        &self,
-        params: WorkspaceSymbolParams,
-    ) -> Result<Option<Vec<SymbolInformation>>> {
+    async fn symbol(&self, params: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
         let _ = params;
         error!("Got a workspace/symbol request, but it is not implemented");
         Err(Error::method_not_found())
@@ -360,10 +367,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// Please note that clients might drop results if computing the text edits took too long or if
     /// a server constantly fails on this request. This is done to keep the save fast and reliable.
     #[rpc(name = "textDocument/willSaveWaitUntil")]
-    async fn will_save_wait_until(
-        &self,
-        params: WillSaveTextDocumentParams,
-    ) -> Result<Option<Vec<TextEdit>>> {
+    async fn will_save_wait_until(&self, params: WillSaveTextDocumentParams) -> Result<Option<Vec<TextEdit>>> {
         let _ = params;
         error!("Got a textDocument/willSaveWaitUntil request, but it is not implemented");
         Err(Error::method_not_found())
@@ -461,10 +465,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::declaration::link_support
     /// ```
     #[rpc(name = "textDocument/declaration")]
-    async fn goto_declaration(
-        &self,
-        params: GotoDeclarationParams,
-    ) -> Result<Option<GotoDeclarationResponse>> {
+    async fn goto_declaration(&self, params: GotoDeclarationParams) -> Result<Option<GotoDeclarationResponse>> {
         let _ = params;
         error!("Got a textDocument/declaration request, but it is not implemented");
         Err(Error::method_not_found())
@@ -486,17 +487,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// InitializeParams::capabilities::text_document::definition::link_support
     /// ```
     #[rpc(name = "textDocument/definition")]
-    async fn goto_definition(
-        &self,
-        params: GotoDefinitionParams,
-    ) -> Result<Option<GotoDefinitionResponse>> {
+    async fn goto_definition(&self, params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
         let _ = params;
         error!("Got a textDocument/definition request, but it is not implemented");
         Err(Error::method_not_found())
     }
 
-    /// The [`textDocument/typeDefinition`] request asks the server for the type definition location of
-    /// a symbol at a given text document position.
+    /// The [`textDocument/typeDefinition`] request asks the server for the type definition location
+    /// of a symbol at a given text document position.
     ///
     /// [`textDocument/typeDefinition`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_typeDefinition
     ///
@@ -571,10 +569,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight
     #[rpc(name = "textDocument/documentHighlight")]
-    async fn document_highlight(
-        &self,
-        params: DocumentHighlightParams,
-    ) -> Result<Option<Vec<DocumentHighlight>>> {
+    async fn document_highlight(&self, params: DocumentHighlightParams) -> Result<Option<Vec<DocumentHighlight>>> {
         let _ = params;
         error!("Got a textDocument/documentHighlight request, but it is not implemented");
         Err(Error::method_not_found())
@@ -585,18 +580,15 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// The returned result is either:
     ///
-    /// * [`DocumentSymbolResponse::Flat`] which is a flat list of all symbols found in a given
-    ///   text document. Then neither the symbol’s location range nor the symbol’s container name
-    ///   should be used to infer a hierarchy.
+    /// * [`DocumentSymbolResponse::Flat`] which is a flat list of all symbols found in a given text
+    ///   document. Then neither the symbol’s location range nor the symbol’s container name should
+    ///   be used to infer a hierarchy.
     /// * [`DocumentSymbolResponse::Nested`] which is a hierarchy of symbols found in a given text
     ///   document.
     ///
     /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol
     #[rpc(name = "textDocument/documentSymbol")]
-    async fn document_symbol(
-        &self,
-        params: DocumentSymbolParams,
-    ) -> Result<Option<DocumentSymbolResponse>> {
+    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
         let _ = params;
         error!("Got a textDocument/documentSymbol request, but it is not implemented");
         Err(Error::method_not_found())
@@ -621,11 +613,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// Since version 3.8.0: support for [`CodeAction`] literals to enable the following scenarios:
     ///
-    /// * The ability to directly return a workspace edit from the code action request.
-    ///   This avoids having another server roundtrip to execute an actual code action.
-    ///   However server providers should be aware that if the code action is expensive to compute
-    ///   or the edits are huge it might still be beneficial if the result is simply a command and
-    ///   the actual edit is only computed when needed.
+    /// * The ability to directly return a workspace edit from the code action request. This avoids
+    ///   having another server roundtrip to execute an actual code action. However server providers
+    ///   should be aware that if the code action is expensive to compute or the edits are huge it
+    ///   might still be beneficial if the result is simply a command and the actual edit is only
+    ///   computed when needed.
     ///
     /// * The ability to group code actions using a kind. Clients are allowed to ignore that
     ///   information. However it allows them to better group code action for example into
@@ -756,10 +748,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// resolve request for the [`textDocument/documentColor`](LanguageServer::document_color)
     /// request.
     #[rpc(name = "textDocument/colorPresentation")]
-    async fn color_presentation(
-        &self,
-        params: ColorPresentationParams,
-    ) -> Result<Vec<ColorPresentation>> {
+    async fn color_presentation(&self, params: ColorPresentationParams) -> Result<Vec<ColorPresentation>> {
         let _ = params;
         error!("Got a textDocument/colorPresentation request, but it is not implemented");
         Err(Error::method_not_found())
@@ -781,10 +770,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`textDocument/rangeFormatting`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_rangeFormatting
     #[rpc(name = "textDocument/rangeFormatting")]
-    async fn range_formatting(
-        &self,
-        params: DocumentRangeFormattingParams,
-    ) -> Result<Option<Vec<TextEdit>>> {
+    async fn range_formatting(&self, params: DocumentRangeFormattingParams) -> Result<Option<Vec<TextEdit>>> {
         let _ = params;
         error!("Got a textDocument/rangeFormatting request, but it is not implemented");
         Err(Error::method_not_found())
@@ -795,10 +781,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// [`textDocument/onTypeFormatting`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_onTypeFormatting
     #[rpc(name = "textDocument/onTypeFormatting")]
-    async fn on_type_formatting(
-        &self,
-        params: DocumentOnTypeFormattingParams,
-    ) -> Result<Option<Vec<TextEdit>>> {
+    async fn on_type_formatting(&self, params: DocumentOnTypeFormattingParams) -> Result<Option<Vec<TextEdit>>> {
         let _ = params;
         error!("Got a textDocument/onTypeFormatting request, but it is not implemented");
         Err(Error::method_not_found())
@@ -825,10 +808,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.12.0.
     #[rpc(name = "textDocument/prepareRename")]
-    async fn prepare_rename(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> Result<Option<PrepareRenameResponse>> {
+    async fn prepare_rename(&self, params: TextDocumentPositionParams) -> Result<Option<PrepareRenameResponse>> {
         let _ = params;
         error!("Got a textDocument/prepareRename request, but it is not implemented");
         Err(Error::method_not_found())
@@ -862,10 +842,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.15.0.
     #[rpc(name = "textDocument/selectionRange")]
-    async fn selection_range(
-        &self,
-        params: SelectionRangeParams,
-    ) -> Result<Option<Vec<SelectionRange>>> {
+    async fn selection_range(&self, params: SelectionRangeParams) -> Result<Option<Vec<SelectionRange>>> {
         let _ = params;
         error!("Got a textDocument/selectionRange request, but it is not implemented");
         Err(Error::method_not_found())
@@ -958,17 +935,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.16.0.
     #[rpc(name = "textDocument/semanticTokens/full")]
-    async fn semantic_tokens_full(
-        &self,
-        params: SemanticTokensParams,
-    ) -> Result<Option<SemanticTokensResult>> {
+    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
         let _ = params;
         error!("Got a textDocument/semanticTokens/full request, but it is not implemented");
         Err(Error::method_not_found())
     }
 
-    /// The [`textDocument/semanticTokens/full/delta`] request is sent from the client to the server to
-    /// resolve the semantic tokens of a given file, **returning only the delta**.
+    /// The [`textDocument/semanticTokens/full/delta`] request is sent from the client to the server
+    /// to resolve the semantic tokens of a given file, **returning only the delta**.
     ///
     /// Similar to [`semantic_tokens_full`](LanguageServer::semantic_tokens_full), except it
     /// returns a sequence of [`SemanticTokensEdit`] to transform a previous result into a new
@@ -1030,10 +1004,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.16.0.
     #[rpc(name = "textDocument/linkedEditingRange")]
-    async fn linked_editing_range(
-        &self,
-        params: LinkedEditingRangeParams,
-    ) -> Result<Option<LinkedEditingRanges>> {
+    async fn linked_editing_range(&self, params: LinkedEditingRangeParams) -> Result<Option<LinkedEditingRanges>> {
         let _ = params;
         error!("Got a textDocument/linkedEditingRange request, but it is not implemented");
         Err(Error::method_not_found())
@@ -1071,7 +1042,8 @@ pub trait LanguageServer: Send + Sync + 'static {
 }
 
 fn _assert_object_safe() {
-    fn assert_impl<T: LanguageServer>() {}
+    fn assert_impl<T: LanguageServer>() {
+    }
     assert_impl::<Box<dyn LanguageServer>>();
 }
 

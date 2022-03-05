@@ -1,20 +1,28 @@
 //! Types for sending data to and from the language client.
 
-use std::fmt::{self, Debug, Display, Formatter};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+use std::{
+    fmt::{self, Debug, Display, Formatter},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
+};
 
-use futures::channel::mpsc::Sender;
-use futures::sink::SinkExt;
+use futures::{channel::mpsc::Sender, sink::SinkExt};
 use log::{error, trace};
-use lsp_types::notification::{Notification, *};
-use lsp_types::request::{Request, *};
-use lsp_types::*;
+use lsp_types::{
+    notification::{Notification, *},
+    request::{Request, *},
+    *,
+};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::jsonrpc::{self, ClientRequest, ClientRequests, Error, ErrorCode, Id, Outgoing, Result};
-use super::{ServerState, State};
+use super::{
+    jsonrpc::{self, ClientRequest, ClientRequests, Error, ErrorCode, Id, Outgoing, Result},
+    ServerState,
+    State,
+};
 
 struct ClientInner {
     sender: Sender<Outgoing>,
@@ -55,8 +63,8 @@ impl Client {
     /// produced. The receiver of the messages will be able to consume any in-flight messages and
     /// then will observe the end of the stream.
     ///
-    /// If the client is never closed and never dropped the reveiver of the messages will never observe the end of
-    /// the stream.
+    /// If the client is never closed and never dropped the reveiver of the messages will never
+    /// observe the end of the stream.
     pub(crate) fn close(&self) {
         let mut sender = self.inner.sender.clone();
         sender.close_channel();
@@ -123,7 +131,7 @@ impl Client {
                     value = Value::Array(vec![value]);
                 }
                 self.send_notification::<TelemetryEvent>(value).await;
-            }
+            },
         }
     }
 
@@ -157,10 +165,8 @@ impl Client {
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn unregister_capability(&self, unregisterations: Vec<Unregistration>) -> Result<()> {
-        self.send_request_initialized::<UnregisterCapability>(UnregistrationParams {
-            unregisterations,
-        })
-        .await
+        self.send_request_initialized::<UnregisterCapability>(UnregistrationParams { unregisterations })
+            .await
     }
 
     /// Fetches the current open list of workspace folders.
@@ -183,8 +189,7 @@ impl Client {
     ///
     /// This request was introduced in specification version 3.6.0.
     pub async fn workspace_folders(&self) -> Result<Option<Vec<WorkspaceFolder>>> {
-        self.send_request_initialized::<WorkspaceFoldersRequest>(())
-            .await
+        self.send_request_initialized::<WorkspaceFoldersRequest>(()).await
     }
 
     /// Fetches configuration settings from the client.
@@ -227,11 +232,8 @@ impl Client {
     ///
     /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
     pub async fn apply_edit(&self, edit: WorkspaceEdit) -> Result<ApplyWorkspaceEditResponse> {
-        self.send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams {
-            edit,
-            label: None,
-        })
-        .await
+        self.send_request_initialized::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit, label: None })
+            .await
     }
 
     /// Submits validation diagnostics for an open file with the given URI.
@@ -243,16 +245,9 @@ impl Client {
     /// # Initialization
     ///
     /// This notification will only be sent if the server is initialized.
-    pub async fn publish_diagnostics(
-        &self,
-        uri: Url,
-        diags: Vec<Diagnostic>,
-        version: Option<i32>,
-    ) {
-        self.send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(
-            uri, diags, version,
-        ))
-        .await;
+    pub async fn publish_diagnostics(&self, uri: Url, diags: Vec<Diagnostic>, version: Option<i32>) {
+        self.send_notification_initialized::<PublishDiagnostics>(PublishDiagnosticsParams::new(uri, diags, version))
+            .await;
     }
 
     /// Asks the client to refresh the code lenses currently shown in editors. As a result, the
@@ -307,8 +302,7 @@ impl Client {
     ///
     /// This request was introduced in specification version 3.16.0.
     pub async fn semantic_tokens_refresh(&self) -> Result<()> {
-        self.send_request_initialized::<SemanticTokensRefresh>(())
-            .await
+        self.send_request_initialized::<SemanticTokensRefresh>(()).await
     }
 
     /// Sends a custom notification to the client.
@@ -415,8 +409,7 @@ impl Debug for Client {
 mod tests {
     use std::future::Future;
 
-    use futures::channel::mpsc;
-    use futures::StreamExt;
+    use futures::{channel::mpsc, StreamExt};
     use serde_json::json;
 
     use super::*;

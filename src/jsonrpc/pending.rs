@@ -1,12 +1,16 @@
 //! Hashmaps for tracking pending JSON-RPC requests.
 
-use std::fmt::{self, Debug, Formatter};
-use std::future::Future;
-use std::sync::Arc;
+use std::{
+    fmt::{self, Debug, Formatter},
+    future::Future,
+    sync::Arc,
+};
 
 use dashmap::{mapref::entry::Entry, DashMap};
-use futures::channel::oneshot;
-use futures::future::{self, Either};
+use futures::{
+    channel::oneshot,
+    future::{self, Either},
+};
 use log::{info, warn};
 use serde::Serialize;
 
@@ -124,7 +128,7 @@ impl ClientRequests {
                 let (tx, rx) = oneshot::channel();
                 entry.insert(tx);
                 async { rx.await.expect("sender already dropped") }
-            }
+            },
             _ => panic!("concurrent waits for the same request ID can't happen, this is a bug"),
         }
     }
