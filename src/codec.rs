@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn decodes_zero_length_message() {
-        let content_type = "Content-Type: application/vscode-jsonrpc; charset=utf-8";
+        let content_type = "application/vscode-jsonrpc; charset=utf-8";
         let encoded = encode_message(Some(content_type), "");
 
         let mut codec = LanguageServerCodec::default();
