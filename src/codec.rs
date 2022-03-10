@@ -87,18 +87,18 @@ pub struct LanguageServerCodec<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T> LanguageServerCodec<T> {
-    pub fn reset(&mut self) {
-        *self = Self::default();
-    }
-}
-
 impl<T> Default for LanguageServerCodec<T> {
     fn default() -> Self {
         LanguageServerCodec {
             message_len: None,
             _marker: PhantomData,
         }
+    }
+}
+
+impl<T> LanguageServerCodec<T> {
+    fn reset(&mut self) {
+        self.message_len = None;
     }
 }
 
