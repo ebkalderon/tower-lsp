@@ -27,6 +27,8 @@ pub enum ParseError {
     Encode(IoError),
     /// Failed to parse headers.
     Headers(httparse::Error),
+    /// The media type in the `Content-Type` header is invalid.
+    InvalidContentType,
     /// The length value in the `Content-Length` header is invalid.
     InvalidContentLength(ParseIntError),
     /// Request lacks the required `Content-Length` header.
@@ -41,6 +43,7 @@ impl Display for ParseError {
             ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {}", e),
             ParseError::Encode(ref e) => write!(f, "failed to encode response: {}", e),
             ParseError::Headers(ref e) => write!(f, "failed to parse headers: {}", e),
+            ParseError::InvalidContentType => write!(f, "unable to parse content type"),
             ParseError::InvalidContentLength(ref e) => {
                 write!(f, "unable to parse content length: {}", e)
             }
@@ -228,9 +231,16 @@ fn decode_headers(headers: &[httparse::Header<'_>]) -> Result<usize, ParseError>
                 content_len = Some(parsed_len);
             }
             "Content-Type" => {
-                if header.value != b"application/vscode-jsonrpc; charset=utf-8" {
-                    let result = std::str::from_utf8(header.value);
-                    warn!("encountered unexpected Content-Type value: {:#?}", result);
+                let string = std::str::from_utf8(header.value)?;
+                let charset = string
+                    .split(';')
+                    .skip(1)
+                    .map(|param| param.trim())
+                    .find_map(|param| param.strip_prefix("charset="));
+
+                match charset {
+                    Some("utf-8") | Some("utf8") => {}
+                    _ => return Err(ParseError::InvalidContentType),
                 }
             }
             other => warn!("encountered unsupported header: {:?}", other),
@@ -290,8 +300,48 @@ mod tests {
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(encoded.as_str());
         let message = codec.decode(&mut buffer).unwrap();
-        let decoded: Value = serde_json::from_str(decoded).unwrap();
-        assert_eq!(message, Some(decoded));
+        let decoded_: Value = serde_json::from_str(decoded).unwrap();
+        assert_eq!(message, Some(decoded_));
+
+        let content_type = "application/vscode-jsonrpc; charset=utf8";
+        let encoded = encode_message(Some(content_type), decoded);
+
+        let mut buffer = BytesMut::from(encoded.as_str());
+        let message = codec.decode(&mut buffer).unwrap();
+        let decoded_: Value = serde_json::from_str(decoded).unwrap();
+        assert_eq!(message, Some(decoded_));
+
+        let content_type = "application/vscode-jsonrpc; charset=invalid";
+        let encoded = encode_message(Some(content_type), decoded);
+
+        let mut buffer = BytesMut::from(encoded.as_str());
+        match codec.decode(&mut buffer) {
+            Err(ParseError::InvalidContentType) => {}
+            other => panic!(
+                "expected `Err(ParseError::InvalidContentType)`, got {:?}",
+                other
+            ),
+        }
+
+        let content_type = "application/vscode-jsonrpc";
+        let encoded = encode_message(Some(content_type), decoded);
+
+        let mut buffer = BytesMut::from(encoded.as_str());
+        match codec.decode(&mut buffer) {
+            Err(ParseError::InvalidContentType) => {}
+            other => panic!(
+                "expected `Err(ParseError::InvalidContentType)`, got {:?}",
+                other
+            ),
+        }
+
+        let content_type = "this-mime-should-be-ignored; charset=utf8";
+        let encoded = encode_message(Some(content_type), decoded);
+
+        let mut buffer = BytesMut::from(encoded.as_str());
+        let message = codec.decode(&mut buffer).unwrap();
+        let decoded_: Value = serde_json::from_str(decoded).unwrap();
+        assert_eq!(message, Some(decoded_));
     }
 
     #[test]
