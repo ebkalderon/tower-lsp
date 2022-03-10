@@ -96,7 +96,7 @@ impl<T> LanguageServerCodec<T> {
 impl<T> Default for LanguageServerCodec<T> {
     fn default() -> Self {
         LanguageServerCodec {
-            message_len: Option::<usize>::default(),
+            message_len: None,
             _marker: PhantomData,
         }
     }
