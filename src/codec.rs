@@ -10,6 +10,7 @@ use std::str::Utf8Error;
 use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
 use log::{trace, warn};
+use memchr::memmem;
 use serde::{de::DeserializeOwned, Serialize};
 
 #[cfg(feature = "runtime-agnostic")]
@@ -17,7 +18,7 @@ use async_codec_lite::{Decoder, Encoder};
 #[cfg(feature = "runtime-tokio")]
 use tokio_util::codec::{Decoder, Encoder};
 
-/// Errors that can occur when processing an LSP request.
+/// Errors that can occur when processing an LSP message.
 #[derive(Debug)]
 pub enum ParseError {
     /// Failed to parse the JSON body.
@@ -26,10 +27,10 @@ pub enum ParseError {
     Encode(IoError),
     /// Failed to parse headers.
     Headers(httparse::Error),
-    /// Request lacks the required `Content-Length` header.
-    MissingContentLength,
     /// The length value in the `Content-Length` header is invalid.
     InvalidContentLength(ParseIntError),
+    /// Request lacks the required `Content-Length` header.
+    MissingContentLength,
     /// Request contains invalid UTF8.
     Utf8(Utf8Error),
 }
@@ -56,6 +57,7 @@ impl Error for ParseError {
         match *self {
             ParseError::Body(ref e) => Some(e),
             ParseError::Encode(ref e) => Some(e),
+            ParseError::InvalidContentLength(ref e) => Some(e),
             ParseError::Utf8(ref e) => Some(e),
             _ => None,
         }
@@ -74,6 +76,18 @@ impl From<IoError> for ParseError {
     }
 }
 
+impl From<httparse::Error> for ParseError {
+    fn from(error: httparse::Error) -> Self {
+        ParseError::Headers(error)
+    }
+}
+
+impl From<ParseIntError> for ParseError {
+    fn from(error: ParseIntError) -> Self {
+        ParseError::InvalidContentLength(error)
+    }
+}
+
 impl From<Utf8Error> for ParseError {
     fn from(error: Utf8Error) -> Self {
         ParseError::Utf8(error)
@@ -83,22 +97,16 @@ impl From<Utf8Error> for ParseError {
 /// Encodes and decodes Language Server Protocol messages.
 #[derive(Clone, Debug)]
 pub struct LanguageServerCodec<T> {
-    message_len: Option<usize>,
+    content_len: Option<usize>,
     _marker: PhantomData<T>,
 }
 
 impl<T> Default for LanguageServerCodec<T> {
     fn default() -> Self {
         LanguageServerCodec {
-            message_len: None,
+            content_len: None,
             _marker: PhantomData,
         }
-    }
-}
-
-impl<T> LanguageServerCodec<T> {
-    fn reset(&mut self) {
-        self.message_len = None;
     }
 }
 
@@ -158,124 +166,81 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
     type Error = ParseError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        // If message length is known and source buffer doesn't contain the full message content yet
-        if src.len() < self.message_len.unwrap_or_default() {
-            return Ok(None);
-        }
-
-        let mut http_headers_err = Option::<ParseError>::default();
-
-        // If message length has not been parsed from "Content-Length" header yet
-        if self.message_len.is_none() {
-            // Placeholder used for parsing headers into
-            let dst = &mut [httparse::EMPTY_HEADER; 2];
-
-            // Parse the headers and try to extract values
-            match httparse::parse_headers(src, dst) {
-                // A complete set of headers was parsed succesfully
-                Ok(httparse::Status::Complete((headers_len, headers))) => {
-                    // Process the parsed headers
-                    for header in headers {
-                        match header.name {
-                            // Process a "Content-Length" header and extract the length value
-                            "Content-Length" => match std::str::from_utf8(header.value) {
-                                Ok(content_len) => match content_len.parse::<usize>() {
-                                    Ok(content_len) => {
-                                        self.message_len = Some(content_len);
-                                    }
-                                    Err(err) => {
-                                        http_headers_err =
-                                            Some(ParseError::InvalidContentLength(err));
-                                        break;
-                                    }
-                                },
-                                Err(err) => {
-                                    http_headers_err = Some(ParseError::Utf8(err));
-                                }
-                            },
-                            // Process a "Content-Type" header and just check that the value is of an expected value
-                            "Content-Type" => {
-                                if header.value != b"application/vscode-jsonrpc; charset=utf-8" {
-                                    warn!(
-                                        "encountered unexpected Content-Type value: {:#?}",
-                                        std::str::from_utf8(header.value)
-                                    );
-                                }
-                            }
-                            // Otherwise warn about unsupported headers
-                            _ => {
-                                warn!(
-                                    "encountered http header unsupported by LSP spec: {:#?}",
-                                    header
-                                );
-                            }
-                        }
-                    }
-                    // If "Content-Length" was found (either with a valid or invalid value) advance beyond headers
-                    if self.message_len.is_some()
-                        || matches!(http_headers_err, Some(ParseError::InvalidContentLength(_)))
-                    {
-                        // Advance the buffer beyond the http headers
-                        src.advance(headers_len);
-                    }
-                }
-                // No errors occurred during parsing yet but no complete set of headers were parsed
-                Ok(httparse::Status::Partial) => return Ok(None),
-                // An error occurred during parsing of the headers
-                Err(err) => {
-                    http_headers_err = Some(ParseError::Headers(err));
-                }
-            }
-        }
-
-        // If message length is known and source buffer contains at least the full message content
-        let result = if let Some(message_len) = self.message_len {
-            if src.len() < message_len {
+        if let Some(content_len) = self.content_len {
+            if src.len() < content_len {
                 return Ok(None);
             }
 
-            // Parse the JSON-RPC message bytes as JSON
-            let message = &src[..message_len];
-            let message = std::str::from_utf8(message)?;
+            let bytes = &src[..content_len];
+            let message = std::str::from_utf8(bytes)?;
 
-            trace!("<- {}", message);
-
-            // Deserialize the JSON-RPC message data
-            let data = {
-                // For zero-length data just return None
-                if message.is_empty() {
-                    Ok(None)
-                // Otherwise deserialize data as JSON text
-                } else {
-                    match serde_json::from_str(message) {
-                        Ok(parsed) => Ok(Some(parsed)),
-                        Err(err) => Err(err.into()),
-                    }
+            let result = if message.is_empty() {
+                Ok(None)
+            } else {
+                trace!("<- {}", message);
+                match serde_json::from_str(message) {
+                    Ok(parsed) => Ok(Some(parsed)),
+                    Err(err) => Err(err.into()),
                 }
             };
 
-            // Advance the buffer
-            src.advance(message_len);
+            src.advance(content_len);
+            self.content_len = None; // Reset state in preparation for parsing next message.
 
-            // Return the deserialized data
-            data
-        // Otherwise there was an error parsing the "Content-Length" header or the header was missing
+            result
         } else {
-            // Advance the buffer
-            src.advance(memchr::memmem::find(src, b"Content-Length").unwrap_or_default());
+            let mut dst = [httparse::EMPTY_HEADER; 2];
 
-            // Either there was an error parsing the "Content-Length" header...
-            if let Some(err) = http_headers_err {
-                Err(err)
-            // ... or the "Content-Length" header was missing
-            } else {
-                Err(ParseError::MissingContentLength)
+            let (headers_len, headers) = match httparse::parse_headers(src, &mut dst)? {
+                httparse::Status::Complete(output) => output,
+                httparse::Status::Partial => return Ok(None),
+            };
+
+            match decode_headers(headers) {
+                Ok(content_len) => {
+                    src.advance(headers_len);
+                    self.content_len = Some(content_len);
+                    self.decode(src) // Recurse right back in, now that `Content-Length` is known.
+                }
+                Err(err) => {
+                    match err {
+                        ParseError::MissingContentLength => {}
+                        _ => src.advance(headers_len),
+                    }
+
+                    // Skip any garbage bytes by scanning ahead for another potential message.
+                    src.advance(memmem::find(src, b"Content-Length").unwrap_or_default());
+                    Err(err)
+                }
             }
-        };
+        }
+    }
+}
 
-        self.reset();
+fn decode_headers(headers: &[httparse::Header<'_>]) -> Result<usize, ParseError> {
+    let mut content_len = None;
 
-        result
+    for header in headers {
+        match header.name {
+            "Content-Length" => {
+                let string = std::str::from_utf8(header.value)?;
+                let parsed_len = string.parse()?;
+                content_len = Some(parsed_len);
+            }
+            "Content-Type" => {
+                if header.value != b"application/vscode-jsonrpc; charset=utf-8" {
+                    let result = std::str::from_utf8(header.value);
+                    warn!("encountered unexpected Content-Type value: {:#?}", result);
+                }
+            }
+            other => warn!("encountered unsupported header: {:?}", other),
+        }
+    }
+
+    if let Some(content_len) = content_len {
+        Ok(content_len)
+    } else {
+        Err(ParseError::MissingContentLength)
     }
 }
 
