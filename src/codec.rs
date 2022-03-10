@@ -230,6 +230,10 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
 
         // If message length is known and source buffer contains at least the full message content
         let result = if let Some(message_len) = self.message_len {
+            if src.len() < message_len {
+                return Ok(None);
+            }
+
             // Parse the JSON-RPC message bytes as JSON
             let message = &src[..message_len];
             let message = std::str::from_utf8(message)?;
@@ -371,5 +375,34 @@ mod tests {
 
         let message = codec.decode(&mut buffer).unwrap();
         assert_eq!(message, None);
+    }
+
+    #[test]
+    fn decodes_small_chunks() {
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
+        let content_type = "application/vscode-jsonrpc; charset=utf-8";
+        let encoded = encode_message(Some(content_type), decoded);
+
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::from(encoded.as_str());
+
+        let rest = buffer.split_off(40);
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, None);
+        buffer.unsplit(rest);
+
+        let rest = buffer.split_off(80);
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, None);
+        buffer.unsplit(rest);
+
+        let rest = buffer.split_off(16);
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, None);
+        buffer.unsplit(rest);
+
+        let decoded: Value = serde_json::from_str(decoded).unwrap();
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, Some(decoded));
     }
 }
