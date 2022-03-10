@@ -261,6 +261,15 @@ mod tests {
 
     use super::*;
 
+    macro_rules! assert_err {
+        ($expression:expr, $($pattern:tt)+) => {
+            match $expression {
+                $($pattern)+ => (),
+                ref e => panic!("expected `{}` but got `{:?}`", stringify!($($pattern)+), e),
+            }
+        }
+    }
+
     fn encode_message(content_type: Option<&str>, message: &str) -> String {
         let content_type = content_type
             .map(|ty| format!("\r\nContent-Type: {}", ty))
@@ -315,25 +324,19 @@ mod tests {
         let encoded = encode_message(Some(content_type), decoded);
 
         let mut buffer = BytesMut::from(encoded.as_str());
-        match codec.decode(&mut buffer) {
-            Err(ParseError::InvalidContentType) => {}
-            other => panic!(
-                "expected `Err(ParseError::InvalidContentType)`, got {:?}",
-                other
-            ),
-        }
+        assert_err!(
+            codec.decode(&mut buffer),
+            Err(ParseError::InvalidContentType)
+        );
 
         let content_type = "application/vscode-jsonrpc";
         let encoded = encode_message(Some(content_type), decoded);
 
         let mut buffer = BytesMut::from(encoded.as_str());
-        match codec.decode(&mut buffer) {
-            Err(ParseError::InvalidContentType) => {}
-            other => panic!(
-                "expected `Err(ParseError::InvalidContentType)`, got {:?}",
-                other
-            ),
-        }
+        assert_err!(
+            codec.decode(&mut buffer),
+            Err(ParseError::InvalidContentType)
+        );
 
         let content_type = "this-mime-should-be-ignored; charset=utf8";
         let encoded = encode_message(Some(content_type), decoded);
@@ -363,26 +366,18 @@ mod tests {
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(mixed.as_str());
-
-        match codec.decode(&mut buffer) {
-            Err(ParseError::MissingContentLength) => {}
-            other => panic!(
-                "expected `Err(ParseError::MissingContentLength)`, got {:?}",
-                other
-            ),
-        }
+        assert_err!(
+            codec.decode(&mut buffer),
+            Err(ParseError::MissingContentLength)
+        );
 
         let message: Option<Value> = codec.decode(&mut buffer).unwrap();
         let first_valid = serde_json::from_str(decoded).unwrap();
         assert_eq!(message, Some(first_valid));
-
-        match codec.decode(&mut buffer) {
-            Err(ParseError::InvalidContentLength(_)) => {}
-            other => panic!(
-                "expected `Err(ParseError::InvalidContentLength)`, got {:?}",
-                other
-            ),
-        }
+        assert_err!(
+            codec.decode(&mut buffer),
+            Err(ParseError::InvalidContentLength(_))
+        );
 
         let message = codec.decode(&mut buffer).unwrap();
         let second_valid = serde_json::from_str(decoded).unwrap();
