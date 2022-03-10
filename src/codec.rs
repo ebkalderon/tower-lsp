@@ -4,6 +4,7 @@ use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::io::{Error as IoError, Write};
 use std::marker::PhantomData;
+use std::num::ParseIntError;
 use std::str::Utf8Error;
 
 use bytes::buf::BufMut;
@@ -28,7 +29,7 @@ pub enum ParseError {
     /// Request lacks the required `Content-Length` header.
     MissingContentLength,
     /// The length value in the `Content-Length` header is invalid.
-    InvalidContentLength(std::num::ParseIntError),
+    InvalidContentLength(ParseIntError),
     /// Request contains invalid UTF8.
     Utf8(Utf8Error),
 }
