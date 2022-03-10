@@ -143,7 +143,24 @@ pub struct LspServiceBuilder<S> {
 impl<S: LanguageServer> LspServiceBuilder<S> {
     /// Defines a custom JSON-RPC request or notification with the given method `name` and handler.
     ///
-    /// # Example
+    /// # Handler varieties
+    ///
+    /// Fundamentally, any inherent `async fn(&self)` method defined directly on the language
+    /// server backend could be considered a valid method handler.
+    ///
+    /// Handlers may optionally include a single `params` argument. This argument may be of any
+    /// type that implements [`Serialize`](serde::Serialize).
+    ///
+    /// Handlers which return `()` are treated as **notifications**, while those which return
+    /// [`jsonrpc::Result<T>`](crate::jsonrpc::Result) are treated as **requests**.
+    ///
+    /// Similar to the `params` argument, the `T` in the `Result<T>` return values may be of any
+    /// type which implements [`Deserialize`](serde::Deserialize). Additionally, this type must
+    /// also be convertible into a [`serde_json::Value`] using [`serde_json::to_value`]. If this
+    /// latter constraint is not met, the client will instead receive a JSON-RPC error response
+    /// with code `-32603` (Internal Error).
+    ///
+    /// # Examples
     ///
     /// ```rust
     /// use serde_json::{json, Value};
@@ -153,7 +170,7 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     ///
     /// struct Mock;
     ///
-    /// // Implement `LanguageServer` trait...
+    /// // Implementation of `LanguageServer` omitted...
     /// # #[tower_lsp::async_trait]
     /// # impl LanguageServer for Mock {
     /// #     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
