@@ -25,7 +25,7 @@ pub enum ParseError {
     /// Failed to encode the response.
     Encode(IoError),
     /// Failed to parse headers.
-    Httparse(httparse::Error),
+    Headers(httparse::Error),
     /// Request lacks the required `Content-Length` header.
     MissingContentLength,
     /// The length value in the `Content-Length` header is invalid.
@@ -39,7 +39,7 @@ impl Display for ParseError {
         match *self {
             ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {}", e),
             ParseError::Encode(ref e) => write!(f, "failed to encode response: {}", e),
-            ParseError::Httparse(ref e) => write!(f, "failed to parse headers: {}", e),
+            ParseError::Headers(ref e) => write!(f, "failed to parse headers: {}", e),
             ParseError::InvalidContentLength(ref e) => {
                 write!(f, "unable to parse content length: {}", e)
             }
@@ -223,7 +223,7 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
                 Ok(httparse::Status::Partial) => return Ok(None),
                 // An error occurred during parsing of the headers
                 Err(err) => {
-                    http_headers_err = Some(ParseError::Httparse(err));
+                    http_headers_err = Some(ParseError::Headers(err));
                 }
             }
         }
