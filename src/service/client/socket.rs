@@ -23,6 +23,9 @@ impl ClientSocket {
     /// Splits this `ClientSocket` into two halves capable of operating independently.
     ///
     /// The two halves returned implement the [`Stream`] and [`Sink`] traits, respectively.
+    ///
+    /// [`Stream`]: futures::Stream
+    /// [`Sink`]: futures::Sink
     pub fn split(self) -> (RequestStream, ResponseSink) {
         let ClientSocket { rx, pending, state } = self;
         let state_ = state.clone();
