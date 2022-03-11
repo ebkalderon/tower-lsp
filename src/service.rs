@@ -202,13 +202,13 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     /// }
     ///
     /// let (service, socket) = LspService::build(|_| Mock)
-    ///     .method("custom/request", Mock::request)
-    ///     .method("custom/requestParams", Mock::request_params)
-    ///     .method("custom/notification", Mock::notification)
-    ///     .method("custom/notificationParams", Mock::notification_params)
+    ///     .custom_method("custom/request", Mock::request)
+    ///     .custom_method("custom/requestParams", Mock::request_params)
+    ///     .custom_method("custom/notification", Mock::notification)
+    ///     .custom_method("custom/notificationParams", Mock::notification_params)
     ///     .finish();
     /// ```
-    pub fn method<P, R, F>(mut self, name: &'static str, callback: F) -> Self
+    pub fn custom_method<P, R, F>(mut self, name: &'static str, callback: F) -> Self
     where
         P: FromParams,
         R: IntoResponse,
@@ -360,7 +360,7 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn serves_custom_requests() {
         let (mut service, _) = LspService::build(|_| Mock)
-            .method("custom", Mock::custom_request)
+            .custom_method("custom", Mock::custom_request)
             .finish();
 
         let initialize = initialize_request(1);
