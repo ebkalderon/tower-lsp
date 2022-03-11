@@ -212,7 +212,7 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     where
         P: FromParams,
         R: IntoResponse,
-        F: for<'a> Method<&'a S, P, R> + Send + Sync + 'static,
+        F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
     {
         let layer = layers::Normal::new(self.state.clone(), self.pending.clone());
         self.inner.method(name, handler, layer);

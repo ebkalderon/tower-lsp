@@ -39,23 +39,21 @@ impl<S: Send + Sync + 'static, E> Router<S, E> {
     where
         P: FromParams,
         R: IntoResponse,
-        F: for<'a> Method<&'a S, P, R> + Send + Sync + 'static,
+        F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
         L: Layer<Handler<P, R, E>>,
         L::Service: Service<Request, Response = Option<Response>, Error = E> + Send + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
         let server = &self.server;
         self.methods.entry(name).or_insert_with(|| {
-            let handler = Arc::new(handler);
             let server = server.clone();
-
-            let inner = Handler::new(move |params| {
+            let handler = Handler::new(move |params| {
                 let handler = handler.clone();
                 let server = server.clone();
                 async move { handler.invoke(&*server, params).await }
             });
 
-            BoxService::new(layer.layer(inner))
+            BoxService::new(layer.layer(handler))
         });
 
         self
