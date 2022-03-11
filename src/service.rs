@@ -155,10 +155,10 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     /// [`jsonrpc::Result<T>`](crate::jsonrpc::Result) are treated as **requests**.
     ///
     /// Similar to the `params` argument, the `T` in the `Result<T>` return values may be of any
-    /// type which implements [`Deserialize`](serde::Deserialize). Additionally, this type must
-    /// also be convertible into a [`serde_json::Value`] using [`serde_json::to_value`]. If this
-    /// latter constraint is not met, the client will instead receive a JSON-RPC error response
-    /// with code `-32603` (Internal Error).
+    /// type which implements [`DeserializeOwned`](serde::de::DeserializeOwned). Additionally, this
+    /// type _must_ be convertible into a [`serde_json::Value`] using [`serde_json::to_value`]. If
+    /// this latter constraint is not met, the client will receive a JSON-RPC error response with
+    /// code `-32603` (Internal Error) instead of the expected response.
     ///
     /// # Examples
     ///
