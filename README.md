@@ -75,6 +75,20 @@ async fn main() {
 }
 ```
 
+## Using runtimes other than tokio
+
+By default, `tower-lsp` is configured for use with `tokio`.
+
+Using `tower-lsp` with other runtimes requires disabling `default-features` and
+enabling the `runtime-agnostic` feature:
+
+```toml
+[dependencies.tower-lsp]
+version = "*"
+default-features = false
+features = ["runtime-agnostic"]
+```
+
 ## License
 
 `tower-lsp` is free and open source software distributed under the terms of
