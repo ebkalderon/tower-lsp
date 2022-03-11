@@ -98,7 +98,6 @@ impl From<Utf8Error> for ParseError {
 }
 
 /// Encodes and decodes Language Server Protocol messages.
-#[derive(Clone, Debug)]
 pub struct LanguageServerCodec<T> {
     content_len: Option<usize>,
     _marker: PhantomData<T>,
