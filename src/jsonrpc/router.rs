@@ -166,7 +166,7 @@ where
 /// `async fn f(&self, params: P) -> jsonrpc::Result<R>` | Request with required parameters
 /// `async fn f(&self)`                                  | Notification without parameters
 /// `async fn f(&self, params: P)`                       | Notification with parameters
-pub trait Method<S, P, R> {
+pub trait Method<S, P, R>: private::Sealed {
     /// The future response value.
     type Future: Future<Output = R> + Send;
 
@@ -204,7 +204,7 @@ where
 }
 
 /// A trait implemented by all JSON-RPC method parameters.
-pub trait FromParams: Send + Sized + 'static {
+pub trait FromParams: private::Sealed + Send + Sized + 'static {
     /// Attempts to deserialize `Self` from the `params` value extracted from [`Request`].
     fn from_params(params: Option<Value>) -> super::Result<Self>;
 }
@@ -234,7 +234,7 @@ impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
 }
 
 /// A trait implemented by all JSON-RPC response types.
-pub trait IntoResponse: Send + 'static {
+pub trait IntoResponse: private::Sealed + Send + 'static {
     /// Attempts to construct a [`Response`] using `Self` and a corresponding [`Id`].
     fn into_response(self, id: Option<Id>) -> Option<Response>;
 
@@ -276,6 +276,11 @@ impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
     fn is_notification() -> bool {
         false
     }
+}
+
+mod private {
+    pub trait Sealed {}
+    impl<T> Sealed for T {}
 }
 
 #[cfg(test)]
