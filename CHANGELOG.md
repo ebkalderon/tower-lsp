@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.16.0] - 2022-03-10
+
+### Added
+
+* Support defining custom JSON-RPC requests on `LspService` (PR #313).
+* Add compatibility with WASM (PR #309).
+* Support alternative async runtimes other than `tokio` when enabling the
+  `runtime-agnostic` feature (PR #309).
+* Implement `Service<Request, Response = Option<Response>>` for `Client` (PR
+  #313).
+* Expose `concurrency_level` setting on `Server`, allowing adjustment from the
+  default value of 4.
+* Add `Request::build()` interface for creating custom requests.
+* Add convenient `From` implementations for `jsonrpc::Id`.
+* Add `.result()`/`.error()` and `.is_ok()`/`.is_error()` methods to
+  `jsonrpc::Response`.
+
+### Changed
+
+* `LspService` now implements `Service<Request, Response = Option<Response>>` .
+* `LspService::new()` now returns a `ClientSocket` instead of a `MessageStream`.
+* `Server::new()` now requires a third `ClientSocket` argument instead of using
+  `.interleave()`.
+* Rename `Client::send_custom_{request,notification}` to
+  `Client::send_{request,notification}`.
+* Rename `jsonrpc::Response::{ok, error}` to
+  `jsonrpc::Response::{from_ok, from_error}`.
+
+### Fixed
+
+* Close `Client` channel properly on `exit` notification (PR #309).
+* Fix `Server` occasionally stalling by processing client responses separately
+  from client-to-server requests (PR #313).
+* Return error code `-32600` (invalid request) if incoming data is valid JSON,
+  but isn't a JSON-RPC request or response (PR #313).
+
+### Removed
+
+* Remove `.interleave()` method from `Server` (PR #313).
+* Remove `jsonrpc::{ClientRequest, Incoming, Outgoing, ServerRequest}` (PR
+  #313).
+* Remove `MessageStream` (PR #313).
+
 ## [0.15.1] - 2022-02-14
 
 ### Fixed
@@ -444,7 +487,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...v0.16.0
 [0.15.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.0...v0.14.1
