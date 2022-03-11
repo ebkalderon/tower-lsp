@@ -112,12 +112,6 @@ impl<P: FromParams, R: IntoResponse, E> MethodHandler<P, R, E> {
     }
 }
 
-impl<P, R, E> Debug for MethodHandler<P, R, E> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("MethodHandler").finish_non_exhaustive()
-    }
-}
-
 impl<P, R, E> Service<Request> for MethodHandler<P, R, E>
 where
     P: FromParams,
