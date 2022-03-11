@@ -208,14 +208,14 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     ///     .method("custom/notificationParams", Mock::notification_params)
     ///     .finish();
     /// ```
-    pub fn method<P, R, F>(mut self, name: &'static str, handler: F) -> Self
+    pub fn method<P, R, F>(mut self, name: &'static str, callback: F) -> Self
     where
         P: FromParams,
         R: IntoResponse,
         F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
     {
         let layer = layers::Normal::new(self.state.clone(), self.pending.clone());
-        self.inner.method(name, handler, layer);
+        self.inner.method(name, callback, layer);
         self
     }
 

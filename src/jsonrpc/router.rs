@@ -32,25 +32,25 @@ impl<S: Send + Sync + 'static, E> Router<S, E> {
         }
     }
 
-    /// Adds a new route with the given method `name` and the handler at the specified path.
+    /// Registers a new RPC method which constructs a response with the given `callback`.
     ///
-    /// The `layer` argument can be used to inject middleware into the method handlers, if desired.
-    pub fn method<P, R, F, L>(&mut self, name: &'static str, handler: F, layer: L) -> &mut Self
+    /// The `layer` argument can be used to inject middleware into the method handler, if desired.
+    pub fn method<P, R, F, L>(&mut self, name: &'static str, callback: F, layer: L) -> &mut Self
     where
         P: FromParams,
         R: IntoResponse,
         F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
-        L: Layer<Handler<P, R, E>>,
+        L: Layer<MethodHandler<P, R, E>>,
         L::Service: Service<Request, Response = Option<Response>, Error = E> + Send + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
         let server = &self.server;
         self.methods.entry(name).or_insert_with(|| {
             let server = server.clone();
-            let handler = Handler::new(move |params| {
-                let handler = handler.clone();
+            let handler = MethodHandler::new(move |params| {
+                let callback = callback.clone();
                 let server = server.clone();
-                async move { handler.invoke(&*server, params).await }
+                async move { callback.invoke(&*server, params).await }
             });
 
             BoxService::new(layer.layer(handler))
@@ -79,8 +79,8 @@ impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        if let Some(svc) = self.methods.get_mut(req.method()) {
-            svc.call(req)
+        if let Some(handler) = self.methods.get_mut(req.method()) {
+            handler.call(req)
         } else {
             let (method, id, _) = req.into_parts();
             future::ok(id.map(|id| {
@@ -94,35 +94,31 @@ impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
 }
 
 /// Opaque JSON-RPC method handler.
-pub struct Handler<P, R, E> {
+pub struct MethodHandler<P, R, E> {
     f: Box<dyn Fn(P) -> BoxFuture<'static, R> + Send>,
     _marker: PhantomData<E>,
 }
 
-impl<P, R, E> Handler<P, R, E>
-where
-    P: FromParams,
-    R: IntoResponse,
-{
+impl<P: FromParams, R: IntoResponse, E> MethodHandler<P, R, E> {
     fn new<F, Fut>(handler: F) -> Self
     where
         F: Fn(P) -> Fut + Send + 'static,
         Fut: Future<Output = R> + Send + 'static,
     {
-        Handler {
+        MethodHandler {
             f: Box::new(move |p| handler(p).boxed()),
             _marker: PhantomData,
         }
     }
 }
 
-impl<P, R, E> Debug for Handler<P, R, E> {
+impl<P, R, E> Debug for MethodHandler<P, R, E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("Handler").finish_non_exhaustive()
+        f.debug_struct("MethodHandler").finish_non_exhaustive()
     }
 }
 
-impl<P, R, E> Service<Request> for Handler<P, R, E>
+impl<P, R, E> Service<Request> for MethodHandler<P, R, E>
 where
     P: FromParams,
     R: IntoResponse,
