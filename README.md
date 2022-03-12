@@ -88,6 +88,9 @@ version = "*"
 default-features = false
 features = ["runtime-agnostic"]
 ```
+## Ecosystem
+
+- [tower-lsp-boilerplate](https://github.com/IWANABETHATGUY/tower-lsp-boilerplate) a github template that let you write a language server with `tower-lsp` more easily.
 
 ## License
 
