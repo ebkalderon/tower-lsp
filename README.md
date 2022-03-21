@@ -13,8 +13,8 @@
 
 [Language Server Protocol] implementation for Rust based on [Tower].
 
-[Language Server Protocol]: https://microsoft.github.io/language-server-protocol
-[Tower]: https://github.com/tower-rs/tower
+[language server protocol]: https://microsoft.github.io/language-server-protocol
+[tower]: https://github.com/tower-rs/tower
 
 Tower is a simple and composable framework for implementing asynchronous
 services in Rust. Central to Tower is the [`Service`] trait, which provides the
@@ -22,7 +22,7 @@ necessary abstractions for defining request/response clients and servers.
 Examples of protocols implemented using the `Service` trait include
 [`hyper`] for HTTP and [`tonic`] for gRPC.
 
-[`Service`]: https://docs.rs/tower-service/
+[`service`]: https://docs.rs/tower-service/
 [`hyper`]: https://docs.rs/hyper/
 [`tonic`]: https://docs.rs/tonic/
 
@@ -30,10 +30,10 @@ This library (`tower-lsp`) provides a simple implementation of the Language
 Server Protocol (LSP) that makes it easy to write your own language server. It
 consists of three parts:
 
-* The `LanguageServer` trait which defines the behavior of your language server.
-* The asynchronous `LspService` delegate which wraps your language server
+- The `LanguageServer` trait which defines the behavior of your language server.
+- The asynchronous `LspService` delegate which wraps your language server
   implementation and defines the behavior of the protocol.
-* A `Server` which spawns the `LspService` and processes requests and responses
+- A `Server` which spawns the `LspService` and processes requests and responses
   over `stdio` or TCP.
 
 ## Example
@@ -88,6 +88,15 @@ version = "*"
 default-features = false
 features = ["runtime-agnostic"]
 ```
+
+## Using proposed features
+
+You can use enable proposed features in the
+[LSP Specification version 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)
+by enabling the `proposed` Cargo crate feature. Note that there are no semver
+guarantees to the `proposed` features so there may be breaking changes between
+any type of version in the `proposed` features.
+
 ## Ecosystem
 
 - [tower-lsp-boilerplate](https://github.com/IWANABETHATGUY/tower-lsp-boilerplate) - Useful GitHub project template which makes writing new language servers easier.
