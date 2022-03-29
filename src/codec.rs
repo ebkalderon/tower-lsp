@@ -9,9 +9,9 @@ use std::str::Utf8Error;
 
 use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
-use log::{trace, warn};
 use memchr::memmem;
 use serde::{de::DeserializeOwned, Serialize};
+use tracing::{trace, warn};
 
 #[cfg(feature = "runtime-agnostic")]
 use async_codec_lite::{Decoder, Encoder};

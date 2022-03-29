@@ -5,8 +5,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::future::{self, BoxFuture, FutureExt};
-use log::{info, warn};
 use tower::{Layer, Service};
+use tracing::{info, warn};
 
 use super::ExitedError;
 use crate::jsonrpc::{not_initialized_error, Error, Id, Request, Response};
