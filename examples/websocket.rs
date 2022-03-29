@@ -4,6 +4,7 @@ use tokio::net::TcpListener;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tracing::info;
 use ws_stream_tungstenite::*;
 
 #[derive(Debug)]
@@ -121,9 +122,10 @@ async fn main() {
     #[cfg(feature = "runtime-agnostic")]
     use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-    env_logger::init();
+    tracing_subscriber::fmt().init();
 
     let listener = TcpListener::bind("127.0.0.1:9257").await.unwrap();
+    info!("Listening on {}", listener.local_addr().unwrap());
     let (stream, _) = listener.accept().await.unwrap();
     let (read, write) = tokio::io::split(WsStream::new(accept_async(stream).await.unwrap()));
     #[cfg(feature = "runtime-agnostic")]

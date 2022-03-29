@@ -84,7 +84,6 @@ pub use self::service::{Client, ClientSocket, ExitedError, LspService, LspServic
 pub use self::transport::{Loopback, Server};
 
 use auto_impl::auto_impl;
-use log::{error, warn};
 use lsp_types::request::{
     GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
     GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -92,6 +91,7 @@ use lsp_types::request::{
 use lsp_types::*;
 use serde_json::Value;
 use tower_lsp_macros::rpc;
+use tracing::{error, warn};
 
 use self::jsonrpc::{Error, Result};
 

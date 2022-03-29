@@ -5,7 +5,7 @@ use std::future::Future;
 
 use dashmap::{mapref::entry::Entry, DashMap};
 use futures::channel::oneshot;
-use log::warn;
+use tracing::warn;
 
 use crate::jsonrpc::{Id, Response};
 

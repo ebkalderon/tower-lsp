@@ -10,13 +10,13 @@ use std::task::{Context, Poll};
 use futures::channel::mpsc::{self, Sender};
 use futures::future::BoxFuture;
 use futures::sink::SinkExt;
-use log::{error, trace};
 use lsp_types::notification::*;
 use lsp_types::request::*;
 use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
 use tower::Service;
+use tracing::{error, trace};
 
 use self::pending::Pending;
 use super::state::{ServerState, State};

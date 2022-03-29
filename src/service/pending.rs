@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use dashmap::{mapref::entry::Entry, DashMap};
 use futures::future::{self, Either};
-use log::{info, warn};
+use tracing::{info, warn};
 
 use super::ExitedError;
 use crate::jsonrpc::{Error, Id, Response};

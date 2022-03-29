@@ -12,8 +12,8 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use futures::channel::mpsc;
 use futures::{future, join, stream, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt};
-use log::error;
 use tower::Service;
+use tracing::error;
 
 use crate::codec::{LanguageServerCodec, ParseError};
 use crate::jsonrpc::{Error, Id, Message, Request, Response};

@@ -121,7 +121,7 @@ async fn main() {
     #[cfg(feature = "runtime-agnostic")]
     use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-    env_logger::init();
+    tracing_subscriber::fmt().init();
 
     let mut args = std::env::args();
     let stream = match args.nth(1).as_deref() {
