@@ -1,6 +1,6 @@
 [package]
 name = "tower-lsp"
-version = "0.16.0"
+version = "0.17.0"
 authors = ["Eyal Kalderon <ebkalderon@gmail.com>", "silvanshade <silvanshade@users.noreply.github.com>"]
 edition = "2018"
 description = "Language Server Protocol implementation based on Tower"
