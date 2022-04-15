@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.17.0] - 2022-04-15
+
+### Added
+
+* Support proposed LSP features with the `proposed` feature flag (PR #330).
+
+### Changed
+
+* Update `lsp-types` from `0.92` to `0.93` (PR #333).
+
 ## [0.16.0] - 2022-03-10
 
 ### Added
@@ -487,7 +497,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.14.1...v0.15.0
