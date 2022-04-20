@@ -1,5 +1,5 @@
 use serde_json::Value;
-use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -123,8 +123,8 @@ async fn main() {
 
     env_logger::init();
 
-    let listener = TcpListener::bind("127.0.0.1:9257").await.unwrap();
-    let (stream, _) = listener.accept().await.unwrap();
+    // Connect to the TCP port on which the language server client is listening
+    let stream = TcpStream::connect("127.0.0.1:9257").await.unwrap();
     let (read, write) = tokio::io::split(stream);
     #[cfg(feature = "runtime-agnostic")]
     let (read, write) = (read.compat(), write.compat_write());
