@@ -125,7 +125,7 @@ async fn main() {
     env_logger::init();
 
     let mut args = std::env::args();
-    let stream = match args.nth(1) {
+    let stream = match args.nth(1).as_deref() {
         None => {
             // If no argument is supplied (args is just the program name), then
             // we presume that the client has opened the TCP port and is waiting
@@ -133,21 +133,18 @@ async fn main() {
             // built with vscode-langaugeclient.
             TcpStream::connect("127.0.0.1:9257").await.unwrap()
         }
-        Some(arg) => {
+        Some("--listen") => {
             // If the `--listen` argument is supplied, then the roles are
             // reversed: we need to start a server and wait for the client to
             // connect.
-            if arg == "--listen" {
-                let listener = TcpListener::bind("127.0.0.1:9257").await.unwrap();
-                let (stream, _) = listener.accept().await.unwrap();
-                stream
-            } else {
-                panic!(
-                    "Unrecognized argument: {}. Use --listen to listen for connections.",
-                    arg
-                );
-            }
+            let listener = TcpListener::bind("127.0.0.1:9257").await.unwrap();
+            let (stream, _) = listener.accept().await.unwrap();
+            stream
         }
+        Some(arg) => panic!(
+            "Unrecognized argument: {}. Use --listen to listen for connections.",
+            arg
+        ),
     };
 
     let (read, write) = tokio::io::split(stream);
