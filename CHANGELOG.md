@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+* Update `async-tungstenite` from `0.16` to `0.17`
+* Update `ws_stream_tungstenite` from `0.7` to `0.8`
+
 ## [0.17.0] - 2022-04-15
 
 ### Added
