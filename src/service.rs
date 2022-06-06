@@ -93,6 +93,11 @@ impl<S: LanguageServer> LspService<S> {
             socket,
         }
     }
+
+    /// Returns a reference to the inner server.
+    pub fn inner(&self) -> &S {
+        self.inner.inner()
+    }
 }
 
 impl<S: LanguageServer> Service<Request> for LspService<S> {
@@ -372,5 +377,35 @@ mod tests {
         let response = service.ready().await.unwrap().call(custom).await;
         let ok = Response::from_ok(1.into(), json!(123i32));
         assert_eq!(response, Ok(Some(ok)));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(deprecated)]
+    async fn get_inner() {
+        let (service, _) = LspService::build(|_| Mock).finish();
+
+        service
+            .inner()
+            .initialize(InitializeParams {
+                process_id: None,
+                root_path: None,
+                root_uri: None,
+                initialization_options: None,
+                capabilities: ClientCapabilities {
+                    workspace: None,
+                    text_document: None,
+                    window: None,
+                    general: None,
+                    experimental: None,
+                    #[cfg(feature = "proposed")]
+                    offset_encoding: None,
+                },
+                trace: None,
+                workspace_folders: None,
+                client_info: None,
+                locale: None,
+            })
+            .await
+            .unwrap();
     }
 }
