@@ -32,6 +32,11 @@ impl<S: Send + Sync + 'static, E> Router<S, E> {
         }
     }
 
+    /// Returns a reference to the inner server.
+    pub fn inner(&self) -> &S {
+        self.server.as_ref()
+    }
+
     /// Registers a new RPC method which constructs a response with the given `callback`.
     ///
     /// The `layer` argument can be used to inject middleware into the method handler, if desired.
