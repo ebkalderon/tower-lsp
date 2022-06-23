@@ -67,7 +67,7 @@
 //! #   let (stdin, stdout) = (stdin.compat(), stdout.compat_write());
 //!
 //!     let (service, socket) = LspService::new(|client| Backend { client });
-//!     Server::new(stdin, stdout, socket).serve(service).await;
+//!     Server::new(socket).serve(service, stdin, stdout).await;
 //! }
 //! ```
 

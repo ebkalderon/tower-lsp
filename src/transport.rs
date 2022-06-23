@@ -49,25 +49,19 @@ impl Loopback for ClientSocket {
 
 /// Server for processing requests and responses on standard I/O or TCP.
 #[derive(Debug)]
-pub struct Server<I, O, L = ClientSocket> {
-    stdin: I,
-    stdout: O,
+pub struct Server<L = ClientSocket> {
     loopback: L,
     max_concurrency: usize,
 }
 
-impl<I, O, L> Server<I, O, L>
+impl<L> Server<L>
 where
-    I: AsyncRead + Unpin,
-    O: AsyncWrite,
     L: Loopback,
     <L::ResponseSink as Sink<Response>>::Error: std::error::Error,
 {
     /// Creates a new `Server` with the given `stdin` and `stdout` handles.
-    pub fn new(stdin: I, stdout: O, socket: L) -> Self {
+    pub fn new(socket: L) -> Self {
         Server {
-            stdin,
-            stdout,
             loopback: socket,
             max_concurrency: DEFAULT_MAX_CONCURRENCY,
         }
@@ -99,19 +93,64 @@ where
     }
 
     /// Spawns the service with messages read through `stdin` and responses written to `stdout`.
-    pub async fn serve<T>(self, mut service: T)
+    #[deprecated(
+        since = "0.18.0",
+        note = "use Server::serve_messages_with_headers instead"
+    )]
+    pub async fn serve<T, I, O>(self, service: T, stdin: I, stdout: O)
     where
         T: Service<Request, Response = Option<Response>> + Send + 'static,
         T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         T::Future: Send,
+        I: AsyncRead + Unpin,
+        O: AsyncWrite,
+    {
+        self.serve_messages_with_headers(service, stdin, stdout)
+            .await;
+    }
+
+    /// Spawns the service with messages (delimited by `Content-Length` headers) read through `stdin` and responses written to `stdout`.
+    pub async fn serve_messages_with_headers<T, I, O>(self, service: T, stdin: I, stdout: O)
+    where
+        T: Service<Request, Response = Option<Response>> + Send + 'static,
+        T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        T::Future: Send,
+        I: AsyncRead + Unpin,
+        O: AsyncWrite,
+    {
+        let read = FramedRead::new(stdin, LanguageServerCodec::default());
+        let write = FramedWrite::new(stdout, LanguageServerCodec::default());
+        self.serve_messages_and_errors(service, read, write).await;
+    }
+
+    /// Spawns the service with messages read through the `read` stream and responses written to the `write` sink.
+    pub async fn serve_messages<T, I, O>(self, service: T, read: I, write: O)
+    where
+        T: Service<Request, Response = Option<Response>> + Send + 'static,
+        T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        T::Future: Send,
+        I: Stream<Item = Message> + Unpin,
+        O: Sink<Message>,
+        <O as futures::Sink<Message>>::Error: std::fmt::Display,
+    {
+        let read = read.map(Ok::<_, std::convert::Infallible>);
+        self.serve_messages_and_errors(service, read, write).await;
+    }
+
+    async fn serve_messages_and_errors<T, I, O, E>(self, mut service: T, mut read: I, write: O)
+    where
+        T: Service<Request, Response = Option<Response>> + Send + 'static,
+        T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        T::Future: Send,
+        I: Stream<Item = Result<Message, E>> + Unpin,
+        O: Sink<Message>,
+        <O as futures::Sink<Message>>::Error: std::fmt::Display,
+        E: std::error::Error,
     {
         let (client_requests, mut client_responses) = self.loopback.split();
         let (client_requests, client_abort) = stream::abortable(client_requests);
         let (mut responses_tx, responses_rx) = mpsc::channel(0);
         let (mut server_tasks_tx, server_tasks_rx) = mpsc::channel(MESSAGE_QUEUE_SIZE);
-
-        let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
-        let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
 
         let process_server_tasks = server_tasks_rx
             .buffer_unordered(self.max_concurrency)
@@ -122,11 +161,11 @@ where
 
         let print_output = stream::select(responses_rx, client_requests.map(Message::Request))
             .map(Ok)
-            .forward(framed_stdout.sink_map_err(|e| error!("failed to encode message: {}", e)))
+            .forward(write.sink_map_err(|e| error!("failed to encode message: {}", e)))
             .map(|_| ());
 
         let read_input = async {
-            while let Some(msg) = framed_stdin.next().await {
+            while let Some(msg) = read.next().await {
                 match msg {
                     Ok(Message::Request(req)) => {
                         if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
@@ -172,16 +211,6 @@ fn display_sources(error: &dyn std::error::Error) -> String {
     }
 }
 
-#[cfg(feature = "runtime-tokio")]
-#[inline]
-fn to_jsonrpc_error(err: ParseError) -> Error {
-    match err {
-        ParseError::Body(err) if err.is_data() => Error::invalid_request(),
-        _ => Error::parse_error(),
-    }
-}
-
-#[cfg(feature = "runtime-agnostic")]
 #[inline]
 fn to_jsonrpc_error(err: impl std::error::Error) -> Error {
     match err.source().and_then(|e| e.downcast_ref()) {
@@ -252,8 +281,8 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn serves_on_stdio() {
         let (mut stdin, mut stdout) = mock_stdio();
-        Server::new(&mut stdin, &mut stdout, MockLoopback(vec![]))
-            .serve(MockService)
+        Server::new(MockLoopback(vec![]))
+            .serve_messages_with_headers(MockService, &mut stdin, &mut stdout)
             .await;
 
         assert_eq!(stdin.position(), 80);
@@ -265,8 +294,8 @@ mod tests {
         let socket = MockLoopback(vec![serde_json::from_str(REQUEST).unwrap()]);
 
         let (mut stdin, mut stdout) = mock_stdio();
-        Server::new(&mut stdin, &mut stdout, socket)
-            .serve(MockService)
+        Server::new(socket)
+            .serve_messages_with_headers(MockService, &mut stdin, &mut stdout)
             .await;
 
         assert_eq!(stdin.position(), 80);
@@ -280,8 +309,8 @@ mod tests {
         let message = format!("Content-Length: {}\r\n\r\n{}", invalid.len(), invalid).into_bytes();
         let (mut stdin, mut stdout) = (Cursor::new(message), Vec::new());
 
-        Server::new(&mut stdin, &mut stdout, MockLoopback(vec![]))
-            .serve(MockService)
+        Server::new(MockLoopback(vec![]))
+            .serve_messages_with_headers(MockService, &mut stdin, &mut stdout)
             .await;
 
         assert_eq!(stdin.position(), 48);

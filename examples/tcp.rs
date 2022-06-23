@@ -151,5 +151,7 @@ async fn main() {
     let (read, write) = (read.compat(), write.compat_write());
 
     let (service, socket) = LspService::new(|client| Backend { client });
-    Server::new(read, write, socket).serve(service).await;
+    Server::new(socket)
+        .serve_messages_with_headers(service, read, write)
+        .await;
 }

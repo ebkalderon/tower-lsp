@@ -349,10 +349,9 @@ enum ResponseKind {
 }
 
 /// An incoming or outgoing JSON-RPC message.
-#[derive(Deserialize, Serialize)]
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
-pub(crate) enum Message {
+pub enum Message {
     /// A response message.
     Response(Response),
     /// A request or notification message.
