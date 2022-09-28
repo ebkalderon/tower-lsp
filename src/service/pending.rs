@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use dashmap::{mapref::entry::Entry, DashMap};
 use futures::future::{self, Either};
-use tracing::{info, warn};
+use tracing::{info, debug};
 
 use super::ExitedError;
 use crate::jsonrpc::{Error, Id, Response};
@@ -62,7 +62,7 @@ impl Pending {
             handle.abort();
             info!("successfully cancelled request with ID: {}", id);
         } else {
-            warn!(
+            debug!(
                 "client asked to cancel request {}, but no such pending request exists, ignoring",
                 id
             );
