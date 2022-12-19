@@ -123,7 +123,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
     ///
-    /// The server can use the `initialized` notification for example to dynamically register
+    /// The server can use the `initialized` notification, for example, to dynamically register
     /// capabilities with the client.
     ///
     /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specification#initialized
@@ -621,7 +621,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///   the actual edit is only computed when needed.
     ///
     /// * The ability to group code actions using a kind. Clients are allowed to ignore that
-    ///   information. However it allows them to better group code action for example into
+    ///   information. However it allows them to better group code action, for example, into
     ///   corresponding menus (e.g. all refactor code actions into a refactor menu).
     ///
     /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_codeAction
