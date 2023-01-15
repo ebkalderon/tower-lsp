@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-* Update `async-tungstenite` from `0.16` to `0.17`
-* Update `ws_stream_tungstenite` from `0.7` to `0.8`
-* Switching from `log` facade to `tracing`.
+## [0.18.0] - 2023-01-14
+
+### Changed
+
+* Switch from `log` facade to `tracing` (PR #332).
+* Change `$/cancelRequest` log message from `warn` to `debug` (PR #353).
+* Update `auto_impl` from `0.5` to `1.0` (PR #343).
+* Update `httparse` from `1.3.5` to `1.8` (PR #363)
+* Update `memchr` from `2.4.1` to `2.5` (PR #363).
+* Relax `tower` version requirement from `0.3.11` to `0.3` (PR #363).
+* Update dev-dependency `async-tungstenite` from `0.16` to `0.18` (PR #363).
+* Update dev-dependency `ws_stream_tungstenite` from `0.7` to `0.9` (PR #363).
+
+### Fixed
+
+* Improve client connection behavior in `tcp` example (PR #336).
+* Tweak grammar in `initialized` and `textDocument/codeAction` doc comments (PR #361).
 
 ## [0.17.0] - 2022-04-15
 
@@ -501,7 +515,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.0...v0.15.1
