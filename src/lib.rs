@@ -56,6 +56,8 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
+//! #   tracing_subscriber::fmt().init();
+//! #
 //! #   #[cfg(feature = "runtime-agnostic")]
 //! #   use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 //! #   use std::io::Cursor;

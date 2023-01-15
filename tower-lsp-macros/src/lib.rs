@@ -146,7 +146,6 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             use std::sync::Arc;
             use std::future::{Future, Ready};
 
-            use tracing::info;
             use lsp_types::*;
             use lsp_types::notification::*;
             use lsp_types::request::*;
