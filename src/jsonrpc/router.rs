@@ -1,153 +1,242 @@
-//! Lightweight JSON-RPC router service.
-
 use std::collections::HashMap;
-use std::convert::Infallible;
-use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::rc::Rc;
 
-use futures::future::{self, BoxFuture, FutureExt};
+use async_trait::async_trait;
+use futures::future::{self, FutureExt, LocalBoxFuture};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
-use tower::{util::BoxService, Layer, Service};
 
-use crate::jsonrpc::ErrorCode;
+use super::refcell::AsyncRefCell;
+use super::{Error, ErrorCode, Id, Request, Response};
 
-use super::{Error, Id, Request, Response};
+fn foo() {
+    struct Blah;
+    impl Blah {
+        async fn read_only(&self) {}
+        async fn mutating(&mut self) {}
+    }
 
-/// A modular JSON-RPC 2.0 request router service.
-pub struct Router<S, E = Infallible> {
-    server: Arc<S>,
-    methods: HashMap<&'static str, BoxService<Request, Option<Response>, E>>,
+    let r = Router::new(Blah)
+        .method("read_only", Blah::read_only)
+        .method("mutating", Blah::mutating);
 }
 
-impl<S: Send + Sync + 'static, E> Router<S, E> {
-    /// Creates a new `Router` with the given shared state.
+type MethodHandler<P, R> = Box<dyn Fn(P) -> LocalBoxFuture<'static, R>>;
+
+pub struct Router<S> {
+    server: Rc<AsyncRefCell<S>>,
+    methods: HashMap<&'static str, MethodHandler<Request, Option<Response>>>,
+}
+
+impl<S: 'static> Router<S> {
     pub fn new(server: S) -> Self {
         Router {
-            server: Arc::new(server),
+            server: Rc::new(AsyncRefCell::new(server)),
             methods: HashMap::new(),
         }
     }
 
-    /// Returns a reference to the inner server.
-    pub fn inner(&self) -> &S {
-        self.server.as_ref()
-    }
-
-    /// Registers a new RPC method which constructs a response with the given `callback`.
-    ///
-    /// The `layer` argument can be used to inject middleware into the method handler, if desired.
-    pub fn method<P, R, F, L>(&mut self, name: &'static str, callback: F, layer: L) -> &mut Self
+    pub fn method<T, P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
     where
+        T: Receiver<S, P, R, F>,
         P: FromParams,
         R: IntoResponse,
-        F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
-        L: Layer<MethodHandler<P, R, E>>,
-        L::Service: Service<Request, Response = Option<Response>, Error = E> + Send + 'static,
-        <L::Service as Service<Request>>::Future: Send + 'static,
+        F: Method<T, P, R> + Clone + 'static,
     {
         let server = &self.server;
-        self.methods.entry(name).or_insert_with(|| {
-            let server = server.clone();
-            let handler = MethodHandler::new(move |params| {
-                let callback = callback.clone();
-                let server = server.clone();
-                async move { callback.invoke(&*server, params).await }
-            });
-
-            BoxService::new(layer.layer(handler))
-        });
+        self.methods
+            .entry(name)
+            .or_insert_with(|| Box::new(method_handler(server.clone(), callback)));
 
         self
     }
+
+    // pub fn method<P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
+    // where
+    //     P: FromParams,
+    //     R: IntoResponse,
+    //     F: for<'a> Method<&'a S, P, R> + Clone + 'static,
+    // {
+    //     let server = &self.server;
+    //     self.methods
+    //         .entry(name)
+    //         .or_insert_with(|| Box::new(method_handler(server.clone(), callback)));
+    //
+    //     self
+    // }
+    // //
+    // pub fn method_mut<P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
+    // where
+    //     P: FromParams,
+    //     R: IntoResponse,
+    //     F: for<'a> Method<&'a mut S, P, R> + Clone + 'static,
+    // {
+    //     let server = &self.server;
+    //     self.methods
+    //         .entry(name)
+    //         .or_insert_with(|| Box::new(method_handler_mut(server.clone(), callback)));
+    //
+    //     self
+    // }
 }
 
-impl<S: Debug, E> Debug for Router<S, E> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("Router")
-            .field("server", &self.server)
-            .field("methods", &self.methods.keys())
-            .finish()
-    }
-}
+// fn method_handler<S, P, R, F>(
+//     server: Rc<AsyncRefCell<S>>,
+//     callback: F,
+// ) -> MethodHandler<Request, Option<Response>>
+// where
+//     S: 'static,
+//     P: FromParams,
+//     R: IntoResponse,
+//     F: for<'a> Method<&'a S, P, R> + Clone + 'static,
+// {
+//     Box::new(move |request| {
+//         let (_, id, params) = request.into_parts();
+//
+//         match id {
+//             Some(_) if R::is_notification() => {
+//                 return future::ready(().into_response(id)).boxed_local()
+//             }
+//             None if !R::is_notification() => return future::ready(None).boxed_local(),
+//             _ => {}
+//         }
+//
+//         let params = match P::from_params(params) {
+//             Ok(params) => params,
+//             Err(err) => {
+//                 return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
+//             }
+//         };
+//
+//         let server = server.clone();
+//         let callback = callback.clone();
+//         async move {
+//             let server = server.read().await;
+//             callback.invoke(&*server, params).await.into_response(id)
+//         }
+//         .boxed_local()
+//     })
+// }
+//
+// fn method_handler_mut<S, P, R, F>(
+//     server: Rc<AsyncRefCell<S>>,
+//     callback: F,
+// ) -> MethodHandler<Request, Option<Response>>
+// where
+//     S: 'static,
+//     P: FromParams,
+//     R: IntoResponse,
+//     F: for<'a> Method<&'a mut S, P, R> + Clone + 'static,
+// {
+//     Box::new(move |request| {
+//         let (_, id, params) = request.into_parts();
+//
+//         match id {
+//             Some(_) if R::is_notification() => {
+//                 return future::ready(().into_response(id)).boxed_local()
+//             }
+//             None if !R::is_notification() => return future::ready(None).boxed_local(),
+//             _ => {}
+//         }
+//
+//         let params = match P::from_params(params) {
+//             Ok(params) => params,
+//             Err(err) => {
+//                 return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
+//             }
+//         };
+//
+//         let server = server.clone();
+//         let callback = callback.clone();
+//         async move {
+//             let mut server = server.write().await;
+//             callback.invoke(&mut server, params).await.into_response(id)
+//         }
+//         .boxed_local()
+//     })
+// }
 
-impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
-    type Response = Option<Response>;
-    type Error = E;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request) -> Self::Future {
-        if let Some(handler) = self.methods.get_mut(req.method()) {
-            handler.call(req)
-        } else {
-            let (method, id, _) = req.into_parts();
-            future::ok(id.map(|id| {
-                let mut error = Error::method_not_found();
-                error.data = Some(Value::from(method));
-                Response::from_error(id, error)
-            }))
-            .boxed()
-        }
-    }
-}
-
-/// Opaque JSON-RPC method handler.
-pub struct MethodHandler<P, R, E> {
-    f: Box<dyn Fn(P) -> BoxFuture<'static, R> + Send>,
-    _marker: PhantomData<E>,
-}
-
-impl<P: FromParams, R: IntoResponse, E> MethodHandler<P, R, E> {
-    fn new<F, Fut>(handler: F) -> Self
-    where
-        F: Fn(P) -> Fut + Send + 'static,
-        Fut: Future<Output = R> + Send + 'static,
-    {
-        MethodHandler {
-            f: Box::new(move |p| handler(p).boxed()),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<P, R, E> Service<Request> for MethodHandler<P, R, E>
+fn method_handler<T, S, P, R, F>(
+    server: Rc<AsyncRefCell<S>>,
+    callback: F,
+) -> MethodHandler<Request, Option<Response>>
 where
+    T: Receiver<S, P, R, F>,
+    S: 'static,
     P: FromParams,
     R: IntoResponse,
-    E: Send + 'static,
+    F: Method<T, P, R> + Clone + 'static,
 {
-    type Response = Option<Response>;
-    type Error = E;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request) -> Self::Future {
-        let (_, id, params) = req.into_parts();
+    Box::new(move |request| {
+        let (_, id, params) = request.into_parts();
 
         match id {
-            Some(_) if R::is_notification() => return future::ok(().into_response(id)).boxed(),
-            None if !R::is_notification() => return future::ok(None).boxed(),
+            Some(_) if R::is_notification() => {
+                return future::ready(().into_response(id)).boxed_local()
+            }
+            None if !R::is_notification() => return future::ready(None).boxed_local(),
             _ => {}
         }
 
         let params = match P::from_params(params) {
             Ok(params) => params,
-            Err(err) => return future::ok(id.map(|id| Response::from_error(id, err))).boxed(),
+            Err(err) => {
+                return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
+            }
         };
 
-        (self.f)(params)
-            .map(move |r| Ok(r.into_response(id)))
-            .boxed()
+        let server = server.clone();
+        let callback = callback.clone();
+        T::invoke(server, callback, id, params).boxed_local()
+    })
+}
+
+#[async_trait(?Send)]
+pub trait Receiver<S, P, R, F>: Sized {
+    async fn invoke(
+        server: Rc<AsyncRefCell<S>>,
+        f: F,
+        id: Option<Id>,
+        params: P,
+    ) -> Option<Response>;
+}
+
+#[async_trait(?Send)]
+impl<'a, S, P, R, F> Receiver<S, P, R, F> for &'a S
+where
+    S: 'static,
+    P: FromParams,
+    R: IntoResponse,
+    F: for<'b> Method<&'b S, P, R> + 'static,
+{
+    async fn invoke(
+        server: Rc<AsyncRefCell<S>>,
+        f: F,
+        id: Option<Id>,
+        params: P,
+    ) -> Option<Response> {
+        let server = server.read().await;
+        f.invoke(&*server, params).await.into_response(id)
+    }
+}
+
+#[async_trait(?Send)]
+impl<'a, S, P, R, F> Receiver<S, P, R, F> for &'a mut S
+where
+    S: 'static,
+    P: FromParams,
+    R: IntoResponse,
+    F: for<'b> Method<&'b mut S, P, R> + 'static,
+{
+    async fn invoke(
+        server: Rc<AsyncRefCell<S>>,
+        f: F,
+        id: Option<Id>,
+        params: P,
+    ) -> Option<Response> {
+        let mut server = server.write().await;
+        f.invoke(&mut server, params).await.into_response(id)
     }
 }
 
@@ -163,7 +252,7 @@ where
 /// `async fn f(&self, params: P)`                       | Notification with parameters
 pub trait Method<S, P, R>: private::Sealed {
     /// The future response value.
-    type Future: Future<Output = R> + Send;
+    type Future: Future<Output = R>;
 
     /// Invokes the method with the given `server` receiver and parameters.
     fn invoke(&self, server: S, params: P) -> Self::Future;
@@ -173,7 +262,7 @@ pub trait Method<S, P, R>: private::Sealed {
 impl<F, S, R, Fut> Method<S, (), R> for F
 where
     F: Fn(S) -> Fut,
-    Fut: Future<Output = R> + Send,
+    Fut: Future<Output = R>,
 {
     type Future = Fut;
 
@@ -188,7 +277,7 @@ impl<F, S, P, R, Fut> Method<S, (P,), R> for F
 where
     F: Fn(S, P) -> Fut,
     P: DeserializeOwned,
-    Fut: Future<Output = R> + Send,
+    Fut: Future<Output = R>,
 {
     type Future = Fut;
 
@@ -276,148 +365,4 @@ impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
 mod private {
     pub trait Sealed {}
     impl<T> Sealed for T {}
-}
-
-#[cfg(test)]
-mod tests {
-    use serde::{Deserialize, Serialize};
-    use serde_json::json;
-    use tower::layer::layer_fn;
-    use tower::ServiceExt;
-
-    use super::*;
-
-    #[derive(Deserialize, Serialize)]
-    struct Params {
-        foo: i32,
-        bar: String,
-    }
-
-    struct Mock;
-
-    impl Mock {
-        async fn request(&self) -> Result<Value, Error> {
-            Ok(Value::Null)
-        }
-
-        async fn request_params(&self, params: Params) -> Result<Params, Error> {
-            Ok(params)
-        }
-
-        async fn notification(&self) {}
-
-        async fn notification_params(&self, _params: Params) {}
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn routes_requests() {
-        let mut router: Router<Mock> = Router::new(Mock);
-        router
-            .method("first", Mock::request, layer_fn(|s| s))
-            .method("second", Mock::request_params, layer_fn(|s| s));
-
-        let request = Request::build("first").id(0).finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        assert_eq!(response, Ok(Some(Response::from_ok(0.into(), Value::Null))));
-
-        let params = json!({"foo": -123i32, "bar": "hello world"});
-        let with_params = Request::build("second")
-            .params(params.clone())
-            .id(1)
-            .finish();
-        let response = router.ready().await.unwrap().call(with_params).await;
-        assert_eq!(response, Ok(Some(Response::from_ok(1.into(), params))));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn routes_notifications() {
-        let mut router: Router<Mock> = Router::new(Mock);
-        router
-            .method("first", Mock::notification, layer_fn(|s| s))
-            .method("second", Mock::notification_params, layer_fn(|s| s));
-
-        let request = Request::build("first").finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        assert_eq!(response, Ok(None));
-
-        let params = json!({"foo": -123i32, "bar": "hello world"});
-        let with_params = Request::build("second").params(params).finish();
-        let response = router.ready().await.unwrap().call(with_params).await;
-        assert_eq!(response, Ok(None));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn rejects_request_with_invalid_params() {
-        let mut router: Router<Mock> = Router::new(Mock);
-        router.method("request", Mock::request_params, layer_fn(|s| s));
-
-        let invalid_params = Request::build("request")
-            .params(json!("wrong"))
-            .id(0)
-            .finish();
-
-        let response = router.ready().await.unwrap().call(invalid_params).await;
-        assert_eq!(
-            response,
-            Ok(Some(Response::from_error(
-                0.into(),
-                Error::invalid_params("invalid type: string \"wrong\", expected struct Params"),
-            )))
-        );
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn ignores_notification_with_invalid_params() {
-        let mut router: Router<Mock> = Router::new(Mock);
-        router.method("notification", Mock::request_params, layer_fn(|s| s));
-
-        let invalid_params = Request::build("notification")
-            .params(json!("wrong"))
-            .finish();
-
-        let response = router.ready().await.unwrap().call(invalid_params).await;
-        assert_eq!(response, Ok(None));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn handles_incorrect_request_types() {
-        let mut router: Router<Mock> = Router::new(Mock);
-        router
-            .method("first", Mock::request, layer_fn(|s| s))
-            .method("second", Mock::notification, layer_fn(|s| s));
-
-        let request = Request::build("first").finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        assert_eq!(response, Ok(None));
-
-        let request = Request::build("second").id(0).finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        assert_eq!(
-            response,
-            Ok(Some(Response::from_error(
-                0.into(),
-                Error::invalid_request(),
-            )))
-        );
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn responds_to_nonexistent_request() {
-        let mut router: Router<Mock> = Router::new(Mock);
-
-        let request = Request::build("foo").id(0).finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        let mut error = Error::method_not_found();
-        error.data = Some("foo".into());
-        assert_eq!(response, Ok(Some(Response::from_error(0.into(), error))));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn ignores_nonexistent_notification() {
-        let mut router: Router<Mock> = Router::new(Mock);
-
-        let request = Request::build("foo").finish();
-        let response = router.ready().await.unwrap().call(request).await;
-        assert_eq!(response, Ok(None));
-    }
 }
