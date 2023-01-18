@@ -1,20 +1,23 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::ops::{Deref, DerefMut};
 
-use futures_intrusive::sync::{GenericSemaphoreAcquireFuture, LocalSemaphore};
+use futures_intrusive::sync::LocalSemaphore;
 
 const MAX_READERS: usize = 32;
 
-pub struct AsyncRefCell<S> {
-    inner: RefCell<S>,
+pub struct AsyncRefCell<S: ?Sized> {
     sem: LocalSemaphore,
+    inner: RefCell<S>,
 }
 
-impl<S> AsyncRefCell<S> {
-    pub fn new(inner: S) -> Self {
+impl<S: ?Sized> AsyncRefCell<S> {
+    pub fn new(inner: S) -> Self
+    where
+        S: Sized,
+    {
         AsyncRefCell {
-            inner: RefCell::new(inner),
             sem: LocalSemaphore::new(true, MAX_READERS),
+            inner: RefCell::new(inner),
         }
     }
 
@@ -35,12 +38,16 @@ impl<S> AsyncRefCell<S> {
     }
 }
 
-pub struct ReadGuard<'a, S> {
+trait Releaser {}
+
+impl<T> Releaser for T {}
+
+pub struct ReadGuard<'a, S: ?Sized> {
     inner: Ref<'a, S>,
-    _releaser: Box<dyn Drop + 'a>,
+    _releaser: Box<dyn Releaser + 'a>,
 }
 
-impl<'a, S> Deref for ReadGuard<'a, S> {
+impl<'a, S: ?Sized> Deref for ReadGuard<'a, S> {
     type Target = S;
 
     fn deref(&self) -> &Self::Target {
@@ -48,12 +55,12 @@ impl<'a, S> Deref for ReadGuard<'a, S> {
     }
 }
 
-pub struct WriteGuard<'a, S> {
+pub struct WriteGuard<'a, S: ?Sized> {
     inner: RefMut<'a, S>,
-    _releaser: Box<dyn Drop + 'a>,
+    _releaser: Box<dyn Releaser + 'a>,
 }
 
-impl<'a, S> Deref for WriteGuard<'a, S> {
+impl<'a, S: ?Sized> Deref for WriteGuard<'a, S> {
     type Target = S;
 
     fn deref(&self) -> &Self::Target {
@@ -61,7 +68,7 @@ impl<'a, S> Deref for WriteGuard<'a, S> {
     }
 }
 
-impl<'a, S> DerefMut for WriteGuard<'a, S> {
+impl<'a, S: ?Sized> DerefMut for WriteGuard<'a, S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut *self.inner
     }

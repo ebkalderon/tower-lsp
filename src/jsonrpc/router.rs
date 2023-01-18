@@ -1,11 +1,15 @@
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::future::Future;
+use std::ops::Deref;
 use std::rc::Rc;
+use std::task::{Context, Poll};
 
 use async_trait::async_trait;
 use futures::future::{self, FutureExt, LocalBoxFuture};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
+use tower_service::Service;
 
 use super::refcell::AsyncRefCell;
 use super::{Error, ErrorCode, Id, Request, Response};
@@ -22,11 +26,11 @@ fn foo() {
         .method("mutating", Blah::mutating);
 }
 
-type MethodHandler<P, R> = Box<dyn Fn(P) -> LocalBoxFuture<'static, R>>;
+type MethodHandler<Recv> = Box<dyn Fn(Recv, Request) -> LocalBoxFuture<'static, Option<Response>>>;
 
 pub struct Router<S> {
     server: Rc<AsyncRefCell<S>>,
-    methods: HashMap<&'static str, MethodHandler<Request, Option<Response>>>,
+    methods: HashMap<&'static str, MethodHandler<Rc<AsyncRefCell<S>>>>,
 }
 
 impl<S: 'static> Router<S> {
@@ -37,258 +41,147 @@ impl<S: 'static> Router<S> {
         }
     }
 
-    pub fn method<T, P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
+    pub fn method<Recv, Arg, Out, F>(&mut self, name: &'static str, callback: F) -> &mut Self
     where
-        T: Receiver<S, P, R, F>,
-        P: FromParams,
-        R: IntoResponse,
-        F: Method<T, P, R> + Clone + 'static,
+        Arg: FromParams,
+        Out: IntoResponse,
+        F: Method<Recv, Arg, Out, Receiver = S> + Clone + 'static,
     {
-        let server = &self.server;
-        self.methods
-            .entry(name)
-            .or_insert_with(|| Box::new(method_handler(server.clone(), callback)));
+        self.methods.entry(name).or_insert_with(|| {
+            Box::new(move |server, request| {
+                let (_, id, params) = request.into_parts();
+
+                match id {
+                    Some(_) if Out::IS_NOTIFICATION => {
+                        return future::ready(().into_response(id)).boxed_local()
+                    }
+                    None if !Out::IS_NOTIFICATION => return future::ready(None).boxed_local(),
+                    _ => {}
+                }
+
+                let params = match Arg::from_params(params) {
+                    Ok(params) => params,
+                    Err(err) => {
+                        return future::ready(id.map(|id| Response::from_error(id, err)))
+                            .boxed_local()
+                    }
+                };
+
+                let server = Shared(server);
+                let callback = callback.clone();
+                async move { callback.call(server, params).await.into_response(id) }.boxed_local()
+            })
+        });
 
         self
     }
-
-    // pub fn method<P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
-    // where
-    //     P: FromParams,
-    //     R: IntoResponse,
-    //     F: for<'a> Method<&'a S, P, R> + Clone + 'static,
-    // {
-    //     let server = &self.server;
-    //     self.methods
-    //         .entry(name)
-    //         .or_insert_with(|| Box::new(method_handler(server.clone(), callback)));
-    //
-    //     self
-    // }
-    // //
-    // pub fn method_mut<P, R, F>(&mut self, name: &'static str, callback: F) -> &mut Self
-    // where
-    //     P: FromParams,
-    //     R: IntoResponse,
-    //     F: for<'a> Method<&'a mut S, P, R> + Clone + 'static,
-    // {
-    //     let server = &self.server;
-    //     self.methods
-    //         .entry(name)
-    //         .or_insert_with(|| Box::new(method_handler_mut(server.clone(), callback)));
-    //
-    //     self
-    // }
 }
 
-// fn method_handler<S, P, R, F>(
-//     server: Rc<AsyncRefCell<S>>,
-//     callback: F,
-// ) -> MethodHandler<Request, Option<Response>>
-// where
-//     S: 'static,
-//     P: FromParams,
-//     R: IntoResponse,
-//     F: for<'a> Method<&'a S, P, R> + Clone + 'static,
-// {
-//     Box::new(move |request| {
-//         let (_, id, params) = request.into_parts();
-//
-//         match id {
-//             Some(_) if R::is_notification() => {
-//                 return future::ready(().into_response(id)).boxed_local()
-//             }
-//             None if !R::is_notification() => return future::ready(None).boxed_local(),
-//             _ => {}
-//         }
-//
-//         let params = match P::from_params(params) {
-//             Ok(params) => params,
-//             Err(err) => {
-//                 return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
-//             }
-//         };
-//
-//         let server = server.clone();
-//         let callback = callback.clone();
-//         async move {
-//             let server = server.read().await;
-//             callback.invoke(&*server, params).await.into_response(id)
-//         }
-//         .boxed_local()
-//     })
-// }
-//
-// fn method_handler_mut<S, P, R, F>(
-//     server: Rc<AsyncRefCell<S>>,
-//     callback: F,
-// ) -> MethodHandler<Request, Option<Response>>
-// where
-//     S: 'static,
-//     P: FromParams,
-//     R: IntoResponse,
-//     F: for<'a> Method<&'a mut S, P, R> + Clone + 'static,
-// {
-//     Box::new(move |request| {
-//         let (_, id, params) = request.into_parts();
-//
-//         match id {
-//             Some(_) if R::is_notification() => {
-//                 return future::ready(().into_response(id)).boxed_local()
-//             }
-//             None if !R::is_notification() => return future::ready(None).boxed_local(),
-//             _ => {}
-//         }
-//
-//         let params = match P::from_params(params) {
-//             Ok(params) => params,
-//             Err(err) => {
-//                 return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
-//             }
-//         };
-//
-//         let server = server.clone();
-//         let callback = callback.clone();
-//         async move {
-//             let mut server = server.write().await;
-//             callback.invoke(&mut server, params).await.into_response(id)
-//         }
-//         .boxed_local()
-//     })
-// }
-
-fn method_handler<T, S, P, R, F>(
-    server: Rc<AsyncRefCell<S>>,
-    callback: F,
-) -> MethodHandler<Request, Option<Response>>
-where
-    T: Receiver<S, P, R, F>,
-    S: 'static,
-    P: FromParams,
-    R: IntoResponse,
-    F: Method<T, P, R> + Clone + 'static,
-{
-    Box::new(move |request| {
-        let (_, id, params) = request.into_parts();
-
-        match id {
-            Some(_) if R::is_notification() => {
-                return future::ready(().into_response(id)).boxed_local()
-            }
-            None if !R::is_notification() => return future::ready(None).boxed_local(),
-            _ => {}
-        }
-
-        let params = match P::from_params(params) {
-            Ok(params) => params,
-            Err(err) => {
-                return future::ready(id.map(|id| Response::from_error(id, err))).boxed_local()
-            }
-        };
-
-        let server = server.clone();
-        let callback = callback.clone();
-        T::invoke(server, callback, id, params).boxed_local()
-    })
-}
-
-#[async_trait(?Send)]
-pub trait Receiver<S, P, R, F>: Sized {
-    async fn invoke(
-        server: Rc<AsyncRefCell<S>>,
-        f: F,
-        id: Option<Id>,
-        params: P,
-    ) -> Option<Response>;
-}
-
-#[async_trait(?Send)]
-impl<'a, S, P, R, F> Receiver<S, P, R, F> for &'a S
-where
-    S: 'static,
-    P: FromParams,
-    R: IntoResponse,
-    F: for<'b> Method<&'b S, P, R> + 'static,
-{
-    async fn invoke(
-        server: Rc<AsyncRefCell<S>>,
-        f: F,
-        id: Option<Id>,
-        params: P,
-    ) -> Option<Response> {
-        let server = server.read().await;
-        f.invoke(&*server, params).await.into_response(id)
-    }
-}
-
-#[async_trait(?Send)]
-impl<'a, S, P, R, F> Receiver<S, P, R, F> for &'a mut S
-where
-    S: 'static,
-    P: FromParams,
-    R: IntoResponse,
-    F: for<'b> Method<&'b mut S, P, R> + 'static,
-{
-    async fn invoke(
-        server: Rc<AsyncRefCell<S>>,
-        f: F,
-        id: Option<Id>,
-        params: P,
-    ) -> Option<Response> {
-        let mut server = server.write().await;
-        f.invoke(&mut server, params).await.into_response(id)
-    }
-}
+/// An opaque newtype for the shared/synchcronized [`Method`] receiver.
+pub struct Shared<Recv: ?Sized>(Rc<AsyncRefCell<Recv>>);
 
 /// A trait implemented by all valid JSON-RPC method handlers.
 ///
 /// This trait abstracts over the following classes of functions and/or closures:
 ///
-/// Signature                                            | Description
-/// -----------------------------------------------------|---------------------------------
-/// `async fn f(&self) -> jsonrpc::Result<R>`            | Request without parameters
-/// `async fn f(&self, params: P) -> jsonrpc::Result<R>` | Request with required parameters
-/// `async fn f(&self)`                                  | Notification without parameters
-/// `async fn f(&self, params: P)`                       | Notification with parameters
-pub trait Method<S, P, R>: private::Sealed {
-    /// The future response value.
-    type Future: Future<Output = R>;
+/// ```ignore
+/// // Request without parameters
+/// async fn f(&self) -> jsonrpc::Result<R>;
+/// async fn f(&mut self) -> jsonrpc::Result<R>;
+///
+/// // Request with required parameters, where `P: DeserializeOwned`, `R: Serialize + 'static`
+/// async fn f(&self, params: P) -> jsonrpc::Result<R>;
+/// async fn f(&mut self, params: P) -> jsonrpc::Result<R>;
+///
+/// // Notification without paramters
+/// async fn f(&self);
+/// async fn f(&mut self);
+///
+/// // Notification with required parameters, where `P: DeserializeOwned`
+/// async fn f(&self, params: P);
+/// async fn f(&mut self, params: P);
+/// ```
+pub trait Method<Recv, Arg, Out>: private::Sealed {
+    type Receiver;
+    type Future: Future<Output = Out>;
 
-    /// Invokes the method with the given `server` receiver and parameters.
-    fn invoke(&self, server: S, params: P) -> Self::Future;
+    fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future;
+}
+
+impl<'a, Recv, Arg, Out, F> Method<&'a Recv, Arg, Out> for F
+where
+    Arg: FromParams,
+    Out: IntoResponse,
+    for<'b> F: Closure<&'b Recv, Arg, Out> + 'a,
+{
+    type Receiver = Recv;
+    type Future = LocalBoxFuture<'a, Out>;
+
+    fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future {
+        async move {
+            let s = recv.0.read().await;
+            self.invoke(&s, arg).await
+        }
+        .boxed_local()
+    }
+}
+
+impl<'a, Recv, Arg, Out, F> Method<&'a mut Recv, Arg, Out> for F
+where
+    Arg: FromParams,
+    Out: IntoResponse,
+    for<'b> F: Closure<&'b mut Recv, Arg, Out> + 'a,
+{
+    type Receiver = Recv;
+    type Future = LocalBoxFuture<'a, Out>;
+
+    fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future {
+        async move {
+            let mut s = recv.0.write().await;
+            self.invoke(&mut s, arg).await
+        }
+        .boxed_local()
+    }
+}
+
+/// A trait implemented by all async methods with 1 or 2 arguments.
+trait Closure<R, I, O> {
+    /// The future return value.
+    type Future: Future<Output = O>;
+
+    /// Invokes the method with the given receiver and argument.
+    fn invoke(self, receiver: R, arg: I) -> Self::Future;
 }
 
 /// Support parameter-less JSON-RPC methods.
-impl<F, S, R, Fut> Method<S, (), R> for F
+impl<R, O, F, Fut> Closure<R, (), O> for F
 where
-    F: Fn(S) -> Fut,
-    Fut: Future<Output = R>,
+    F: Fn(R) -> Fut,
+    Fut: Future<Output = O>,
 {
     type Future = Fut;
 
-    #[inline]
-    fn invoke(&self, server: S, _: ()) -> Self::Future {
-        self(server)
+    fn invoke(self, receiver: R, _: ()) -> Self::Future {
+        self(receiver)
     }
 }
 
 /// Support JSON-RPC methods with `params`.
-impl<F, S, P, R, Fut> Method<S, (P,), R> for F
+impl<R, I, O, F, Fut> Closure<R, (I,), O> for F
 where
-    F: Fn(S, P) -> Fut,
-    P: DeserializeOwned,
-    Fut: Future<Output = R>,
+    F: Fn(R, I) -> Fut,
+    I: DeserializeOwned,
+    Fut: Future<Output = O>,
 {
     type Future = Fut;
 
-    #[inline]
-    fn invoke(&self, server: S, params: (P,)) -> Self::Future {
-        self(server, params.0)
+    fn invoke(self, receiver: R, arg: (I,)) -> Self::Future {
+        self(receiver, arg.0)
     }
 }
 
 /// A trait implemented by all JSON-RPC method parameters.
-pub trait FromParams: private::Sealed + Send + Sized + 'static {
+pub trait FromParams: private::Sealed + Sized + 'static {
     /// Attempts to deserialize `Self` from the `params` value extracted from [`Request`].
     fn from_params(params: Option<Value>) -> super::Result<Self>;
 }
@@ -305,7 +198,7 @@ impl FromParams for () {
 }
 
 /// Deserialize required JSON-RPC parameters.
-impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
+impl<P: DeserializeOwned + 'static> FromParams for (P,) {
     fn from_params(params: Option<Value>) -> super::Result<Self> {
         if let Some(p) = params {
             serde_json::from_value(p)
@@ -318,28 +211,26 @@ impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
 }
 
 /// A trait implemented by all JSON-RPC response types.
-pub trait IntoResponse: private::Sealed + Send + 'static {
+pub trait IntoResponse: private::Sealed + 'static {
+    const IS_NOTIFICATION: bool;
+
     /// Attempts to construct a [`Response`] using `Self` and a corresponding [`Id`].
     fn into_response(self, id: Option<Id>) -> Option<Response>;
-
-    /// Returns `true` if this is a notification response type.
-    fn is_notification() -> bool;
 }
 
 /// Support JSON-RPC notification methods.
 impl IntoResponse for () {
+    const IS_NOTIFICATION: bool = true;
+
     fn into_response(self, id: Option<Id>) -> Option<Response> {
         id.map(|id| Response::from_error(id, Error::invalid_request()))
-    }
-
-    #[inline]
-    fn is_notification() -> bool {
-        true
     }
 }
 
 /// Support JSON-RPC request methods.
-impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
+impl<R: Serialize + 'static> IntoResponse for Result<R, Error> {
+    const IS_NOTIFICATION: bool = false;
+
     fn into_response(self, id: Option<Id>) -> Option<Response> {
         debug_assert!(id.is_some(), "Requests always contain an `id` field");
         if let Some(id) = id {
@@ -354,11 +245,6 @@ impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
         } else {
             None
         }
-    }
-
-    #[inline]
-    fn is_notification() -> bool {
-        false
     }
 }
 

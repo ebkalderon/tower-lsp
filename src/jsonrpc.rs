@@ -1,7 +1,7 @@
 //! A subset of JSON-RPC types used by the Language Server Protocol.
 
 pub use self::error::{Error, ErrorCode};
-// pub use self::router::{FromParams, IntoResponse, Method};
+pub use self::router::{FromParams, IntoResponse, Method};
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter};
