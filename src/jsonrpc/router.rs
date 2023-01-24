@@ -45,7 +45,7 @@ impl<S: 'static> Router<S> {
     where
         Arg: FromParams,
         Out: IntoResponse,
-        F: Method<Recv, Arg, Out, Receiver = S> + Clone + 'static,
+        F: Method<Recv, Arg, Output = Out, Receiver = S> + Clone + 'static,
     {
         self.methods.entry(name).or_insert_with(|| {
             Box::new(move |server, request| {
@@ -101,82 +101,89 @@ pub struct Shared<Recv: ?Sized>(Rc<AsyncRefCell<Recv>>);
 /// async fn f(&self, params: P);
 /// async fn f(&mut self, params: P);
 /// ```
-pub trait Method<Recv, Arg, Out>: private::Sealed {
+pub trait Method<Recv, Arg>: private::Sealed {
     type Receiver;
-    type Future: Future<Output = Out>;
+    type Output;
+    type Future: Future<Output = Self::Output>;
 
     fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future;
 }
 
-impl<'a, Recv, Arg, Out, F> Method<&'a Recv, Arg, Out> for F
+impl<'a, Recv, Arg, Out, F> Method<&'a Recv, Arg> for F
 where
     Arg: FromParams,
     Out: IntoResponse,
-    for<'b> F: Closure<&'b Recv, Arg, Out> + 'a,
+    for<'b> F: AsyncFn<&'b Recv, Arg, Output = Out> + 'a,
 {
     type Receiver = Recv;
+    type Output = Out;
     type Future = LocalBoxFuture<'a, Out>;
 
     fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future {
         async move {
             let s = recv.0.read().await;
-            self.invoke(&s, arg).await
+            self.call_async(&s, arg).await
         }
         .boxed_local()
     }
 }
 
-impl<'a, Recv, Arg, Out, F> Method<&'a mut Recv, Arg, Out> for F
+impl<'a, Recv, Arg, Out, F> Method<&'a mut Recv, Arg> for F
 where
     Arg: FromParams,
     Out: IntoResponse,
-    for<'b> F: Closure<&'b mut Recv, Arg, Out> + 'a,
+    for<'b> F: AsyncFn<&'b mut Recv, Arg, Output = Out> + 'a,
 {
     type Receiver = Recv;
+    type Output = Out;
     type Future = LocalBoxFuture<'a, Out>;
 
     fn call(self, recv: Shared<Self::Receiver>, arg: Arg) -> Self::Future {
         async move {
             let mut s = recv.0.write().await;
-            self.invoke(&mut s, arg).await
+            self.call_async(&mut s, arg).await
         }
         .boxed_local()
     }
 }
 
 /// A trait implemented by all async methods with 1 or 2 arguments.
-trait Closure<R, I, O> {
+trait AsyncFn<Recv, Arg> {
+    /// Return value of this method.
+    type Output;
     /// The future return value.
-    type Future: Future<Output = O>;
+    type Future: Future<Output = Self::Output>;
 
     /// Invokes the method with the given receiver and argument.
-    fn invoke(self, receiver: R, arg: I) -> Self::Future;
+    fn call_async(self, recv: Recv, arg: Arg) -> Self::Future;
 }
 
 /// Support parameter-less JSON-RPC methods.
-impl<R, O, F, Fut> Closure<R, (), O> for F
+impl<Recv, Out, F, Fut> AsyncFn<Recv, ()> for F
 where
-    F: Fn(R) -> Fut,
-    Fut: Future<Output = O>,
+    F: Fn(Recv) -> Fut,
+    Fut: Future<Output = Out>,
 {
+    type Output = Out;
     type Future = Fut;
 
-    fn invoke(self, receiver: R, _: ()) -> Self::Future {
-        self(receiver)
+    fn call_async(self, recv: Recv, _: ()) -> Self::Future {
+        self(recv)
     }
 }
 
 /// Support JSON-RPC methods with `params`.
-impl<R, I, O, F, Fut> Closure<R, (I,), O> for F
+impl<Recv, Arg, Out, F, Fut> AsyncFn<Recv, (Arg,)> for F
 where
-    F: Fn(R, I) -> Fut,
-    I: DeserializeOwned,
-    Fut: Future<Output = O>,
+    F: Fn(Recv, Arg) -> Fut,
+    Arg: DeserializeOwned,
+    Fut: Future<Output = Out>,
 {
+    type Output = Out;
     type Future = Fut;
 
-    fn invoke(self, receiver: R, arg: (I,)) -> Self::Future {
-        self(receiver, arg.0)
+    fn call_async(self, recv: Recv, arg: (Arg,)) -> Self::Future {
+        self(recv, arg.0)
     }
 }
 
