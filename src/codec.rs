@@ -40,17 +40,17 @@ pub enum ParseError {
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
-            ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {}", e),
-            ParseError::Encode(ref e) => write!(f, "failed to encode response: {}", e),
-            ParseError::Headers(ref e) => write!(f, "failed to parse headers: {}", e),
+            ParseError::Body(ref e) => write!(f, "unable to parse JSON body: {e}"),
+            ParseError::Encode(ref e) => write!(f, "failed to encode response: {e}"),
+            ParseError::Headers(ref e) => write!(f, "failed to parse headers: {e}"),
             ParseError::InvalidContentType => write!(f, "unable to parse content type"),
             ParseError::InvalidContentLength(ref e) => {
-                write!(f, "unable to parse content length: {}", e)
+                write!(f, "unable to parse content length: {e}")
             }
             ParseError::MissingContentLength => {
                 write!(f, "missing required `Content-Length` header")
             }
-            ParseError::Utf8(ref e) => write!(f, "request contains invalid UTF8: {}", e),
+            ParseError::Utf8(ref e) => write!(f, "request contains invalid UTF8: {e}"),
         }
     }
 }
@@ -271,7 +271,7 @@ mod tests {
 
     fn encode_message(content_type: Option<&str>, message: &str) -> String {
         let content_type = content_type
-            .map(|ty| format!("\r\nContent-Type: {}", ty))
+            .map(|ty| format!("\r\nContent-Type: {ty}"))
             .unwrap_or_default();
 
         format!(
@@ -361,7 +361,7 @@ mod tests {
     fn recovers_from_parse_error() {
         let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#;
         let encoded = encode_message(None, decoded);
-        let mixed = format!("foobar{}Content-Length: foobar\r\n\r\n{}", encoded, encoded);
+        let mixed = format!("foobar{encoded}Content-Length: foobar\r\n\r\n{encoded}");
 
         let mut codec = LanguageServerCodec::default();
         let mut buffer = BytesMut::from(mixed.as_str());

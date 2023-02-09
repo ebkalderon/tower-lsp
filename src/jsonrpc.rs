@@ -25,6 +25,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// A unique ID used to correlate requests and responses together.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
+#[derive(Default)]
 pub enum Id {
     /// Numeric ID.
     Number(i64),
@@ -35,14 +36,11 @@ pub enum Id {
     /// While `null` is considered a valid request ID by the JSON-RPC 2.0 specification, its use is
     /// _strongly_ discouraged because the specification also uses a `null` value to indicate an
     /// unknown ID in the [`Response`] object.
+    #[default]
     Null,
 }
 
-impl Default for Id {
-    fn default() -> Self {
-        Id::Null
-    }
-}
+
 
 impl Display for Id {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
