@@ -208,7 +208,7 @@ pub trait FromParams: private::Sealed + Send + Sized + 'static {
 impl FromParams for () {
     fn from_params(params: Option<Value>) -> super::Result<Self> {
         if let Some(p) = params {
-            Err(Error::invalid_params(format!("Unexpected params: {}", p)))
+            Err(Error::invalid_params(format!("Unexpected params: {p}")))
         } else {
             Ok(())
         }
