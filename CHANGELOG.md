@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-* Update `edition` from `2018` to `2021` (PR #TODO).
+* Update `edition` from `2018` to `2021` (PR #370).
 
 ## [0.18.0] - 2023-01-14
 
