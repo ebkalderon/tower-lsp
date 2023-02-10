@@ -183,7 +183,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// mechanism. This can be done here or in the [`initialized`](LanguageServer::initialized)
     /// method using [`Client::register_capability`](crate::Client::register_capability).
     ///
-    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
+    /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWatchedFiles
     #[rpc(name = "workspace/didChangeWatchedFiles")]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
@@ -354,6 +354,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// Please note that clients might drop results if computing the text edits took too long or if
     /// a server constantly fails on this request. This is done to keep the save fast and reliable.
+    ///
+    /// [`textDocument/willSaveWaitUntil`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_willSaveWaitUntil
     #[rpc(name = "textDocument/willSaveWaitUntil")]
     async fn will_save_wait_until(
         &self,
@@ -750,6 +752,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request has no special capabilities and registration options since it is sent as a
     /// resolve request for the [`textDocument/documentColor`](LanguageServer::document_color)
     /// request.
+    ///
+    /// [`textDocument/colorPresentation`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_colorPresentation
     #[rpc(name = "textDocument/colorPresentation")]
     async fn color_presentation(
         &self,
