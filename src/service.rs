@@ -380,31 +380,12 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    #[allow(deprecated)]
     async fn get_inner() {
         let (service, _) = LspService::build(|_| Mock).finish();
 
         service
             .inner()
-            .initialize(InitializeParams {
-                process_id: None,
-                root_path: None,
-                root_uri: None,
-                initialization_options: None,
-                capabilities: ClientCapabilities {
-                    workspace: None,
-                    text_document: None,
-                    window: None,
-                    general: None,
-                    experimental: None,
-                    #[cfg(feature = "proposed")]
-                    offset_encoding: None,
-                },
-                trace: None,
-                workspace_folders: None,
-                client_info: None,
-                locale: None,
-            })
+            .initialize(InitializeParams::default())
             .await
             .unwrap();
     }
