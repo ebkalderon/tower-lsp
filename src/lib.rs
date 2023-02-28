@@ -125,10 +125,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
     ///
+    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specification#initialized
+    ///
     /// The server can use the `initialized` notification, for example, to dynamically register
     /// capabilities with the client.
-    ///
-    /// [`initialized`]: https://microsoft.github.io/language-server-protocol/specification#initialized
     #[rpc(name = "initialized")]
     async fn initialized(&self, params: InitializedParams) {
         let _ = params;
@@ -136,10 +136,11 @@ pub trait LanguageServer: Send + Sync + 'static {
 
     /// The [`shutdown`] request asks the server to gracefully shut down, but to not exit.
     ///
+    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specification#shutdown
+    ///
     /// This request is often later followed by an [`exit`] notification, which will cause the
     /// server to exit immediately.
     ///
-    /// [`shutdown`]: https://microsoft.github.io/language-server-protocol/specification#shutdown
     /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
     ///
     /// This method is guaranteed to only execute once. If the client sends this request to the
@@ -152,11 +153,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/didOpen`] notification is sent from the client to the server to signal
     /// that a new text document has been opened by the client.
     ///
+    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didOpen
+    ///
     /// The document's truth is now managed by the client and the server must not try to read the
     /// document’s truth using the document's URI. "Open" in this sense means it is managed by the
     /// client. It doesn't necessarily mean that its content is presented in an editor.
-    ///
-    /// [`textDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didOpen
     #[rpc(name = "textDocument/didOpen")]
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let _ = params;
@@ -166,10 +167,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/didChange`] notification is sent from the client to the server to signal
     /// changes to a text document.
     ///
+    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didChange
+    ///
     /// This notification will contain a distinct version tag and a list of edits made to the
     /// document for the server to interpret.
-    ///
-    /// [`textDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didChange
     #[rpc(name = "textDocument/didChange")]
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let _ = params;
@@ -189,13 +190,13 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/willSaveWaitUntil`] request is sent from the client to the server before
     /// the document is actually saved.
     ///
+    /// [`textDocument/willSaveWaitUntil`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_willSaveWaitUntil
+    ///
     /// The request can return an array of `TextEdit`s which will be applied to the text document
     /// before it is saved.
     ///
     /// Please note that clients might drop results if computing the text edits took too long or if
     /// a server constantly fails on this request. This is done to keep the save fast and reliable.
-    ///
-    /// [`textDocument/willSaveWaitUntil`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_willSaveWaitUntil
     #[rpc(name = "textDocument/willSaveWaitUntil")]
     async fn will_save_wait_until(
         &self,
@@ -219,10 +220,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/didClose`] notification is sent from the client to the server when the
     /// document got closed in the client.
     ///
+    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didClose
+    ///
     /// The document's truth now exists where the document's URI points to (e.g. if the document's
     /// URI is a file URI, the truth now exists on disk).
-    ///
-    /// [`textDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didClose
     #[rpc(name = "textDocument/didClose")]
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let _ = params;
@@ -240,10 +241,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.14.0.
     ///
-    /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
+    /// The [`GotoDeclarationResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
     /// was introduced in specification version 3.14.0 and requires client-side support in order to
     /// be used. It can be returned if the client set the following field to `true` in the
-    /// [`initialize`](LanguageServer::initialize) method:
+    /// [`initialize`](Self::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::declaration::link_support
@@ -268,7 +269,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
     /// was introduced in specification version 3.14.0 and requires client-side support in order to
     /// be used. It can be returned if the client set the following field to `true` in the
-    /// [`initialize`](LanguageServer::initialize) method:
+    /// [`initialize`](Self::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::definition::link_support
@@ -292,10 +293,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.6.0.
     ///
-    /// The [`GotoDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return value
-    /// was introduced in specification version 3.14.0 and requires client-side support in order to
-    /// be used. It can be returned if the client set the following field to `true` in the
-    /// [`initialize`](LanguageServer::initialize) method:
+    /// The [`GotoTypeDefinitionResponse::Link`](lsp_types::GotoDefinitionResponse::Link) return
+    /// value was introduced in specification version 3.14.0 and requires client-side support in
+    /// order to be used. It can be returned if the client set the following field to `true` in the
+    /// [`initialize`](Self::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::type_definition::link_support
@@ -319,10 +320,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// This request was introduced in specification version 3.6.0.
     ///
-    /// The [`GotoImplementationResponse::Link`](lsp_types::GotoDefinitionResponse)
+    /// The [`GotoImplementationResponse::Link`](lsp_types::GotoDefinitionResponse::Link)
     /// return value was introduced in specification version 3.14.0 and requires client-side
     /// support in order to be used. It can be returned if the client set the following field to
-    /// `true` in the [`initialize`](LanguageServer::initialize) method:
+    /// `true` in the [`initialize`](Self::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::implementation::link_support
@@ -360,8 +361,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// 2. For a call hierarchy item, the incoming or outgoing call hierarchy items are resolved
     ///    inside [`incoming_calls`] and [`outgoing_calls`], respectively.
     ///
-    /// [`incoming_calls`]: LanguageServer::incoming_calls
-    /// [`outgoing_calls`]: LanguageServer::outgoing_calls
+    /// [`incoming_calls`]: Self::incoming_calls
+    /// [`outgoing_calls`]: Self::outgoing_calls
     ///
     /// # Compatibility
     ///
@@ -383,7 +384,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// server registers for the [`textDocument/prepareCallHierarchy`] request.
     ///
     /// [`callHierarchy/incomingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_incomingCalls
-    /// [`textDocument/prepareCallHierarchy`]: LanguageServer::prepare_call_hierarchy
+    /// [`textDocument/prepareCallHierarchy`]: Self::prepare_call_hierarchy
     ///
     /// # Compatibility
     ///
@@ -405,7 +406,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// server registers for the [`textDocument/prepareCallHierarchy`] request.
     ///
     /// [`callHierarchy/outgoingCalls`]: https://microsoft.github.io/language-server-protocol/specification#callHierarchy_outgoingCalls
-    /// [`textDocument/prepareCallHierarchy`]: LanguageServer::prepare_call_hierarchy
+    /// [`textDocument/prepareCallHierarchy`]: Self::prepare_call_hierarchy
     ///
     /// # Compatibility
     ///
@@ -447,7 +448,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     }
 
     /// The [`typeHierarchy/supertypes`] request is sent from the client to the server to resolve
-    /// the supertypes for a given type hierarchy item.
+    /// the **supertypes** for a given type hierarchy item.
     ///
     /// Returns `Ok(None)` if the server couldn’t infer a valid type from item in `params`.
     ///
@@ -468,7 +469,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     }
 
     /// The [`typeHierarchy/subtypes`] request is sent from the client to the server to resolve
-    /// the subtypes for a given type hierarchy item.
+    /// the **subtypes** for a given type hierarchy item.
     ///
     /// Returns `Ok(None)` if the server couldn’t infer a valid type from item in `params`.
     ///
@@ -491,13 +492,13 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/documentHighlight`] request is sent from the client to the server to
     /// resolve appropriate highlights for a given text document position.
     ///
+    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight
+    ///
     /// For programming languages, this usually highlights all textual references to the symbol
     /// scoped to this file.
     ///
     /// This request differs slightly from `textDocument/references` in that this one is allowed to
     /// be more fuzzy.
-    ///
-    /// [`textDocument/documentHighlight`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight
     #[rpc(name = "textDocument/documentHighlight")]
     async fn document_highlight(
         &self,
@@ -520,7 +521,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///
     /// The [`DocumentLink::tooltip`] field was introduced in specification version 3.15.0 and
     /// requires client-side support in order to be used. It can be returned if the client set the
-    /// following field to `true` in the [`initialize`](LanguageServer::initialize) method:
+    /// following field to `true` in the [`initialize`](Self::initialize) method:
     ///
     /// ```text
     /// InitializeParams::capabilities::text_document::document_link::tooltip_support
@@ -535,10 +536,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`documentLink/resolve`] request is sent from the client to the server to resolve the
     /// target of a given document link.
     ///
+    /// [`documentLink/resolve`]: https://microsoft.github.io/language-server-protocol/specification#documentLink_resolve
+    ///
     /// A document link is a range in a text document that links to an internal or external
     /// resource, like another text document or a web site.
-    ///
-    /// [`documentLink/resolve`]: https://microsoft.github.io/language-server-protocol/specification#documentLink_resolve
     #[rpc(name = "documentLink/resolve")]
     async fn document_link_resolve(&self, params: DocumentLink) -> Result<DocumentLink> {
         let _ = params;
@@ -549,10 +550,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/hover`] request asks the server for hover information at a given text
     /// document position.
     ///
+    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_hover
+    ///
     /// Such hover information typically includes type signature information and inline
     /// documentation for the symbol at the given text document position.
-    ///
-    /// [`textDocument/hover`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_hover
     #[rpc(name = "textDocument/hover")]
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let _ = params;
@@ -622,6 +623,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/documentSymbol`] request is sent from the client to the server to
     /// retrieve all symbols found in a given text document.
     ///
+    /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol
+    ///
     /// The returned result is either:
     ///
     /// * [`DocumentSymbolResponse::Flat`] which is a flat list of all symbols found in a given
@@ -629,8 +632,6 @@ pub trait LanguageServer: Send + Sync + 'static {
     ///   should be used to infer a hierarchy.
     /// * [`DocumentSymbolResponse::Nested`] which is a hierarchy of symbols found in a given text
     ///   document.
-    ///
-    /// [`textDocument/documentSymbol`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol
     #[rpc(name = "textDocument/documentSymbol")]
     async fn document_symbol(
         &self,
@@ -644,13 +645,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/semanticTokens/full`] request is sent from the client to the server to
     /// resolve the semantic tokens of a given file.
     ///
+    /// [`textDocument/semanticTokens/full`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    ///
     /// Semantic tokens are used to add additional color information to a file that depends on
     /// language specific symbol information. A semantic token request usually produces a large
     /// result. The protocol therefore supports encoding tokens with numbers. In addition, optional
     /// support for deltas is available, i.e. [`semantic_tokens_full_delta`].
     ///
-    /// [`textDocument/semanticTokens/full`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
-    /// [`semantic_tokens_full_delta`]: LanguageServer::semantic_tokens_full_delta
+    /// [`semantic_tokens_full_delta`]: Self::semantic_tokens_full_delta
     ///
     /// # Compatibility
     ///
@@ -668,11 +670,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/semanticTokens/full/delta`] request is sent from the client to the server to
     /// resolve the semantic tokens of a given file, **returning only the delta**.
     ///
-    /// Similar to [`semantic_tokens_full`](LanguageServer::semantic_tokens_full), except it
-    /// returns a sequence of [`SemanticTokensEdit`] to transform a previous result into a new
-    /// result.
-    ///
     /// [`textDocument/semanticTokens/full/delta`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    ///
+    /// Similar to [`semantic_tokens_full`](Self::semantic_tokens_full), except it returns a
+    /// sequence of [`SemanticTokensEdit`] to transform a previous result into a new result.
     ///
     /// # Compatibility
     ///
@@ -690,14 +691,15 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/semanticTokens/range`] request is sent from the client to the server to
     /// resolve the semantic tokens **for the visible range** of a given file.
     ///
+    /// [`textDocument/semanticTokens/range`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    ///
     /// When a user opens a file, it can be beneficial to only compute the semantic tokens for the
     /// visible range (faster rendering of the tokens in the user interface). If a server can
     /// compute these tokens faster than for the whole file, it can implement this method to handle
     /// this special case.
     ///
-    /// See [`semantic_tokens_full`](LanguageServer::semantic_tokens_full) for more details.
-    ///
-    /// [`textDocument/semanticTokens/range`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_semanticTokens
+    /// See the [`semantic_tokens_full`](Self::semantic_tokens_full) documentation for more
+    /// details.
     ///
     /// # Compatibility
     ///
@@ -753,14 +755,14 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// hint’s label part to avoid its unnecessary computation during the `textDocument/inlayHint`
     /// request.
     ///
-    /// Consider the client announces the `label.location` property as a property that can be
+    /// Consider a client announces the `label.location` property as a property that can be
     /// resolved lazily using the client capability:
     ///
     /// ```js
     /// textDocument.inlayHint.resolveSupport = { properties: ['label.location'] };
     /// ```
     ///
-    /// then an inlay hint with a label part but without a location needs to be resolved using the
+    /// then an inlay hint with a label part, but without a location, must be resolved using the
     /// `inlayHint/resolve` request before it can be used.
     ///
     /// # Compatibility
@@ -811,6 +813,16 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// when a completion item is selected in the user interface.
     ///
     /// [`textDocument/completion`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_completion
+    ///
+    /// # Compatibility
+    ///
+    /// Since 3.16.0, the client can signal that it can resolve more properties lazily. This is
+    /// done using the completion_item.resolve_support` client capability which lists all
+    /// properties that can be filled in during a `completionItem/resolve` request.
+    ///
+    /// All other properties (usually `sort_text`, `filter_text`, `insert_text`, and `text_edit`)
+    /// must be provided in the `textDocument/completion` response and must not be changed during
+    /// resolve.
     #[rpc(name = "textDocument/completion")]
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let _ = params;
@@ -849,6 +861,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The result of a [`textDocument/codeAction`] request is an array of `Command` literals which
     /// are typically presented in the user interface.
     ///
+    /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_codeAction
+    ///
     /// To ensure that a server is useful in many clients, the commands specified in a code actions
     /// should be handled by the server and not by the client (see [`workspace/executeCommand`] and
     /// `ServerCapabilities::execute_command_provider`). If the client supports providing edits
@@ -857,9 +871,32 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// When the command is selected the server should be contacted again (via the
     /// [`workspace/executeCommand`] request) to execute the command.
     ///
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
+    ///
     /// # Compatibility
     ///
-    /// Since version 3.8.0: support for [`CodeAction`] literals to enable the following scenarios:
+    /// ## Since version 3.16.0
+    ///
+    /// A client can offer a server to delay the computation of code action properties during a
+    /// `textDocument/codeAction` request. This is useful for cases where it is expensive to
+    /// compute the value of a property (for example, the `edit` property).
+    ///
+    /// Clients signal this through the `code_action.resolve_support` client capability which lists
+    /// all properties a client can resolve lazily. The server capability
+    /// `code_action_provider.resolve_provider` signals that a server will offer a
+    /// `codeAction/resolve` route.
+    ///
+    /// To help servers uniquely identify a code action in the resolve request, a code action
+    /// literal may optionally carry a `data` property. This is also guarded by an additional
+    /// client capability `code_action.data_support`. In general, a client should offer data
+    /// support if it offers resolve support.
+    ///
+    /// It should also be noted that servers shouldn’t alter existing attributes of a code action
+    /// in a `codeAction/resolve` request.
+    ///
+    /// ## Since version 3.8.0
+    ///
+    /// Support for [`CodeAction`] literals to enable the following scenarios:
     ///
     /// * The ability to directly return a workspace edit from the code action request.
     ///   This avoids having another server roundtrip to execute an actual code action.
@@ -870,9 +907,6 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// * The ability to group code actions using a kind. Clients are allowed to ignore that
     ///   information. However it allows them to better group code action, for example, into
     ///   corresponding menus (e.g. all refactor code actions into a refactor menu).
-    ///
-    /// [`textDocument/codeAction`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_codeAction
-    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
     #[rpc(name = "textDocument/codeAction")]
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let _ = params;
@@ -886,8 +920,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// [`codeAction/resolve`]: https://microsoft.github.io/language-server-protocol/specification#codeAction_resolve
     ///
     /// This is usually used to compute the edit property of a [`CodeAction`] to avoid its
-    /// unnecessary computation during the [`textDocument/codeAction`](LanguageServer::code_action)
-    /// request.
+    /// unnecessary computation during the [`textDocument/codeAction`](Self::code_action) request.
     ///
     /// # Compatibility
     ///
@@ -923,6 +956,8 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`textDocument/colorPresentation`] request is sent from the client to the server to
     /// obtain a list of presentations for a color value at a given location.
     ///
+    /// [`textDocument/colorPresentation`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_colorPresentation
+    ///
     /// Clients can use the result to:
     ///
     /// * Modify a color reference
@@ -933,10 +968,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// This request was introduced in specification version 3.6.0.
     ///
     /// This request has no special capabilities and registration options since it is sent as a
-    /// resolve request for the [`textDocument/documentColor`](LanguageServer::document_color)
-    /// request.
-    ///
-    /// [`textDocument/colorPresentation`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_colorPresentation
+    /// resolve request for the [`textDocument/documentColor`](Self::document_color) request.
     #[rpc(name = "textDocument/colorPresentation")]
     async fn color_presentation(
         &self,
@@ -1099,16 +1131,16 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/didChangeWorkspaceFolders`] notification is sent from the client to the
     /// server to inform about workspace folder configuration changes.
     ///
+    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
+    ///
     /// The notification is sent by default if both of these boolean fields were set to `true` in
-    /// the [`initialize`](LanguageServer::initialize) method:
+    /// the [`initialize`](Self::initialize) method:
     ///
     /// * `InitializeParams::capabilities::workspace::workspace_folders`
     /// * `InitializeResult::capabilities::workspace::workspace_folders::supported`
     ///
     /// This notification is also sent if the server has registered itself to receive this
     /// notification.
-    ///
-    /// [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
     #[rpc(name = "workspace/didChangeWorkspaceFolders")]
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
@@ -1118,12 +1150,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/willCreateFiles`] request is sent from the client to the server before
     /// files are actually created as long as the creation is triggered from within the client.
     ///
+    /// [`workspace/willCreateFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willCreateFiles
+    ///
     /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are created. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep creates fast
     /// and reliable.
-    ///
-    /// [`workspace/willCreateFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willCreateFiles
     ///
     /// # Compatibility
     ///
@@ -1148,12 +1180,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/willRenameFiles`] request is sent from the client to the server before
     /// files are actually renamed as long as the rename is triggered from within the client.
     ///
+    /// [`workspace/willRenameFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willRenameFiles
+    ///
     /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are renamed. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep creates fast
     /// and reliable.
-    ///
-    /// [`workspace/willRenameFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willRenameFiles
     ///
     /// # Compatibility
     ///
@@ -1179,12 +1211,12 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// files are actually deleted as long as the deletion is triggered from within the client
     /// either by a user action or by applying a workspace edit.
     ///
+    /// [`workspace/willDeleteFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willDeleteFiles
+    ///
     /// The request can return a [`WorkspaceEdit`] which will be applied to workspace before the
     /// files are deleted. Please note that clients might drop results if computing the edit took
     /// too long or if a server constantly fails on this request. This is done to keep deletions
     /// fast and reliable.
-    ///
-    /// [`workspace/willDeleteFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_willDeleteFiles
     ///
     /// # Compatibility
     ///
@@ -1209,11 +1241,11 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/didChangeWatchedFiles`] notification is sent from the client to the server
     /// when the client detects changes to files watched by the language client.
     ///
-    /// It is recommended that servers register for these file events using the registration
-    /// mechanism. This can be done here or in the [`initialized`](LanguageServer::initialized)
-    /// method using [`Client::register_capability`](crate::Client::register_capability).
-    ///
     /// [`workspace/didChangeWatchedFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWatchedFiles
+    ///
+    /// It is recommended that servers register for these file events using the registration
+    /// mechanism. This can be done here or in the [`initialized`](Self::initialized) method using
+    /// [`Client::register_capability`](crate::Client::register_capability).
     #[rpc(name = "workspace/didChangeWatchedFiles")]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let _ = params;
@@ -1223,10 +1255,10 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// The [`workspace/executeCommand`] request is sent from the client to the server to trigger
     /// command execution on the server.
     ///
+    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
+    ///
     /// In most cases, the server creates a [`WorkspaceEdit`] structure and applies the changes to
     /// the workspace using `Client::apply_edit()` before returning from this function.
-    ///
-    /// [`workspace/executeCommand`]: https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
     #[rpc(name = "workspace/executeCommand")]
     async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         let _ = params;
