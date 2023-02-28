@@ -51,11 +51,9 @@ impl<S: 'static> Router<S> {
             Box::new(move |server, request| {
                 let (_, id, params) = request.into_parts();
 
-                match id {
-                    Some(_) if Out::IS_NOTIFICATION => {
-                        return future::ready(().into_response(id)).boxed_local()
-                    }
-                    None if !Out::IS_NOTIFICATION => return future::ready(None).boxed_local(),
+                match (&id, Out::IS_NOTIFICATION) {
+                    (Some(_), true) => return future::ready(().into_response(id)).boxed_local(),
+                    (None, false) => return future::ready(None).boxed_local(),
                     _ => {}
                 }
 

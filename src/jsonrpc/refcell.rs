@@ -1,5 +1,6 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::ops::{Deref, DerefMut};
+use std::task::Poll;
 
 use futures_intrusive::sync::LocalSemaphore;
 
@@ -19,6 +20,10 @@ impl<S: ?Sized> AsyncRefCell<S> {
             sem: LocalSemaphore::new(true, MAX_READERS),
             inner: RefCell::new(inner),
         }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.sem.permits() > 0
     }
 
     pub async fn read(&self) -> ReadGuard<'_, S> {
