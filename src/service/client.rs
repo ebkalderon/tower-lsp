@@ -124,6 +124,29 @@ impl Client {
         .await
     }
 
+    /// Asks the client to display a particular resource referenced by a URI in the user interface.
+    ///
+    /// Returns `Ok(true)` if the document was successfully shown, or `Ok(false)` otherwise.
+    ///
+    /// This corresponds to the [`window/showDocument`] request.
+    ///
+    /// [`window/showDocument`]: https://microsoft.github.io/language-server-protocol/specification#window_showDocument
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    pub async fn show_document(&self, params: ShowDocumentParams) -> jsonrpc::Result<bool> {
+        let response = self.send_request::<ShowDocument>(params).await?;
+        Ok(response.success)
+    }
+
     /// Notifies the client to log a telemetry event.
     ///
     /// This corresponds to the [`telemetry/event`] notification.
@@ -308,10 +331,8 @@ impl Client {
     /// editors.
     ///
     /// This is useful if a server detects a project-wide configuration change which requires a
-    /// re-calculation of all semantic tokens.
-    ///
-    /// Note that the client still has the freedom to delay the re-calculation of the semantic
-    /// tokens if for example an editor is currently not visible.
+    /// re-calculation of all semantic tokens. Note that the client still has the freedom to delay
+    /// the re-calculation of the semantic tokens if for example an editor is currently not visible.
     ///
     /// This corresponds to the [`workspace/semanticTokens/refresh`] request.
     ///
@@ -330,6 +351,61 @@ impl Client {
     pub async fn semantic_tokens_refresh(&self) -> jsonrpc::Result<()> {
         self.send_request::<SemanticTokensRefresh>(()).await
     }
+
+    /// Asks the client to refresh the inlay hints currently shown in editors. As a result, the
+    /// client should ask the server to recompute the inlay hints for these editors.
+    ///
+    /// This is useful if a server detects a configuration change which requires a re-calculation
+    /// of all inlay hints. Note that the client still has the freedom to delay the re-calculation
+    /// of the inlay hints if for example an editor is currently not visible.
+    ///
+    /// This corresponds to the [`workspace/inlayHint/refresh`] request.
+    ///
+    /// [`workspace/inlayHint/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_inlayHint_refresh
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    pub async fn inlay_hint_refresh(&self) -> jsonrpc::Result<()> {
+        self.send_request::<InlayHintRefreshRequest>(()).await
+    }
+
+    /// Asks the client to refresh the inline values currently shown in editors. As a result, the
+    /// client should ask the server to recompute the inline values for these editors.
+    ///
+    /// This is useful if a server detects a configuration change which requires a re-calculation
+    /// of all inline values. Note that the client still has the freedom to delay the
+    /// re-calculation of the inline values if for example an editor is currently not visible.
+    ///
+    /// This corresponds to the [`workspace/inlineValue/refresh`] request.
+    ///
+    /// [`workspace/inlineValue/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_inlineValue_refresh
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    pub async fn inline_value_refresh(&self) -> jsonrpc::Result<()> {
+        self.send_request::<InlineValueRefreshRequest>(()).await
+    }
+
+    // TODO: Add `workspace_diagnostic_refresh()` here when supported by `lsp-types`.
+
+    // TODO: Add `work_done_progress_create()` here (since 3.15.0) when supported by `tower-lsp`.
+    // https://github.com/ebkalderon/tower-lsp/issues/176
 
     /// Sends a custom notification to the client.
     ///
