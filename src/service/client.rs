@@ -76,94 +76,7 @@ impl Client {
 }
 
 impl Client {
-    /// Notifies the client to log a particular message.
-    ///
-    /// This corresponds to the [`window/logMessage`] notification.
-    ///
-    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
-    pub async fn log_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification_unchecked::<LogMessage>(LogMessageParams {
-            typ,
-            message: message.to_string(),
-        })
-        .await;
-    }
-
-    /// Notifies the client to display a particular message in the user interface.
-    ///
-    /// This corresponds to the [`window/showMessage`] notification.
-    ///
-    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
-    pub async fn show_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification_unchecked::<ShowMessage>(ShowMessageParams {
-            typ,
-            message: message.to_string(),
-        })
-        .await;
-    }
-
-    /// Requests the client to display a particular message in the user interface.
-    ///
-    /// Unlike the `show_message` notification, this request can also pass a list of actions and
-    /// wait for an answer from the client.
-    ///
-    /// This corresponds to the [`window/showMessageRequest`] request.
-    ///
-    /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessageRequest
-    pub async fn show_message_request<M: Display>(
-        &self,
-        typ: MessageType,
-        message: M,
-        actions: Option<Vec<MessageActionItem>>,
-    ) -> jsonrpc::Result<Option<MessageActionItem>> {
-        self.send_request_unchecked::<ShowMessageRequest>(ShowMessageRequestParams {
-            typ,
-            message: message.to_string(),
-            actions,
-        })
-        .await
-    }
-
-    /// Asks the client to display a particular resource referenced by a URI in the user interface.
-    ///
-    /// Returns `Ok(true)` if the document was successfully shown, or `Ok(false)` otherwise.
-    ///
-    /// This corresponds to the [`window/showDocument`] request.
-    ///
-    /// [`window/showDocument`]: https://microsoft.github.io/language-server-protocol/specification#window_showDocument
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to the client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.16.0.
-    pub async fn show_document(&self, params: ShowDocumentParams) -> jsonrpc::Result<bool> {
-        let response = self.send_request::<ShowDocument>(params).await?;
-        Ok(response.success)
-    }
-
-    /// Notifies the client to log a telemetry event.
-    ///
-    /// This corresponds to the [`telemetry/event`] notification.
-    ///
-    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
-    pub async fn telemetry_event<S: Serialize>(&self, data: S) {
-        match serde_json::to_value(data) {
-            Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
-            Ok(mut value) => {
-                if !value.is_null() && !value.is_array() && !value.is_object() {
-                    value = Value::Array(vec![value]);
-                }
-                self.send_notification_unchecked::<TelemetryEvent>(value)
-                    .await;
-            }
-        }
-    }
+    // Lifecycle Messages
 
     /// Registers a new capability with the client.
     ///
@@ -205,98 +118,98 @@ impl Client {
             .await
     }
 
-    /// Fetches the current open list of workspace folders.
-    ///
-    /// Returns `None` if only a single file is open in the tool. Returns an empty `Vec` if a
-    /// workspace is open but no folders are configured.
-    ///
-    /// This corresponds to the [`workspace/workspaceFolders`] request.
-    ///
-    /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_workspaceFolders
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to the client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.6.0.
-    pub async fn workspace_folders(&self) -> jsonrpc::Result<Option<Vec<WorkspaceFolder>>> {
-        self.send_request::<WorkspaceFoldersRequest>(()).await
-    }
+    // Window Features
 
-    /// Fetches configuration settings from the client.
+    /// Notifies the client to display a particular message in the user interface.
     ///
-    /// The request can fetch several configuration settings in one roundtrip. The order of the
-    /// returned configuration settings correspond to the order of the passed
-    /// [`ConfigurationItem`]s (e.g. the first item in the response is the result for the first
-    /// configuration item in the params).
+    /// This corresponds to the [`window/showMessage`] notification.
     ///
-    /// This corresponds to the [`workspace/configuration`] request.
-    ///
-    /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specification#workspace_configuration
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to the client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.6.0.
-    pub async fn configuration(
-        &self,
-        items: Vec<ConfigurationItem>,
-    ) -> jsonrpc::Result<Vec<Value>> {
-        self.send_request::<WorkspaceConfiguration>(ConfigurationParams { items })
-            .await
-    }
-
-    /// Requests a workspace resource be edited on the client side and returns whether the edit was
-    /// applied.
-    ///
-    /// This corresponds to the [`workspace/applyEdit`] request.
-    ///
-    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to the client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    pub async fn apply_edit(
-        &self,
-        edit: WorkspaceEdit,
-    ) -> jsonrpc::Result<ApplyWorkspaceEditResponse> {
-        self.send_request::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit, label: None })
-            .await
-    }
-
-    /// Submits validation diagnostics for an open file with the given URI.
-    ///
-    /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
-    ///
-    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
-    pub async fn publish_diagnostics(
-        &self,
-        uri: Url,
-        diags: Vec<Diagnostic>,
-        version: Option<i32>,
-    ) {
-        self.send_notification::<PublishDiagnostics>(PublishDiagnosticsParams::new(
-            uri, diags, version,
-        ))
+    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
+    pub async fn show_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification_unchecked::<ShowMessage>(ShowMessageParams {
+            typ,
+            message: message.to_string(),
+        })
         .await;
+    }
+
+    /// Requests the client to display a particular message in the user interface.
+    ///
+    /// Unlike the `show_message` notification, this request can also pass a list of actions and
+    /// wait for an answer from the client.
+    ///
+    /// This corresponds to the [`window/showMessageRequest`] request.
+    ///
+    /// [`window/showMessageRequest`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessageRequest
+    pub async fn show_message_request<M: Display>(
+        &self,
+        typ: MessageType,
+        message: M,
+        actions: Option<Vec<MessageActionItem>>,
+    ) -> jsonrpc::Result<Option<MessageActionItem>> {
+        self.send_request_unchecked::<ShowMessageRequest>(ShowMessageRequestParams {
+            typ,
+            message: message.to_string(),
+            actions,
+        })
+        .await
+    }
+
+    /// Notifies the client to log a particular message.
+    ///
+    /// This corresponds to the [`window/logMessage`] notification.
+    ///
+    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
+    pub async fn log_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification_unchecked::<LogMessage>(LogMessageParams {
+            typ,
+            message: message.to_string(),
+        })
+        .await;
+    }
+
+    /// Asks the client to display a particular resource referenced by a URI in the user interface.
+    ///
+    /// Returns `Ok(true)` if the document was successfully shown, or `Ok(false)` otherwise.
+    ///
+    /// This corresponds to the [`window/showDocument`] request.
+    ///
+    /// [`window/showDocument`]: https://microsoft.github.io/language-server-protocol/specification#window_showDocument
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.16.0.
+    pub async fn show_document(&self, params: ShowDocumentParams) -> jsonrpc::Result<bool> {
+        let response = self.send_request::<ShowDocument>(params).await?;
+        Ok(response.success)
+    }
+
+    // TODO: Add `work_done_progress_create()` here (since 3.15.0) when supported by `tower-lsp`.
+    // https://github.com/ebkalderon/tower-lsp/issues/176
+
+    /// Notifies the client to log a telemetry event.
+    ///
+    /// This corresponds to the [`telemetry/event`] notification.
+    ///
+    /// [`telemetry/event`]: https://microsoft.github.io/language-server-protocol/specification#telemetry_event
+    pub async fn telemetry_event<S: Serialize>(&self, data: S) {
+        match serde_json::to_value(data) {
+            Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
+            Ok(mut value) => {
+                if !value.is_null() && !value.is_array() && !value.is_object() {
+                    value = Value::Array(vec![value]);
+                }
+                self.send_notification_unchecked::<TelemetryEvent>(value)
+                    .await;
+            }
+        }
     }
 
     /// Asks the client to refresh the code lenses currently shown in editors. As a result, the
@@ -352,31 +265,6 @@ impl Client {
         self.send_request::<SemanticTokensRefresh>(()).await
     }
 
-    /// Asks the client to refresh the inlay hints currently shown in editors. As a result, the
-    /// client should ask the server to recompute the inlay hints for these editors.
-    ///
-    /// This is useful if a server detects a configuration change which requires a re-calculation
-    /// of all inlay hints. Note that the client still has the freedom to delay the re-calculation
-    /// of the inlay hints if for example an editor is currently not visible.
-    ///
-    /// This corresponds to the [`workspace/inlayHint/refresh`] request.
-    ///
-    /// [`workspace/inlayHint/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_inlayHint_refresh
-    ///
-    /// # Initialization
-    ///
-    /// If the request is sent to the client before the server has been initialized, this will
-    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
-    ///
-    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
-    ///
-    /// # Compatibility
-    ///
-    /// This request was introduced in specification version 3.17.0.
-    pub async fn inlay_hint_refresh(&self) -> jsonrpc::Result<()> {
-        self.send_request::<InlayHintRefreshRequest>(()).await
-    }
-
     /// Asks the client to refresh the inline values currently shown in editors. As a result, the
     /// client should ask the server to recompute the inline values for these editors.
     ///
@@ -402,10 +290,128 @@ impl Client {
         self.send_request::<InlineValueRefreshRequest>(()).await
     }
 
+    /// Asks the client to refresh the inlay hints currently shown in editors. As a result, the
+    /// client should ask the server to recompute the inlay hints for these editors.
+    ///
+    /// This is useful if a server detects a configuration change which requires a re-calculation
+    /// of all inlay hints. Note that the client still has the freedom to delay the re-calculation
+    /// of the inlay hints if for example an editor is currently not visible.
+    ///
+    /// This corresponds to the [`workspace/inlayHint/refresh`] request.
+    ///
+    /// [`workspace/inlayHint/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_inlayHint_refresh
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    pub async fn inlay_hint_refresh(&self) -> jsonrpc::Result<()> {
+        self.send_request::<InlayHintRefreshRequest>(()).await
+    }
+
     // TODO: Add `workspace_diagnostic_refresh()` here when supported by `lsp-types`.
 
-    // TODO: Add `work_done_progress_create()` here (since 3.15.0) when supported by `tower-lsp`.
-    // https://github.com/ebkalderon/tower-lsp/issues/176
+    /// Submits validation diagnostics for an open file with the given URI.
+    ///
+    /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
+    ///
+    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
+    ///
+    /// # Initialization
+    ///
+    /// This notification will only be sent if the server is initialized.
+    pub async fn publish_diagnostics(
+        &self,
+        uri: Url,
+        diags: Vec<Diagnostic>,
+        version: Option<i32>,
+    ) {
+        self.send_notification::<PublishDiagnostics>(PublishDiagnosticsParams::new(
+            uri, diags, version,
+        ))
+        .await;
+    }
+
+    // Workspace Features
+
+    /// Fetches configuration settings from the client.
+    ///
+    /// The request can fetch several configuration settings in one roundtrip. The order of the
+    /// returned configuration settings correspond to the order of the passed
+    /// [`ConfigurationItem`]s (e.g. the first item in the response is the result for the first
+    /// configuration item in the params).
+    ///
+    /// This corresponds to the [`workspace/configuration`] request.
+    ///
+    /// [`workspace/configuration`]: https://microsoft.github.io/language-server-protocol/specification#workspace_configuration
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0.
+    pub async fn configuration(
+        &self,
+        items: Vec<ConfigurationItem>,
+    ) -> jsonrpc::Result<Vec<Value>> {
+        self.send_request::<WorkspaceConfiguration>(ConfigurationParams { items })
+            .await
+    }
+
+    /// Fetches the current open list of workspace folders.
+    ///
+    /// Returns `None` if only a single file is open in the tool. Returns an empty `Vec` if a
+    /// workspace is open but no folders are configured.
+    ///
+    /// This corresponds to the [`workspace/workspaceFolders`] request.
+    ///
+    /// [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_workspaceFolders
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.6.0.
+    pub async fn workspace_folders(&self) -> jsonrpc::Result<Option<Vec<WorkspaceFolder>>> {
+        self.send_request::<WorkspaceFoldersRequest>(()).await
+    }
+
+    /// Requests a workspace resource be edited on the client side and returns whether the edit was
+    /// applied.
+    ///
+    /// This corresponds to the [`workspace/applyEdit`] request.
+    ///
+    /// [`workspace/applyEdit`]: https://microsoft.github.io/language-server-protocol/specification#workspace_applyEdit
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    pub async fn apply_edit(
+        &self,
+        edit: WorkspaceEdit,
+    ) -> jsonrpc::Result<ApplyWorkspaceEditResponse> {
+        self.send_request::<ApplyWorkspaceEdit>(ApplyWorkspaceEditParams { edit, label: None })
+            .await
+    }
 
     /// Sends a custom notification to the client.
     ///
