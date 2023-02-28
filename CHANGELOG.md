@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.19.0] - 2023-02-28
+
+### Added
+
+* Add `LspService::inner()` method (PR #344).
+* Add missing `window/showDocument` client request from LSP 3.16.0 (PR #375).
+* Add partial support for Language Server Protocol 3.17.0 (PR #375):
+  * Implement `textDocument/prepareTypeHierarchy` server request.
+  * Implement `typeHierarchy/supertypes` server request.
+  * Implement `typeHierarchy/subtypes` server request.
+  * Implement `textDocument/inlineValue` server request.
+  * Implement `textDocument/inlayHint` server request.
+  * Implement `inlayHint/resolve` server request.
+  * Implement `workspaceSymbol/resolve` server request.
+  * Implement `workspace/inlineValue/refresh` client request.
+  * Implement `workspace/inlayHint/refresh` client request.
+
+### Changed
+
+* Address Clippy lints (PR #369).
 * Update `edition` from `2018` to `2021` (PR #370).
+* Update `lsp-types` from `0.93` to `0.94` (PR #367).
+* Reorder `LanguageServer` trait methods to match the LSP 3.17.0 spec document
+  (PR #375).
+* Reorder `Client` inherent methods to better match the LSP 3.17.0 spec document
+  (PR #375).
+
+### Fixed
+
+* Fix doc links for `textDocument/colorPresentation` request (PR #371).
+* Fix doc links for `textDocument/willSaveWaitUntil` request (PR #371).
+* Fix doc links for `workspace/didChangeWatchedFiles` request (PR #371).
+* Improve documentation for `LanguageServer` and `Client` methods (PR #375).
 
 ## [0.18.0] - 2023-01-14
 
@@ -517,7 +549,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.15.1...v0.16.0
