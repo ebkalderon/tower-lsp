@@ -194,6 +194,18 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// symbols matching the given query string.
     ///
     /// [`workspace/symbol`]: https://microsoft.github.io/language-server-protocol/specification#workspace_symbol
+    ///
+    /// # Compatibility
+    ///
+    /// Since 3.17.0, servers can also provider a handler for [`workspaceSymbol/resolve`] requests.
+    /// This allows servers to return workspace symbols without a range for a `workspace/symbol`
+    /// request. Clients then need to resolve the range when necessary using the
+    /// `workspaceSymbol/resolve` request.
+    ///
+    /// [`workspaceSymbol/resolve`]: Self::symbol_resolve
+    ///
+    /// Servers can only use this new model if clients advertise support for it via the
+    /// `workspace.symbol.resolve_support` capability.
     #[rpc(name = "workspace/symbol")]
     async fn symbol(
         &self,
@@ -201,6 +213,23 @@ pub trait LanguageServer: Send + Sync + 'static {
     ) -> Result<Option<Vec<SymbolInformation>>> {
         let _ = params;
         error!("Got a workspace/symbol request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`workspaceSymbol/resolve`] request is sent from the client to the server to resolve
+    /// additional information for a given workspace symbol.
+    ///
+    /// [`workspaceSymbol/resolve`]: https://microsoft.github.io/language-server-protocol/specification#workspace_symbolResolve
+    ///
+    /// See the [`symbol`](Self::symbol) documentation for more details.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "workspaceSymbol/resolve")]
+    async fn symbol_resolve(&self, params: WorkspaceSymbol) -> Result<WorkspaceSymbol> {
+        let _ = params;
+        error!("Got a workspaceSymbol/resolve request, but it is not implemented");
         Err(Error::method_not_found())
     }
 
@@ -942,6 +971,74 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
+    /// The [`textDocument/prepareTypeHierarchy`] request is sent from the client to the server to
+    /// return a type hierarchy for the language element of given text document positions.
+    ///
+    /// [`textDocument/prepareTypeHierarchy`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_prepareTypeHierarchy
+    ///
+    /// Returns `Ok(None)` if the server couldn’t infer a valid type from the position.
+    ///
+    /// The type hierarchy requests are executed in two steps:
+    ///
+    /// 1. First, a type hierarchy item is prepared for the given text document position.
+    /// 2. For a type hierarchy item, the supertype or subtype type hierarchy items are resolved in
+    ///    [`supertypes`](Self::supertypes) and [`subtypes`](Self::subtypes), respectively.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "textDocument/prepareTypeHierarchy")]
+    async fn prepare_type_hierarchy(
+        &self,
+        params: TypeHierarchyPrepareParams,
+    ) -> Result<Option<Vec<TypeHierarchyItem>>> {
+        let _ = params;
+        error!("Got a textDocument/prepareTypeHierarchy request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`typeHierarchy/supertypes`] request is sent from the client to the server to resolve
+    /// the supertypes for a given type hierarchy item.
+    ///
+    /// Returns `Ok(None)` if the server couldn’t infer a valid type from item in `params`.
+    ///
+    /// The request doesn’t define its own client and server capabilities. It is only issued if a
+    /// server registers for the `textDocument/prepareTypeHierarchy` request.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "typeHierarchy/supertypes")]
+    async fn supertypes(
+        &self,
+        params: TypeHierarchySupertypesParams,
+    ) -> Result<Option<Vec<TypeHierarchyItem>>> {
+        let _ = params;
+        error!("Got a typeHierarchy/supertypes request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`typeHierarchy/subtypes`] request is sent from the client to the server to resolve
+    /// the subtypes for a given type hierarchy item.
+    ///
+    /// Returns `Ok(None)` if the server couldn’t infer a valid type from item in `params`.
+    ///
+    /// The request doesn’t define its own client and server capabilities. It is only issued if a
+    /// server registers for the `textDocument/prepareTypeHierarchy` request.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "typeHierarchy/subtypes")]
+    async fn subtypes(
+        &self,
+        params: TypeHierarchySubtypesParams,
+    ) -> Result<Option<Vec<TypeHierarchyItem>>> {
+        let _ = params;
+        error!("Got a typeHierarchy/subtypes request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
     /// The [`textDocument/semanticTokens/full`] request is sent from the client to the server to
     /// resolve the semantic tokens of a given file.
     ///
@@ -1067,6 +1164,72 @@ pub trait LanguageServer: Send + Sync + 'static {
         error!("Got a textDocument/moniker request, but it is not implemented");
         Err(Error::method_not_found())
     }
+
+    /// The [`textDocument/inlineValue`] request is sent from the client to the server to compute
+    /// inline values for a given text document that may be rendered in the editor at the end of
+    /// lines.
+    ///
+    /// [`textDocument/inlineValue`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_inlineValue
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "textDocument/inlineValue")]
+    async fn inline_value(&self, params: InlineValueParams) -> Result<Option<Vec<InlineValue>>> {
+        let _ = params;
+        error!("Got a textDocument/inlineValue request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`textDocument/inlayHint`] request is sent from the client to the server to compute
+    /// inlay hints for a given `(text document, range)` tuple that may be rendered in the editor
+    /// in place with other text.
+    ///
+    /// [`textDocument/inlayHint`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_inlayHint
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0
+    #[rpc(name = "textDocument/inlayHint")]
+    async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
+        let _ = params;
+        error!("Got a textDocument/inlayHint request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`inlayHint/resolve`] request is sent from the client to the server to resolve
+    /// additional information for a given inlay hint.
+    ///
+    /// [`inlayHint/resolve`]: https://microsoft.github.io/language-server-protocol/specification#inlayHint_resolve
+    ///
+    /// This is usually used to compute the tooltip, location or command properties of an inlay
+    /// hint’s label part to avoid its unnecessary computation during the `textDocument/inlayHint`
+    /// request.
+    ///
+    /// Consider the client announces the `label.location` property as a property that can be
+    /// resolved lazily using the client capability:
+    ///
+    /// ```js
+    /// textDocument.inlayHint.resolveSupport = { properties: ['label.location'] };
+    /// ```
+    ///
+    /// then an inlay hint with a label part but without a location needs to be resolved using the
+    /// `inlayHint/resolve` request before it can be used.
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0
+    #[rpc(name = "inlayHint/resolve")]
+    async fn inlay_hint_resolve(&self, params: InlayHint) -> Result<InlayHint> {
+        let _ = params;
+        error!("Got a inlayHint/resolve request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    // TODO: Add `diagnostic()` and `workspace_diagnostic()` here when supported by `lsp-types`.
+
+    // TODO: Add `work_done_progress_cancel()` here (since 3.15.0) when supported by `tower-lsp`.
+    // https://github.com/ebkalderon/tower-lsp/issues/176
 }
 
 fn _assert_object_safe() {
