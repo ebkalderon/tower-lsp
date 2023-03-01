@@ -1,64 +1,69 @@
 //! Lightweight JSON-RPC router service.
 
+#![allow(missing_docs)]
+
+use std::cell::{Ref, RefMut};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::rc::Rc;
 use std::task::{Context, Poll};
 
-use futures::future::{self, BoxFuture, FutureExt};
+use futures::future::{self, FutureExt, LocalBoxFuture};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
-use tower::{util::BoxService, Layer, Service};
+use tower::{util::UnsyncBoxService, Layer, Service};
 
-use crate::jsonrpc::ErrorCode;
-
-use super::{Error, Id, Request, Response};
+use super::refcell::AsyncRefCell;
+use super::{Error, ErrorCode, Id, Request, Response};
 
 /// A modular JSON-RPC 2.0 request router service.
 pub struct Router<S, E = Infallible> {
-    server: Arc<S>,
-    methods: HashMap<&'static str, BoxService<Request, Option<Response>, E>>,
+    server: Rc<AsyncRefCell<S>>,
+    methods: HashMap<&'static str, UnsyncBoxService<Request, Option<Response>, E>>,
 }
 
-impl<S: Send + Sync + 'static, E> Router<S, E> {
+impl<S: 'static, E> Router<S, E> {
     /// Creates a new `Router` with the given shared state.
     pub fn new(server: S) -> Self {
         Router {
-            server: Arc::new(server),
+            server: Rc::new(AsyncRefCell::new(server)),
             methods: HashMap::new(),
         }
     }
 
     /// Returns a reference to the inner server.
-    pub fn inner(&self) -> &S {
-        self.server.as_ref()
+    pub fn inner(&self) -> Ref<'_, S> {
+        self.server.inner()
+    }
+
+    /// Returns a mutable reference to the inner server.
+    pub fn inner_mut(&mut self) -> RefMut<'_, S> {
+        self.server.inner_mut()
     }
 
     /// Registers a new RPC method which constructs a response with the given `callback`.
     ///
     /// The `layer` argument can be used to inject middleware into the method handler, if desired.
-    pub fn method<P, R, F, L>(&mut self, name: &'static str, callback: F, layer: L) -> &mut Self
+    pub fn method<Recv, Params, Output, F, L>(
+        &mut self,
+        name: &'static str,
+        callback: F,
+        layer: L,
+    ) -> &mut Self
     where
-        P: FromParams,
-        R: IntoResponse,
-        F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
-        L: Layer<MethodHandler<P, R, E>>,
-        L::Service: Service<Request, Response = Option<Response>, Error = E> + Send + 'static,
-        <L::Service as Service<Request>>::Future: Send + 'static,
+        Params: FromParams,
+        Output: IntoResponse,
+        F: Method<Recv, Params, Output = Output, Server = S> + Clone + 'static,
+        L: Layer<MethodHandler<S, Recv, Params, Output, E, F>>,
+        L::Service: Service<Request, Response = Option<Response>, Error = E> + 'static,
     {
-        let server = &self.server;
         self.methods.entry(name).or_insert_with(|| {
-            let server = server.clone();
-            let handler = MethodHandler::new(move |params| {
-                let callback = callback.clone();
-                let server = server.clone();
-                async move { callback.invoke(&*server, params).await }
-            });
-
-            BoxService::new(layer.layer(handler))
+            let server = self.server.clone();
+            let handler = MethodHandler::new(server, callback);
+            UnsyncBoxService::new(layer.layer(handler))
         });
 
         self
@@ -68,16 +73,16 @@ impl<S: Send + Sync + 'static, E> Router<S, E> {
 impl<S: Debug, E> Debug for Router<S, E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("Router")
-            .field("server", &self.server)
+            .field("server", &self.server.inner())
             .field("methods", &self.methods.keys())
             .finish()
     }
 }
 
-impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
+impl<S, E: 'static> Service<Request> for Router<S, E> {
     type Response = Option<Response>;
     type Error = E;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -93,39 +98,43 @@ impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
                 error.data = Some(Value::from(method));
                 Response::from_error(id, error)
             }))
-            .boxed()
+            .boxed_local()
         }
     }
 }
 
 /// Opaque JSON-RPC method handler.
-pub struct MethodHandler<P, R, E> {
-    f: Box<dyn Fn(P) -> BoxFuture<'static, R> + Send>,
-    _marker: PhantomData<E>,
+pub struct MethodHandler<Server, Recv, Params, Output, Error, F> {
+    server: Rc<AsyncRefCell<Server>>,
+    callback: F,
+    _marker: PhantomData<(Server, Recv, Params, Output, Error)>,
 }
 
-impl<P: FromParams, R: IntoResponse, E> MethodHandler<P, R, E> {
-    fn new<F, Fut>(handler: F) -> Self
-    where
-        F: Fn(P) -> Fut + Send + 'static,
-        Fut: Future<Output = R> + Send + 'static,
-    {
+impl<S, R, P, O, E, F> MethodHandler<S, R, P, O, E, F>
+where
+    P: FromParams,
+    O: IntoResponse,
+    F: Method<R, P, Output = O, Server = S>,
+{
+    fn new(server: Rc<AsyncRefCell<S>>, handler: F) -> Self {
         MethodHandler {
-            f: Box::new(move |p| handler(p).boxed()),
+            server,
+            callback: handler,
             _marker: PhantomData,
         }
     }
 }
 
-impl<P, R, E> Service<Request> for MethodHandler<P, R, E>
+impl<S, R, P, O, E, F> Service<Request> for MethodHandler<S, R, P, O, E, F>
 where
+    S: 'static,
     P: FromParams,
-    R: IntoResponse,
-    E: Send + 'static,
+    O: IntoResponse,
+    F: Method<R, P, Output = O, Server = S> + Clone + 'static,
 {
     type Response = Option<Response>;
     type Error = E;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -134,72 +143,25 @@ where
     fn call(&mut self, req: Request) -> Self::Future {
         let (_, id, params) = req.into_parts();
 
-        match id {
-            Some(_) if R::is_notification() => return future::ok(().into_response(id)).boxed(),
-            None if !R::is_notification() => return future::ok(None).boxed(),
+        match (&id, O::IS_NOTIFICATION) {
+            (Some(_), true) => return Box::pin(async { Ok(().into_response(id)) }),
+            (None, false) => return Box::pin(async { Ok(None) }),
             _ => {}
         }
 
         let params = match P::from_params(params) {
             Ok(params) => params,
-            Err(err) => return future::ok(id.map(|id| Response::from_error(id, err))).boxed(),
+            Err(err) => return Box::pin(async { Ok(id.map(|id| Response::from_error(id, err))) }),
         };
 
-        (self.f)(params)
-            .map(move |r| Ok(r.into_response(id)))
-            .boxed()
-    }
-}
-
-/// A trait implemented by all valid JSON-RPC method handlers.
-///
-/// This trait abstracts over the following classes of functions and/or closures:
-///
-/// Signature                                            | Description
-/// -----------------------------------------------------|---------------------------------
-/// `async fn f(&self) -> jsonrpc::Result<R>`            | Request without parameters
-/// `async fn f(&self, params: P) -> jsonrpc::Result<R>` | Request with required parameters
-/// `async fn f(&self)`                                  | Notification without parameters
-/// `async fn f(&self, params: P)`                       | Notification with parameters
-pub trait Method<S, P, R>: private::Sealed {
-    /// The future response value.
-    type Future: Future<Output = R> + Send;
-
-    /// Invokes the method with the given `server` receiver and parameters.
-    fn invoke(&self, server: S, params: P) -> Self::Future;
-}
-
-/// Support parameter-less JSON-RPC methods.
-impl<F, S, R, Fut> Method<S, (), R> for F
-where
-    F: Fn(S) -> Fut,
-    Fut: Future<Output = R> + Send,
-{
-    type Future = Fut;
-
-    #[inline]
-    fn invoke(&self, server: S, _: ()) -> Self::Future {
-        self(server)
-    }
-}
-
-/// Support JSON-RPC methods with `params`.
-impl<F, S, P, R, Fut> Method<S, (P,), R> for F
-where
-    F: Fn(S, P) -> Fut,
-    P: DeserializeOwned,
-    Fut: Future<Output = R> + Send,
-{
-    type Future = Fut;
-
-    #[inline]
-    fn invoke(&self, server: S, params: (P,)) -> Self::Future {
-        self(server, params.0)
+        let callback = self.callback.clone();
+        let server = self.server.clone();
+        Box::pin(async move { Ok(callback.call(server, params).await.into_response(id)) })
     }
 }
 
 /// A trait implemented by all JSON-RPC method parameters.
-pub trait FromParams: private::Sealed + Send + Sized + 'static {
+pub trait FromParams: private::Sealed + Sized + 'static {
     /// Attempts to deserialize `Self` from the `params` value extracted from [`Request`].
     fn from_params(params: Option<Value>) -> super::Result<Self>;
 }
@@ -216,7 +178,7 @@ impl FromParams for () {
 }
 
 /// Deserialize required JSON-RPC parameters.
-impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
+impl<P: DeserializeOwned + 'static> FromParams for (P,) {
     fn from_params(params: Option<Value>) -> super::Result<Self> {
         if let Some(p) = params {
             serde_json::from_value(p)
@@ -229,28 +191,27 @@ impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
 }
 
 /// A trait implemented by all JSON-RPC response types.
-pub trait IntoResponse: private::Sealed + Send + 'static {
+pub trait IntoResponse: private::Sealed + 'static {
+    /// Indicates whether this indicates a notification response type.
+    const IS_NOTIFICATION: bool;
+
     /// Attempts to construct a [`Response`] using `Self` and a corresponding [`Id`].
     fn into_response(self, id: Option<Id>) -> Option<Response>;
-
-    /// Returns `true` if this is a notification response type.
-    fn is_notification() -> bool;
 }
 
 /// Support JSON-RPC notification methods.
 impl IntoResponse for () {
+    const IS_NOTIFICATION: bool = true;
+
     fn into_response(self, id: Option<Id>) -> Option<Response> {
         id.map(|id| Response::from_error(id, Error::invalid_request()))
-    }
-
-    #[inline]
-    fn is_notification() -> bool {
-        true
     }
 }
 
 /// Support JSON-RPC request methods.
-impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
+impl<R: Serialize + 'static> IntoResponse for Result<R, Error> {
+    const IS_NOTIFICATION: bool = false;
+
     fn into_response(self, id: Option<Id>) -> Option<Response> {
         debug_assert!(id.is_some(), "Requests always contain an `id` field");
         if let Some(id) = id {
@@ -266,10 +227,113 @@ impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
             None
         }
     }
+}
 
-    #[inline]
-    fn is_notification() -> bool {
-        false
+/// A trait implemented by all valid JSON-RPC method handlers.
+///
+/// This trait abstracts over the following classes of functions and/or closures:
+///
+/// ```ignore
+/// // Request without parameters
+/// async fn f(&self) -> jsonrpc::Result<R>;
+/// async fn f(&mut self) -> jsonrpc::Result<R>;
+///
+/// // Request with required parameters, where `P: DeserializeOwned`, `R: Serialize + 'static`
+/// async fn f(&self, params: P) -> jsonrpc::Result<R>;
+/// async fn f(&mut self, params: P) -> jsonrpc::Result<R>;
+///
+/// // Notification without paramters
+/// async fn f(&self);
+/// async fn f(&mut self);
+///
+/// // Notification with required parameters, where `P: DeserializeOwned`
+/// async fn f(&self, params: P);
+/// async fn f(&mut self, params: P);
+/// ```
+pub trait Method<Recv, Params>: private::Sealed {
+    /// The method receiver, fully dereferenced.
+    type Server;
+    /// The return value of this method.
+    type Output;
+    /// The future return value.
+    type Future: Future<Output = Self::Output>;
+
+    /// Invokes the method with the given receiver and argument.
+    fn call(self, recv: Rc<AsyncRefCell<Self::Server>>, params: Params) -> Self::Future;
+}
+
+impl<'a, R: 'static, P, O, F> Method<&'a R, P> for F
+where
+    P: FromParams,
+    O: IntoResponse,
+    F: for<'b> AsyncFn<&'b R, P, Output = O> + 'a,
+{
+    type Server = R;
+    type Output = O;
+    type Future = LocalBoxFuture<'a, Self::Output>;
+
+    fn call(self, recv: Rc<AsyncRefCell<Self::Server>>, params: P) -> Self::Future {
+        Box::pin(async move {
+            let server = recv.read().await;
+            self.call_async(&server, params).await
+        })
+    }
+}
+
+impl<'a, R: 'static, P, O, F> Method<&'a mut R, P> for F
+where
+    P: FromParams,
+    O: IntoResponse,
+    F: for<'b> AsyncFn<&'b mut R, P, Output = O> + 'a,
+{
+    type Server = R;
+    type Output = O;
+    type Future = LocalBoxFuture<'a, Self::Output>;
+
+    fn call(self, recv: Rc<AsyncRefCell<Self::Server>>, params: P) -> Self::Future {
+        Box::pin(async move {
+            let mut server = recv.write().await;
+            self.call_async(&mut server, params).await
+        })
+    }
+}
+
+/// A trait implemented by all async methods with 0 or 1 arguments.
+trait AsyncFn<Recv, Arg>: private::Sealed {
+    /// The return value of this method.
+    type Output;
+    /// The future return value.
+    type Future: Future<Output = Self::Output>;
+
+    /// Invokes the method with the given receiver and argument.
+    fn call_async(&self, recv: Recv, arg: Arg) -> Self::Future;
+}
+
+/// Support parameter-less JSON-RPC methods.
+impl<Recv, Out, F, Fut> AsyncFn<Recv, ()> for F
+where
+    F: Fn(Recv) -> Fut,
+    Fut: Future<Output = Out>,
+{
+    type Output = Out;
+    type Future = Fut;
+
+    fn call_async(&self, recv: Recv, _: ()) -> Self::Future {
+        self(recv)
+    }
+}
+
+/// Support JSON-RPC methods with `params`.
+impl<Recv, Arg, Out, F, Fut> AsyncFn<Recv, (Arg,)> for F
+where
+    F: Fn(Recv, Arg) -> Fut,
+    Fut: Future<Output = Out>,
+{
+    type Output = Out;
+    type Future = Fut;
+
+    fn call_async(&self, recv: Recv, arg: (Arg,)) -> Self::Future {
+        self(recv, arg.0)
     }
 }
 

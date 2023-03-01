@@ -5,11 +5,13 @@ pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink};
 pub(crate) use self::pending::Pending;
 pub(crate) use self::state::{ServerState, State};
 
+use std::cell::{Ref, RefMut};
 use std::fmt::{self, Debug, Display, Formatter};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use futures::future::{self, BoxFuture, FutureExt};
+use futures::future::{self, FutureExt, LocalBoxFuture};
 use serde_json::Value;
 use tower::Service;
 
@@ -79,7 +81,7 @@ impl<S: LanguageServer> LspService<S> {
 
         let (client, socket) = Client::new(state.clone());
         let inner = Router::new(init(client.clone()));
-        let pending = Arc::new(Pending::new());
+        let pending = Rc::new(Pending::new());
 
         LspServiceBuilder {
             inner: crate::generated::register_lsp_methods(
@@ -95,15 +97,30 @@ impl<S: LanguageServer> LspService<S> {
     }
 
     /// Returns a reference to the inner server.
-    pub fn inner(&self) -> &S {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the server is already mutably borrowed. This includes any live futures returned
+    /// by [`call()`](Self::call).
+    pub fn inner(&self) -> Ref<'_, S> {
         self.inner.inner()
+    }
+
+    /// Returns a mutable reference to the inner server.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the server is already borrowed. This includes any live futures returned by
+    /// [`call()`](Self::call).
+    pub fn inner_mut(&mut self) -> RefMut<'_, S> {
+        self.inner.inner_mut()
     }
 }
 
 impl<S: LanguageServer> Service<Request> for LspService<S> {
     type Response = Option<Response>;
     type Error = ExitedError;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match self.state.get() {
@@ -141,7 +158,7 @@ impl<S: LanguageServer> Service<Request> for LspService<S> {
 pub struct LspServiceBuilder<S> {
     inner: Router<S, ExitedError>,
     state: Arc<ServerState>,
-    pending: Arc<Pending>,
+    pending: Rc<Pending>,
     socket: ClientSocket,
 }
 
@@ -150,8 +167,8 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     ///
     /// # Handler varieties
     ///
-    /// Fundamentally, any inherent `async fn(&self)` method defined directly on the language
-    /// server backend could be considered a valid method handler.
+    /// Fundamentally, any inherent `async fn(&self)` or `async fn(&mut self)` method defined
+    /// directly on the language server could be considered a valid method handler.
     ///
     /// Handlers may optionally include a single `params` argument. This argument may be of any
     /// type that implements [`Serialize`](serde::Serialize).
@@ -176,7 +193,7 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     /// struct Mock;
     ///
     /// // Implementation of `LanguageServer` omitted...
-    /// # #[tower_lsp::async_trait]
+    /// # #[tower_lsp::async_trait(?Send)]
     /// # impl LanguageServer for Mock {
     /// #     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
     /// #         Ok(InitializeResult::default())
@@ -192,11 +209,11 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     ///         Ok(123)
     ///     }
     ///
-    ///     async fn request_params(&self, params: Vec<String>) -> Result<Value> {
+    ///     async fn request_params(&mut self, params: Vec<String>) -> Result<Value> {
     ///         Ok(json!({"num_elems":params.len()}))
     ///     }
     ///
-    ///     async fn notification(&self) {
+    ///     async fn notification(&mut self) {
     ///         // ...
     ///     }
     ///
@@ -213,11 +230,12 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     ///     .custom_method("custom/notificationParams", Mock::notification_params)
     ///     .finish();
     /// ```
-    pub fn custom_method<P, R, F>(mut self, name: &'static str, callback: F) -> Self
+    pub fn custom_method<R, P, O, F>(mut self, name: &'static str, callback: F) -> Self
     where
+        R: 'static,
         P: FromParams,
-        R: IntoResponse,
-        F: for<'a> Method<&'a S, P, R> + Clone + Send + Sync + 'static,
+        O: IntoResponse,
+        F: Method<R, P, Output = O, Server = S> + Clone + 'static,
     {
         let layer = layers::Normal::new(self.state.clone(), self.pending.clone());
         self.inner.method(name, callback, layer);
@@ -259,7 +277,7 @@ mod tests {
     #[derive(Debug)]
     struct Mock;
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl LanguageServer for Mock {
         async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())

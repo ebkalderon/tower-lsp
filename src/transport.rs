@@ -101,9 +101,8 @@ where
     /// Spawns the service with messages read through `stdin` and responses written to `stdout`.
     pub async fn serve<T>(self, mut service: T)
     where
-        T: Service<Request, Response = Option<Response>> + Send + 'static,
+        T: Service<Request, Response = Option<Response>> + 'static,
         T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-        T::Future: Send,
     {
         let (client_requests, mut client_responses) = self.loopback.split();
         let (client_requests, client_abort) = stream::abortable(client_requests);

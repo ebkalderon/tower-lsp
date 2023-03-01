@@ -41,6 +41,7 @@ pub fn rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
 struct MethodCall<'a> {
     rpc_name: String,
     handler_name: &'a syn::Ident,
+    mutability: Option<&'a syn::token::Mut>,
     params: Option<&'a syn::Type>,
     result: Option<&'a syn::Type>,
 }
@@ -67,6 +68,11 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
             })
             .expect("expected `#[rpc(name = \"foo\")]` attribute");
 
+        let mutability = method.sig.inputs.first().and_then(|arg| match arg {
+            FnArg::Receiver(pat) => pat.mutability.as_ref(),
+            _ => None,
+        });
+
         let params = method.sig.inputs.iter().nth(1).and_then(|arg| match arg {
             FnArg::Typed(pat) => Some(&*pat.ty),
             _ => None,
@@ -80,6 +86,7 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
         calls.push(MethodCall {
             rpc_name,
             handler_name: &method.sig.ident,
+            mutability,
             params,
             result,
         });
@@ -94,6 +101,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
         .map(|method| {
             let rpc_name = &method.rpc_name;
             let handler = &method.handler_name;
+            let mutability = method.mutability.as_ref();
 
             let layer = match &rpc_name[..] {
                 "initialize" => quote! { layers::Initialize::new(state.clone(), pending.clone()) },
@@ -114,25 +122,25 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             // https://github.com/dtolnay/async-trait/issues/167
             match (method.params, method.result) {
                 (Some(params), Some(result)) => quote! {
-                    async fn #handler<S: #trait_name>(server: &S, params: #params) -> #result {
+                    async fn #handler<S: #trait_name>(server: &#mutability S, params: #params) -> #result {
                         server.#handler(params).await
                     }
                     router.method(#rpc_name, #handler, #layer);
                 },
                 (None, Some(result)) => quote! {
-                    async fn #handler<S: #trait_name>(server: &S) -> #result {
+                    async fn #handler<S: #trait_name>(server: &#mutability S) -> #result {
                         server.#handler().await
                     }
                     router.method(#rpc_name, #handler, #layer);
                 },
                 (Some(params), None) => quote! {
-                    async fn #handler<S: #trait_name>(server: &S, params: #params) {
+                    async fn #handler<S: #trait_name>(server: &#mutability S, params: #params) {
                         server.#handler(params).await
                     }
                     router.method(#rpc_name, #handler, #layer);
                 },
                 (None, None) => quote! {
-                    async fn #handler<S: #trait_name>(server: &S) {
+                    async fn #handler<S: #trait_name>(server: &#mutability S) {
                         server.#handler().await
                     }
                     router.method(#rpc_name, #handler, #layer);
@@ -143,8 +151,9 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
 
     quote! {
         mod generated {
-            use std::sync::Arc;
             use std::future::{Future, Ready};
+            use std::rc::Rc;
+            use std::sync::Arc;
 
             use lsp_types::*;
             use lsp_types::notification::*;
@@ -163,7 +172,7 @@ fn gen_server_router(trait_name: &syn::Ident, methods: &[MethodCall]) -> proc_ma
             pub(crate) fn register_lsp_methods<S>(
                 mut router: Router<S, ExitedError>,
                 state: Arc<ServerState>,
-                pending: Arc<Pending>,
+                pending: Rc<Pending>,
                 client: Client,
             ) -> Router<S, ExitedError>
             where
