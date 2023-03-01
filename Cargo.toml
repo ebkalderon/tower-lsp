@@ -23,6 +23,7 @@ proposed = ["lsp-types/proposed"]
 [dependencies]
 async-codec-lite = { version = "0.0", optional = true }
 async-trait = "0.1"
+async-weighted-semaphore = "0.2.1"
 auto_impl = "1.0"
 bytes = "1.0"
 dashmap = "5.1"

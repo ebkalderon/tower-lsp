@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod error;
+mod refcell;
 mod router;
 
 /// A specialized [`Result`] error type for JSON-RPC handlers.
