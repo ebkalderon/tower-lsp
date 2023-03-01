@@ -16,7 +16,7 @@
 //!
 //! #[tower_lsp::async_trait(?Send)]
 //! impl LanguageServer for Backend {
-//!     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+//!     async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
 //!         Ok(InitializeResult {
 //!             capabilities: ServerCapabilities {
 //!                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -27,13 +27,13 @@
 //!         })
 //!     }
 //!
-//!     async fn initialized(&self, _: InitializedParams) {
+//!     async fn initialized(&mut self, _: InitializedParams) {
 //!         self.client
 //!             .log_message(MessageType::INFO, "server initialized!")
 //!             .await;
 //!     }
 //!
-//!     async fn shutdown(&self) -> Result<()> {
+//!     async fn shutdown(&mut self) -> Result<()> {
 //!         Ok(())
 //!     }
 //!
@@ -120,7 +120,7 @@ pub trait LanguageServer: 'static {
     /// This method is guaranteed to only execute once. If the client sends this request to the
     /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
     #[rpc(name = "initialize")]
-    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult>;
+    async fn initialize(&mut self, params: InitializeParams) -> Result<InitializeResult>;
 
     /// The [`initialized`] notification is sent from the client to the server after the client
     /// received the result of the initialize request but before the client sends anything else.
@@ -130,7 +130,7 @@ pub trait LanguageServer: 'static {
     /// The server can use the `initialized` notification, for example, to dynamically register
     /// capabilities with the client.
     #[rpc(name = "initialized")]
-    async fn initialized(&self, params: InitializedParams) {
+    async fn initialized(&mut self, params: InitializedParams) {
         let _ = params;
     }
 
@@ -146,7 +146,7 @@ pub trait LanguageServer: 'static {
     /// This method is guaranteed to only execute once. If the client sends this request to the
     /// server again, the server will respond with JSON-RPC error code `-32600` (invalid request).
     #[rpc(name = "shutdown")]
-    async fn shutdown(&self) -> Result<()>;
+    async fn shutdown(&mut self) -> Result<()>;
 
     // Document Synchronization
 
@@ -159,7 +159,7 @@ pub trait LanguageServer: 'static {
     /// document’s truth using the document's URI. "Open" in this sense means it is managed by the
     /// client. It doesn't necessarily mean that its content is presented in an editor.
     #[rpc(name = "textDocument/didOpen")]
-    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+    async fn did_open(&mut self, params: DidOpenTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didOpen notification, but it is not implemented");
     }
@@ -172,7 +172,7 @@ pub trait LanguageServer: 'static {
     /// This notification will contain a distinct version tag and a list of edits made to the
     /// document for the server to interpret.
     #[rpc(name = "textDocument/didChange")]
-    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+    async fn did_change(&mut self, params: DidChangeTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didChange notification, but it is not implemented");
     }
@@ -182,7 +182,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`textDocument/willSave`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_willSave
     #[rpc(name = "textDocument/willSave")]
-    async fn will_save(&self, params: WillSaveTextDocumentParams) {
+    async fn will_save(&mut self, params: WillSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/willSave notification, but it is not implemented");
     }
@@ -212,7 +212,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`textDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_didSave
     #[rpc(name = "textDocument/didSave")]
-    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+    async fn did_save(&mut self, params: DidSaveTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didSave notification, but it is not implemented");
     }
@@ -225,7 +225,7 @@ pub trait LanguageServer: 'static {
     /// The document's truth now exists where the document's URI points to (e.g. if the document's
     /// URI is a file URI, the truth now exists on disk).
     #[rpc(name = "textDocument/didClose")]
-    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+    async fn did_close(&mut self, params: DidCloseTextDocumentParams) {
         let _ = params;
         warn!("Got a textDocument/didClose notification, but it is not implemented");
     }
@@ -1024,7 +1024,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`textDocument/rename`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_rename
     #[rpc(name = "textDocument/rename")]
-    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+    async fn rename(&mut self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         let _ = params;
         error!("Got a textDocument/rename request, but it is not implemented");
         Err(Error::method_not_found())
@@ -1123,7 +1123,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`workspace/didChangeConfiguration`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeConfiguration
     #[rpc(name = "workspace/didChangeConfiguration")]
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+    async fn did_change_configuration(&mut self, params: DidChangeConfigurationParams) {
         let _ = params;
         warn!("Got a workspace/didChangeConfiguration notification, but it is not implemented");
     }
@@ -1142,7 +1142,7 @@ pub trait LanguageServer: 'static {
     /// This notification is also sent if the server has registered itself to receive this
     /// notification.
     #[rpc(name = "workspace/didChangeWorkspaceFolders")]
-    async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
+    async fn did_change_workspace_folders(&mut self, params: DidChangeWorkspaceFoldersParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWorkspaceFolders notification, but it is not implemented");
     }
@@ -1172,7 +1172,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`workspace/didCreateFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didCreateFiles
     #[rpc(name = "workspace/didCreateFiles")]
-    async fn did_create_files(&self, params: CreateFilesParams) {
+    async fn did_create_files(&mut self, params: CreateFilesParams) {
         let _ = params;
         warn!("Got a workspace/didCreateFiles notification, but it is not implemented");
     }
@@ -1202,7 +1202,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`workspace/didRenameFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didRenameFiles
     #[rpc(name = "workspace/didRenameFiles")]
-    async fn did_rename_files(&self, params: RenameFilesParams) {
+    async fn did_rename_files(&mut self, params: RenameFilesParams) {
         let _ = params;
         warn!("Got a workspace/didRenameFiles notification, but it is not implemented");
     }
@@ -1233,7 +1233,7 @@ pub trait LanguageServer: 'static {
     ///
     /// [`workspace/didDeleteFiles`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didDeleteFiles
     #[rpc(name = "workspace/didDeleteFiles")]
-    async fn did_delete_files(&self, params: DeleteFilesParams) {
+    async fn did_delete_files(&mut self, params: DeleteFilesParams) {
         let _ = params;
         warn!("Got a workspace/didDeleteFiles notification, but it is not implemented");
     }
@@ -1247,7 +1247,7 @@ pub trait LanguageServer: 'static {
     /// mechanism. This can be done here or in the [`initialized`](Self::initialized) method using
     /// [`Client::register_capability`](crate::Client::register_capability).
     #[rpc(name = "workspace/didChangeWatchedFiles")]
-    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(&mut self, params: DidChangeWatchedFilesParams) {
         let _ = params;
         warn!("Got a workspace/didChangeWatchedFiles notification, but it is not implemented");
     }
@@ -1260,7 +1260,7 @@ pub trait LanguageServer: 'static {
     /// In most cases, the server creates a [`WorkspaceEdit`] structure and applies the changes to
     /// the workspace using `Client::apply_edit()` before returning from this function.
     #[rpc(name = "workspace/executeCommand")]
-    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
+    async fn execute_command(&mut self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         let _ = params;
         error!("Got a workspace/executeCommand request, but it is not implemented");
         Err(Error::method_not_found())

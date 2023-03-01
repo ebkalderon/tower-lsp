@@ -10,7 +10,7 @@ struct Backend {
 
 #[tower_lsp::async_trait(?Send)]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -41,35 +41,35 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn initialized(&self, _: InitializedParams) {
+    async fn initialized(&mut self, _: InitializedParams) {
         self.client
             .log_message(MessageType::INFO, "initialized!")
             .await;
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&mut self) -> Result<()> {
         Ok(())
     }
 
-    async fn did_change_workspace_folders(&self, _: DidChangeWorkspaceFoldersParams) {
+    async fn did_change_workspace_folders(&mut self, _: DidChangeWorkspaceFoldersParams) {
         self.client
             .log_message(MessageType::INFO, "workspace folders changed!")
             .await;
     }
 
-    async fn did_change_configuration(&self, _: DidChangeConfigurationParams) {
+    async fn did_change_configuration(&mut self, _: DidChangeConfigurationParams) {
         self.client
             .log_message(MessageType::INFO, "configuration changed!")
             .await;
     }
 
-    async fn did_change_watched_files(&self, _: DidChangeWatchedFilesParams) {
+    async fn did_change_watched_files(&mut self, _: DidChangeWatchedFilesParams) {
         self.client
             .log_message(MessageType::INFO, "watched files have changed!")
             .await;
     }
 
-    async fn execute_command(&self, _: ExecuteCommandParams) -> Result<Option<Value>> {
+    async fn execute_command(&mut self, _: ExecuteCommandParams) -> Result<Option<Value>> {
         self.client
             .log_message(MessageType::INFO, "command executed!")
             .await;
@@ -83,25 +83,25 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn did_open(&self, _: DidOpenTextDocumentParams) {
+    async fn did_open(&mut self, _: DidOpenTextDocumentParams) {
         self.client
             .log_message(MessageType::INFO, "file opened!")
             .await;
     }
 
-    async fn did_change(&self, _: DidChangeTextDocumentParams) {
+    async fn did_change(&mut self, _: DidChangeTextDocumentParams) {
         self.client
             .log_message(MessageType::INFO, "file changed!")
             .await;
     }
 
-    async fn did_save(&self, _: DidSaveTextDocumentParams) {
+    async fn did_save(&mut self, _: DidSaveTextDocumentParams) {
         self.client
             .log_message(MessageType::INFO, "file saved!")
             .await;
     }
 
-    async fn did_close(&self, _: DidCloseTextDocumentParams) {
+    async fn did_close(&mut self, _: DidCloseTextDocumentParams) {
         self.client
             .log_message(MessageType::INFO, "file closed!")
             .await;

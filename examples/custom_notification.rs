@@ -35,7 +35,7 @@ struct Backend {
 
 #[tower_lsp::async_trait(?Send)]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -49,11 +49,11 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&mut self) -> Result<()> {
         Ok(())
     }
 
-    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<Value>> {
+    async fn execute_command(&mut self, params: ExecuteCommandParams) -> Result<Option<Value>> {
         if params.command == "custom.notification" {
             self.client
                 .send_notification::<CustomNotification>(CustomNotificationParams::new(

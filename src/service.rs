@@ -195,11 +195,11 @@ impl<S: LanguageServer> LspServiceBuilder<S> {
     /// // Implementation of `LanguageServer` omitted...
     /// # #[tower_lsp::async_trait(?Send)]
     /// # impl LanguageServer for Mock {
-    /// #     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    /// #     async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
     /// #         Ok(InitializeResult::default())
     /// #     }
     /// #
-    /// #     async fn shutdown(&self) -> Result<()> {
+    /// #     async fn shutdown(&mut self) -> Result<()> {
     /// #         Ok(())
     /// #     }
     /// # }
@@ -279,11 +279,11 @@ mod tests {
 
     #[async_trait(?Send)]
     impl LanguageServer for Mock {
-        async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+        async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
             Ok(InitializeResult::default())
         }
 
-        async fn shutdown(&self) -> Result<()> {
+        async fn shutdown(&mut self) -> Result<()> {
             Ok(())
         }
 
@@ -399,10 +399,10 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn get_inner() {
-        let (service, _) = LspService::build(|_| Mock).finish();
+        let (mut service, _) = LspService::build(|_| Mock).finish();
 
         service
-            .inner()
+            .inner_mut()
             .initialize(InitializeParams::default())
             .await
             .unwrap();

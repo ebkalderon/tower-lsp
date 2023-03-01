@@ -50,17 +50,17 @@ struct Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&mut self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult::default())
     }
 
-    async fn initialized(&self, _: InitializedParams) {
+    async fn initialized(&mut self, _: InitializedParams) {
         self.client
             .log_message(MessageType::INFO, "server initialized!")
             .await;
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&mut self) -> Result<()> {
         Ok(())
     }
 }
