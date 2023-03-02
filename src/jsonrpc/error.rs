@@ -1,5 +1,6 @@
 //! Error types defined by the JSON-RPC specification.
 
+use std::borrow::Cow;
 use std::fmt::{self, Display, Formatter};
 
 use serde::de::Deserializer;
@@ -117,7 +118,7 @@ pub struct Error {
     /// A number indicating the error type that occurred.
     pub code: ErrorCode,
     /// A short description of the error.
-    pub message: String,
+    pub message: Cow<'static, str>,
     /// Additional information about the error, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
@@ -129,7 +130,7 @@ impl Error {
     pub fn new(code: ErrorCode) -> Self {
         Error {
             code,
-            message: code.description().to_string(),
+            message: Cow::Borrowed(code.description()),
             data: None,
         }
     }
@@ -156,7 +157,7 @@ impl Error {
     #[inline]
     pub fn invalid_params<M>(message: M) -> Self
     where
-        M: Into<String>,
+        M: Into<Cow<'static, str>>,
     {
         Error {
             code: ErrorCode::InvalidParams,
