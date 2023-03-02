@@ -390,7 +390,7 @@ impl Serialize for Version {
 pub(crate) fn not_initialized_error() -> Error {
     Error {
         code: ErrorCode::ServerError(-32002),
-        message: "Server not initialized".to_string(),
+        message: Cow::Borrowed("Server not initialized"),
         data: None,
     }
 }

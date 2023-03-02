@@ -478,7 +478,7 @@ impl Client {
         result.and_then(|v| {
             serde_json::from_value(v).map_err(|e| Error {
                 code: ErrorCode::ParseError,
-                message: e.to_string(),
+                message: e.to_string().into(),
                 data: None,
             })
         })

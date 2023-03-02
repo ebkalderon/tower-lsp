@@ -257,7 +257,7 @@ impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
             let result = self.and_then(|r| {
                 serde_json::to_value(r).map_err(|e| Error {
                     code: ErrorCode::InternalError,
-                    message: e.to_string(),
+                    message: e.to_string().into(),
                     data: None,
                 })
             });
