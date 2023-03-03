@@ -26,7 +26,7 @@ pub struct Initialize {
 }
 
 impl Initialize {
-    pub const fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
+    pub fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
         Initialize { state, pending }
     }
 }
@@ -95,7 +95,7 @@ pub struct Shutdown {
 }
 
 impl Shutdown {
-    pub const fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
+    pub fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
         Shutdown { state, pending }
     }
 }
@@ -157,7 +157,7 @@ pub struct Exit {
 }
 
 impl Exit {
-    pub const fn new(state: Arc<ServerState>, pending: Arc<Pending>, client: Client) -> Self {
+    pub fn new(state: Arc<ServerState>, pending: Arc<Pending>, client: Client) -> Self {
         Exit {
             state,
             pending,
@@ -216,7 +216,7 @@ pub struct Normal {
 }
 
 impl Normal {
-    pub const fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
+    pub fn new(state: Arc<ServerState>, pending: Arc<Pending>) -> Self {
         Normal { state, pending }
     }
 }
@@ -273,7 +273,7 @@ struct Cancellable<S> {
 }
 
 impl<S> Cancellable<S> {
-    const fn new(inner: S, pending: Arc<Pending>) -> Self {
+    fn new(inner: S, pending: Arc<Pending>) -> Self {
         Cancellable { inner, pending }
     }
 }
