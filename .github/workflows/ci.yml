@@ -24,7 +24,7 @@ jobs:
         - rust-version: nightly
           continue-on-error: true
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@master
       with:
@@ -47,7 +47,7 @@ jobs:
     name: cargo clippy
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - id: install-rust
       name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@1.59.0
@@ -64,7 +64,7 @@ jobs:
     name: cargo fmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - id: install-rust
       name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@1.59.0
