@@ -387,7 +387,7 @@ impl Serialize for Version {
 ///
 /// See [here](https://microsoft.github.io/language-server-protocol/specification#initialize)
 /// for reference.
-pub(crate) fn not_initialized_error() -> Error {
+pub(crate) const fn not_initialized_error() -> Error {
     Error {
         code: ErrorCode::ServerError(-32002),
         message: Cow::Borrowed("Server not initialized"),
