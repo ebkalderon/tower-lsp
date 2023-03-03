@@ -25,17 +25,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
-        profile: minimal
         toolchain: ${{ matrix.rust-version }}
-        override: true
     - name: Run cargo test
-      uses: actions-rs/cargo@v1
       continue-on-error: ${{ matrix.continue-on-error || false }}
-      with:
-        command: test
-        args: --workspace --no-default-features --features ${{ matrix.runtime }}
+      run: |
+        cargo +${{ matrix.rust-version }} test --workspace --no-default-features --features ${{ matrix.runtime }}
 
   cargo-audit:
     name: cargo audit
@@ -51,17 +47,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - id: install-rust
+      name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@1.59.0
       with:
-        profile: minimal
-        toolchain: 1.59.0
-        override: true
         components: clippy
     - name: Run cargo clippy
       uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        toolchain: ${{ steps.install-rust.outputs.name }}
         args: --all-targets --features proposed -- -D warnings
 
   cargo-fmt:
@@ -69,15 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - id: install-rust
+      name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@1.59.0
       with:
-        profile: minimal
-        toolchain: 1.59.0
-        override: true
         components: rustfmt
     - name: Run cargo fmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run: cargo +${{ steps.install-rust.outputs.name }} fmt --all -- --check
