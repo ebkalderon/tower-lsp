@@ -29,9 +29,10 @@ jobs:
       with:
         profile: minimal
         toolchain: ${{ matrix.rust-version }}
+        override: true
     - name: Run cargo test
-      continue-on-error: ${{ matrix.continue-on-error || false }}
       uses: actions-rs/cargo@v1
+      continue-on-error: ${{ matrix.continue-on-error || false }}
       with:
         command: test
         args: --workspace --no-default-features --features ${{ matrix.runtime }}
@@ -54,7 +55,8 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: stable
+        toolchain: 1.52.0
+        override: true
         components: clippy
     - name: Run cargo clippy
       uses: actions-rs/clippy-check@v1
@@ -71,7 +73,8 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: stable
+        toolchain: 1.52.0
+        override: true
         components: rustfmt
     - name: Run cargo fmt
       uses: actions-rs/cargo@v1
