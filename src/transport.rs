@@ -173,7 +173,6 @@ fn display_sources(error: &dyn std::error::Error) -> String {
 }
 
 #[cfg(feature = "runtime-tokio")]
-#[inline]
 fn to_jsonrpc_error(err: ParseError) -> Error {
     match err {
         ParseError::Body(err) if err.is_data() => Error::invalid_request(),
@@ -182,7 +181,6 @@ fn to_jsonrpc_error(err: ParseError) -> Error {
 }
 
 #[cfg(feature = "runtime-agnostic")]
-#[inline]
 fn to_jsonrpc_error(err: impl std::error::Error) -> Error {
     match err.source().and_then(|e| e.downcast_ref()) {
         Some(ParseError::Body(err)) if err.is_data() => Error::invalid_request(),
@@ -231,7 +229,6 @@ mod tests {
         type RequestStream = stream::Iter<std::vec::IntoIter<Request>>;
         type ResponseSink = sink::Drain<Response>;
 
-        #[inline]
         fn split(self) -> (Self::RequestStream, Self::ResponseSink) {
             (stream::iter(self.0), sink::drain())
         }

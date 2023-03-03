@@ -151,7 +151,6 @@ impl<T: Serialize> Encoder<T> for LanguageServerCodec<T> {
     }
 }
 
-#[inline]
 fn number_of_digits(mut n: usize) -> usize {
     let mut num_digits = 0;
 

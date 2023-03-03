@@ -49,14 +49,12 @@ impl Stream for ClientSocket {
         }
     }
 
-    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.rx.size_hint()
     }
 }
 
 impl FusedStream for ClientSocket {
-    #[inline]
     fn is_terminated(&self) -> bool {
         self.rx.is_terminated()
     }
@@ -107,14 +105,12 @@ impl Stream for RequestStream {
         }
     }
 
-    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.rx.size_hint()
     }
 }
 
 impl FusedStream for RequestStream {
-    #[inline]
     fn is_terminated(&self) -> bool {
         self.rx.is_terminated()
     }

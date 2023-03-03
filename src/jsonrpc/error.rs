@@ -40,7 +40,6 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Returns the integer error code value.
-    #[inline]
     pub const fn code(&self) -> i64 {
         match *self {
             ErrorCode::ParseError => -32700,
@@ -55,7 +54,6 @@ impl ErrorCode {
     }
 
     /// Returns a human-readable description of the error.
-    #[inline]
     pub const fn description(&self) -> &'static str {
         match *self {
             ErrorCode::ParseError => "Parse error",
@@ -71,7 +69,6 @@ impl ErrorCode {
 }
 
 impl From<i64> for ErrorCode {
-    #[inline]
     fn from(code: i64) -> Self {
         match code {
             -32700 => ErrorCode::ParseError,
@@ -126,7 +123,6 @@ pub struct Error {
 
 impl Error {
     /// Creates a new error from the given `ErrorCode`.
-    #[inline]
     pub const fn new(code: ErrorCode) -> Self {
         Error {
             code,
@@ -136,25 +132,21 @@ impl Error {
     }
 
     /// Creates a new parse error (`-32700`).
-    #[inline]
     pub const fn parse_error() -> Self {
         Error::new(ErrorCode::ParseError)
     }
 
     /// Creates a new "invalid request" error (`-32600`).
-    #[inline]
     pub const fn invalid_request() -> Self {
         Error::new(ErrorCode::InvalidRequest)
     }
 
     /// Creates a new "method not found" error (`-32601`).
-    #[inline]
     pub const fn method_not_found() -> Self {
         Error::new(ErrorCode::MethodNotFound)
     }
 
     /// Creates a new "invalid params" error (`-32602`).
-    #[inline]
     pub fn invalid_params<M>(message: M) -> Self
     where
         M: Into<Cow<'static, str>>,
@@ -167,7 +159,6 @@ impl Error {
     }
 
     /// Creates a new internal error (`-32603`).
-    #[inline]
     pub const fn internal_error() -> Self {
         Error::new(ErrorCode::InternalError)
     }
@@ -177,7 +168,6 @@ impl Error {
     /// # Compatibility
     ///
     /// This error code is defined by the Language Server Protocol.
-    #[inline]
     pub const fn request_cancelled() -> Self {
         Error::new(ErrorCode::RequestCancelled)
     }
@@ -187,7 +177,6 @@ impl Error {
     /// # Compatibility
     ///
     /// This error code is defined by the Language Server Protocol.
-    #[inline]
     pub const fn content_modified() -> Self {
         Error::new(ErrorCode::ContentModified)
     }
