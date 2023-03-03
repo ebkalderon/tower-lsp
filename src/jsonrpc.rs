@@ -149,25 +149,21 @@ impl Request {
     }
 
     /// Returns the name of the method to be invoked.
-    #[inline]
     pub fn method(&self) -> &str {
         self.method.as_ref()
     }
 
     /// Returns the unique ID of this request, if present.
-    #[inline]
     pub fn id(&self) -> Option<&Id> {
         self.id.as_ref()
     }
 
     /// Returns the `params` field, if present.
-    #[inline]
     pub fn params(&self) -> Option<&Value> {
         self.params.as_ref()
     }
 
     /// Splits this request into the method name, request ID, and the `params` field, if present.
-    #[inline]
     pub fn into_parts(self) -> (Cow<'static, str>, Option<Id>, Option<Value>) {
         (self.method, self.id, self.params)
     }
@@ -250,7 +246,6 @@ pub struct Response {
 
 impl Response {
     /// Creates a new successful response from a request ID and `Error` object.
-    #[inline]
     pub const fn from_ok(id: Id, result: Value) -> Self {
         Response {
             jsonrpc: Version,
@@ -260,7 +255,6 @@ impl Response {
     }
 
     /// Creates a new error response from a request ID and `Error` object.
-    #[inline]
     pub const fn from_error(id: Id, error: Error) -> Self {
         Response {
             jsonrpc: Version,
@@ -287,13 +281,11 @@ impl Response {
     }
 
     /// Returns `true` if the response indicates success.
-    #[inline]
     pub const fn is_ok(&self) -> bool {
         matches!(self.kind, ResponseKind::Ok { .. })
     }
 
     /// Returns `true` if the response indicates failure.
-    #[inline]
     pub const fn is_error(&self) -> bool {
         !self.is_ok()
     }
@@ -301,7 +293,6 @@ impl Response {
     /// Returns the `result` value, if it exists.
     ///
     /// This member only exists if the response indicates success.
-    #[inline]
     pub const fn result(&self) -> Option<&Value> {
         match &self.kind {
             ResponseKind::Ok { result } => Some(result),
@@ -312,7 +303,6 @@ impl Response {
     /// Returns the `error` value, if it exists.
     ///
     /// This member only exists if the response indicates failure.
-    #[inline]
     pub const fn error(&self) -> Option<&Error> {
         match &self.kind {
             ResponseKind::Err { error } => Some(error),
@@ -321,7 +311,6 @@ impl Response {
     }
 
     /// Returns the corresponding request ID, if known.
-    #[inline]
     pub const fn id(&self) -> &Id {
         &self.id
     }

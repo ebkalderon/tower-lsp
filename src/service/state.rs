@@ -23,17 +23,14 @@ pub enum State {
 pub struct ServerState(AtomicU8);
 
 impl ServerState {
-    #[inline]
     pub const fn new() -> Self {
         ServerState(AtomicU8::new(State::Uninitialized as u8))
     }
 
-    #[inline]
     pub fn set(&self, state: State) {
         self.0.store(state as u8, Ordering::SeqCst);
     }
 
-    #[inline]
     pub fn get(&self) -> State {
         match self.0.load(Ordering::SeqCst) {
             0 => State::Uninitialized,

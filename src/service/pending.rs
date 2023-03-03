@@ -16,7 +16,6 @@ pub struct Pending(Arc<DashMap<Id, future::AbortHandle>>);
 
 impl Pending {
     /// Creates a new pending server requests map.
-    #[inline]
     pub fn new() -> Self {
         Pending(Arc::new(DashMap::new()))
     }
@@ -70,7 +69,6 @@ impl Pending {
     }
 
     /// Cancels all pending request handlers, if any.
-    #[inline]
     pub fn cancel_all(&self) {
         self.0.retain(|_, handle| {
             handle.abort();
