@@ -79,17 +79,6 @@ impl From<NumberOrString> for Id {
     }
 }
 
-/// An incoming or outgoing JSON-RPC message.
-#[derive(Deserialize, Serialize)]
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[serde(untagged)]
-pub(crate) enum Message {
-    /// A response message.
-    Response(Response),
-    /// A request or notification message.
-    Request(Request),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 struct Version;
 
@@ -117,6 +106,17 @@ impl Serialize for Version {
     {
         serializer.serialize_str("2.0")
     }
+}
+
+/// An incoming or outgoing JSON-RPC message.
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
+#[serde(untagged)]
+pub(crate) enum Message {
+    /// A response message.
+    Response(Response),
+    /// A request or notification message.
+    Request(Request),
 }
 
 #[cfg(test)]
