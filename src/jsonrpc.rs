@@ -1,6 +1,6 @@
 //! A subset of JSON-RPC types used by the Language Server Protocol.
 
-pub use self::error::{Error, ErrorCode};
+pub use self::error::{Error, ErrorCode, Result};
 pub use self::router::{FromParams, IntoResponse, Method};
 
 pub(crate) use self::router::Router;
@@ -16,11 +16,6 @@ use serde_json::Value;
 
 mod error;
 mod router;
-
-/// A specialized [`Result`] error type for JSON-RPC handlers.
-///
-/// [`Result`]: enum@std::result::Result
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A unique ID used to correlate requests and responses together.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]

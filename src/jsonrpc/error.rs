@@ -8,6 +8,11 @@ use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// A specialized [`Result`] error type for JSON-RPC handlers.
+///
+/// [`Result`]: enum@std::result::Result
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// A list of numeric error codes used in JSON-RPC responses.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
