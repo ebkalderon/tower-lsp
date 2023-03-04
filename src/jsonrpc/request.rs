@@ -5,9 +5,9 @@ use std::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
-use super::{Id, Version};
+use super::{Id, Params, Version};
 
-fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+fn deserialize_some_value<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     T: Deserialize<'de>,
     D: Deserializer<'de>,
@@ -19,12 +19,11 @@ where
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Request {
     jsonrpc: Version,
-    #[serde(default)]
     method: Cow<'static, str>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "deserialize_some_value")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<Value>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    params: Option<Params>,
+    #[serde(default, deserialize_with = "deserialize_some_value")]
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
 }
@@ -58,7 +57,7 @@ impl Request {
         Request {
             jsonrpc: Version,
             method: R::METHOD.into(),
-            params: Some(serde_json::to_value(params).unwrap()),
+            params: Self::from_lsp_types(params).unwrap(),
             id: Some(id),
         }
     }
@@ -77,8 +76,15 @@ impl Request {
         Request {
             jsonrpc: Version,
             method: N::METHOD.into(),
-            params: Some(serde_json::to_value(params).unwrap()),
+            params: Self::from_lsp_types(params).unwrap(),
             id: None,
+        }
+    }
+
+    fn from_lsp_types<T: Serialize>(params: T) -> serde_json::Result<Option<Params>> {
+        match serde_json::to_value(params)? {
+            Value::Null => Ok(None),
+            other => other.try_into().map(Some),
         }
     }
 
@@ -93,12 +99,12 @@ impl Request {
     }
 
     /// Returns the `params` field, if present.
-    pub fn params(&self) -> Option<&Value> {
+    pub fn params(&self) -> Option<&Params> {
         self.params.as_ref()
     }
 
     /// Splits this request into the method name, request ID, and the `params` field, if present.
-    pub fn into_parts(self) -> (Cow<'static, str>, Option<Id>, Option<Value>) {
+    pub fn into_parts(self) -> (Cow<'static, str>, Option<Id>, Option<Params>) {
         (self.method, self.id, self.params)
     }
 }
@@ -147,7 +153,7 @@ impl FromStr for Request {
 #[derive(Debug)]
 pub struct RequestBuilder {
     method: Cow<'static, str>,
-    params: Option<Value>,
+    params: Option<serde_json::Result<Params>>,
     id: Option<Id>,
 }
 
@@ -164,17 +170,88 @@ impl RequestBuilder {
     ///
     /// This member is omitted from the request by default.
     pub fn params<V: Into<Value>>(mut self, params: V) -> Self {
-        self.params = Some(params.into());
+        self.params = Some(params.into().try_into());
         self
     }
 
     /// Constructs the JSON-RPC request and returns it.
-    pub fn finish(self) -> Request {
-        Request {
+    pub fn finish(self) -> serde_json::Result<Request> {
+        Ok(Request {
             jsonrpc: Version,
             method: self.method,
-            params: self.params,
+            params: self.params.transpose()?,
             id: self.id,
-        }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn deserializes_request() {
+        let request = Request::from_str(r#"{"jsonrpc":"2.0","method":"test","id":1}"#);
+        let expected = Request::build("test").id(1).finish();
+
+        assert_eq!(request.unwrap(), expected.unwrap());
+    }
+
+    #[test]
+    fn deserializes_request_with_params() {
+        let request = Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1}"#);
+        let expected = Request::build("test").params(json!({})).id(1).finish();
+
+        assert_eq!(request.unwrap(), expected.unwrap());
+    }
+
+    #[test]
+    fn deserializes_notification() {
+        let request = Request::from_str(r#"{"jsonrpc":"2.0","method":"test"}"#);
+        let expected = Request::build("test").finish();
+
+        assert_eq!(request.unwrap(), expected.unwrap());
+    }
+    #[test]
+    fn deserializes_notification_with_params() {
+        let request = Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":{}}"#);
+        let expected = Request::build("test").params(json!({})).finish();
+
+        assert_eq!(request.unwrap(), expected.unwrap());
+    }
+
+    #[test]
+    fn rejects_invalid_jsonrpc_version() {
+        Request::from_str(r#"{"jsonrpc":"1.0","method":"test","params":{},"id":1}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":null,"method":"test","params":{},"id":1}"#).unwrap_err();
+    }
+
+    #[test]
+    fn rejects_missing_method_name() {
+        Request::from_str(r#"{"jsonrpc":"1.0","id":1}"#).unwrap_err();
+    }
+
+    #[test]
+    fn rejects_invalid_params() {
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":null,"id":1}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":123,"id":1}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":true,"id":1}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","params":"x","id":1}"#).unwrap_err();
+    }
+
+    #[test]
+    fn rejects_invalid_ids() {
+        // FIXME: This probably shouldn't be allowed. Will handle in a later `Id` refactor.
+        // Request::from_str(r#"{"jsonrpc":"2.0","method":"test","id":null}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","id":[]}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","id":{}}"#).unwrap_err();
+        Request::from_str(r#"{"jsonrpc":"2.0","method":"test","id":true}"#).unwrap_err();
+    }
+
+    #[test]
+    fn rejects_invalid_syntax() {
+        Request::from_str(r#"fn main() { println!("This isn't JSON at all!"); }"#).unwrap_err();
     }
 }

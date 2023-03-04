@@ -276,7 +276,7 @@ mod tests {
     }
 
     impl Mock {
-        async fn custom_request(&self, params: i32) -> Result<i32> {
+        async fn custom_request(&self, params: Vec<i32>) -> Result<Vec<i32>> {
             Ok(params)
         }
     }
@@ -286,6 +286,7 @@ mod tests {
             .params(json!({"capabilities":{}}))
             .id(id)
             .finish()
+            .unwrap()
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -312,7 +313,7 @@ mod tests {
         let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
         assert_eq!(response, Ok(Some(ok)));
 
-        let shutdown = Request::build("shutdown").id(1).finish();
+        let shutdown = Request::build("shutdown").id(1).finish().unwrap();
         let response = service.ready().await.unwrap().call(shutdown.clone()).await;
         let ok = Response::from_ok(1.into(), json!(null));
         assert_eq!(response, Ok(Some(ok)));
@@ -326,7 +327,7 @@ mod tests {
     async fn exit_notification() {
         let (mut service, _) = LspService::new(|_| Mock);
 
-        let exit = Request::build("exit").finish();
+        let exit = Request::build("exit").finish().unwrap();
         let response = service.ready().await.unwrap().call(exit.clone()).await;
         assert_eq!(response, Ok(None));
 
@@ -347,11 +348,13 @@ mod tests {
         let pending_request = Request::build("codeAction/resolve")
             .params(json!({"title":""}))
             .id(1)
-            .finish();
+            .finish()
+            .unwrap();
 
         let cancel_request = Request::build("$/cancelRequest")
             .params(json!({"id":1i32}))
-            .finish();
+            .finish()
+            .unwrap();
 
         let pending_fut = service.ready().await.unwrap().call(pending_request);
         let cancel_fut = service.ready().await.unwrap().call(cancel_request);
@@ -373,9 +376,13 @@ mod tests {
         let ok = Response::from_ok(1.into(), json!({"capabilities":{}}));
         assert_eq!(response, Ok(Some(ok)));
 
-        let custom = Request::build("custom").params(123i32).id(1).finish();
+        let custom = Request::build("custom")
+            .params(json!([123i32]))
+            .id(1)
+            .finish()
+            .unwrap();
         let response = service.ready().await.unwrap().call(custom).await;
-        let ok = Response::from_ok(1.into(), json!(123i32));
+        let ok = Response::from_ok(1.into(), json!([123i32]));
         assert_eq!(response, Ok(Some(ok)));
     }
 

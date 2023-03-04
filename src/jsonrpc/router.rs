@@ -15,7 +15,7 @@ use tower::{util::BoxService, Layer, Service};
 
 use crate::jsonrpc::ErrorCode;
 
-use super::{Error, Id, Request, Response};
+use super::{Error, Id, Params, Request, Response};
 
 /// A modular JSON-RPC 2.0 request router service.
 pub struct Router<S, E = Infallible> {
@@ -161,6 +161,9 @@ where
 /// `async fn f(&self, params: P) -> jsonrpc::Result<R>` | Request with required parameters
 /// `async fn f(&self)`                                  | Notification without parameters
 /// `async fn f(&self, params: P)`                       | Notification with parameters
+///
+/// where `P` is deserializable from a JSON array or object, and `R` is serializable into a
+/// [`serde_json::Value`].
 pub trait Method<S, P, R>: private::Sealed {
     /// The future response value.
     type Future: Future<Output = R> + Send;
@@ -201,12 +204,12 @@ where
 /// A trait implemented by all JSON-RPC method parameters.
 pub trait FromParams: private::Sealed + Send + Sized + 'static {
     /// Attempts to deserialize `Self` from the `params` value extracted from [`Request`].
-    fn from_params(params: Option<Value>) -> super::Result<Self>;
+    fn from_params(params: Option<Params>) -> super::Result<Self>;
 }
 
 /// Deserialize non-existent JSON-RPC parameters.
 impl FromParams for () {
-    fn from_params(params: Option<Value>) -> super::Result<Self> {
+    fn from_params(params: Option<Params>) -> super::Result<Self> {
         if let Some(p) = params {
             Err(Error::invalid_params(format!("Unexpected params: {p}")))
         } else {
@@ -217,9 +220,9 @@ impl FromParams for () {
 
 /// Deserialize required JSON-RPC parameters.
 impl<P: DeserializeOwned + Send + 'static> FromParams for (P,) {
-    fn from_params(params: Option<Value>) -> super::Result<Self> {
+    fn from_params(params: Option<Params>) -> super::Result<Self> {
         if let Some(p) = params {
-            serde_json::from_value(p)
+            serde_json::from_value(p.into())
                 .map(|params| (params,))
                 .map_err(|e| Error::invalid_params(e.to_string()))
         } else {
@@ -288,7 +291,7 @@ mod tests {
     use super::*;
 
     #[derive(Deserialize, Serialize)]
-    struct Params {
+    struct MyParams {
         foo: i32,
         bar: String,
     }
@@ -300,13 +303,13 @@ mod tests {
             Ok(Value::Null)
         }
 
-        async fn request_params(&self, params: Params) -> Result<Params, Error> {
+        async fn request_params(&self, params: MyParams) -> Result<MyParams, Error> {
             Ok(params)
         }
 
         async fn notification(&self) {}
 
-        async fn notification_params(&self, _params: Params) {}
+        async fn notification_params(&self, _params: MyParams) {}
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -316,7 +319,7 @@ mod tests {
             .method("first", Mock::request, layer_fn(|s| s))
             .method("second", Mock::request_params, layer_fn(|s| s));
 
-        let request = Request::build("first").id(0).finish();
+        let request = Request::build("first").id(0).finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         assert_eq!(response, Ok(Some(Response::from_ok(0.into(), Value::Null))));
 
@@ -324,7 +327,8 @@ mod tests {
         let with_params = Request::build("second")
             .params(params.clone())
             .id(1)
-            .finish();
+            .finish()
+            .unwrap();
         let response = router.ready().await.unwrap().call(with_params).await;
         assert_eq!(response, Ok(Some(Response::from_ok(1.into(), params))));
     }
@@ -336,12 +340,12 @@ mod tests {
             .method("first", Mock::notification, layer_fn(|s| s))
             .method("second", Mock::notification_params, layer_fn(|s| s));
 
-        let request = Request::build("first").finish();
+        let request = Request::build("first").finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         assert_eq!(response, Ok(None));
 
         let params = json!({"foo": -123i32, "bar": "hello world"});
-        let with_params = Request::build("second").params(params).finish();
+        let with_params = Request::build("second").params(params).finish().unwrap();
         let response = router.ready().await.unwrap().call(with_params).await;
         assert_eq!(response, Ok(None));
     }
@@ -352,16 +356,17 @@ mod tests {
         router.method("request", Mock::request_params, layer_fn(|s| s));
 
         let invalid_params = Request::build("request")
-            .params(json!("wrong"))
+            .params(json!([]))
             .id(0)
-            .finish();
+            .finish()
+            .unwrap();
 
         let response = router.ready().await.unwrap().call(invalid_params).await;
         assert_eq!(
             response,
             Ok(Some(Response::from_error(
                 0.into(),
-                Error::invalid_params("invalid type: string \"wrong\", expected struct Params"),
+                Error::invalid_params("invalid length 0, expected struct MyParams with 2 elements"),
             )))
         );
     }
@@ -372,8 +377,9 @@ mod tests {
         router.method("notification", Mock::request_params, layer_fn(|s| s));
 
         let invalid_params = Request::build("notification")
-            .params(json!("wrong"))
-            .finish();
+            .params(json!([]))
+            .finish()
+            .unwrap();
 
         let response = router.ready().await.unwrap().call(invalid_params).await;
         assert_eq!(response, Ok(None));
@@ -386,11 +392,11 @@ mod tests {
             .method("first", Mock::request, layer_fn(|s| s))
             .method("second", Mock::notification, layer_fn(|s| s));
 
-        let request = Request::build("first").finish();
+        let request = Request::build("first").finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         assert_eq!(response, Ok(None));
 
-        let request = Request::build("second").id(0).finish();
+        let request = Request::build("second").id(0).finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         assert_eq!(
             response,
@@ -405,7 +411,7 @@ mod tests {
     async fn responds_to_nonexistent_request() {
         let mut router: Router<Mock> = Router::new(Mock);
 
-        let request = Request::build("foo").id(0).finish();
+        let request = Request::build("foo").id(0).finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         let mut error = Error::method_not_found();
         error.data = Some("foo".into());
@@ -416,7 +422,7 @@ mod tests {
     async fn ignores_nonexistent_notification() {
         let mut router: Router<Mock> = Router::new(Mock);
 
-        let request = Request::build("foo").finish();
+        let request = Request::build("foo").finish().unwrap();
         let response = router.ready().await.unwrap().call(request).await;
         assert_eq!(response, Ok(None));
     }
