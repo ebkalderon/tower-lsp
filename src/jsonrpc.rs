@@ -1,5 +1,6 @@
 //! A subset of JSON-RPC types used by the Language Server Protocol.
 
+pub(crate) use self::error::not_initialized_error;
 pub use self::error::{Error, ErrorCode, Result};
 pub use self::request::{Request, RequestBuilder};
 pub use self::response::Response;
@@ -115,18 +116,6 @@ impl Serialize for Version {
         S: Serializer,
     {
         serializer.serialize_str("2.0")
-    }
-}
-
-/// Error response returned for every request received before the server is initialized.
-///
-/// See [here](https://microsoft.github.io/language-server-protocol/specification#initialize)
-/// for reference.
-pub(crate) const fn not_initialized_error() -> Error {
-    Error {
-        code: ErrorCode::ServerError(-32002),
-        message: Cow::Borrowed("Server not initialized"),
-        data: None,
     }
 }
 
