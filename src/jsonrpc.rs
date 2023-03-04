@@ -348,8 +348,8 @@ pub(crate) enum Message {
     Request(Request),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Version;
+#[derive(Clone, Debug, PartialEq)]
+struct Version;
 
 impl<'de> Deserialize<'de> for Version {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
