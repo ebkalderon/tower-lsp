@@ -181,6 +181,18 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
+/// Error response returned for every request received before the server is initialized.
+///
+/// See [here](https://microsoft.github.io/language-server-protocol/specification#initialize)
+/// for reference.
+pub(crate) const fn not_initialized_error() -> Error {
+    Error {
+        code: ErrorCode::ServerError(-32002),
+        message: Cow::Borrowed("Server not initialized"),
+        data: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
