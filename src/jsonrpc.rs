@@ -1,7 +1,11 @@
 //! A subset of JSON-RPC types used by the Language Server Protocol.
 
+#[doc(hidden)]
+pub use serde_json::json;
+
 pub(crate) use self::error::not_initialized_error;
 pub use self::error::{Error, ErrorCode, Result};
+pub use self::params::{to_params, Params};
 pub use self::request::{Request, RequestBuilder};
 pub use self::response::Response;
 pub(crate) use self::router::Router;
@@ -16,6 +20,7 @@ use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 
 mod error;
+mod params;
 mod request;
 mod response;
 mod router;
