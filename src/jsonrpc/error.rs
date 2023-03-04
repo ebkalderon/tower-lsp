@@ -3,8 +3,6 @@
 use std::borrow::Cow;
 use std::fmt::{self, Display, Formatter};
 
-use serde::de::Deserializer;
-use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -14,7 +12,8 @@ use serde_json::Value;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A list of numeric error codes used in JSON-RPC responses.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(into = "i64", from = "i64")]
 pub enum ErrorCode {
     /// Invalid JSON was received by the server.
     ParseError,
@@ -88,28 +87,15 @@ impl From<i64> for ErrorCode {
     }
 }
 
+impl Into<i64> for ErrorCode {
+    fn into(self) -> i64 {
+        self.code()
+    }
+}
+
 impl Display for ErrorCode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(&self.code(), f)
-    }
-}
-
-impl<'a> Deserialize<'a> for ErrorCode {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let code: i64 = Deserialize::deserialize(deserializer)?;
-        Ok(ErrorCode::from(code))
-    }
-}
-
-impl Serialize for ErrorCode {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.code().serialize(serializer)
     }
 }
 
@@ -194,3 +180,26 @@ impl Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_code_serializes_as_i64() {
+        let serialized = serde_json::to_string(&ErrorCode::ParseError).unwrap();
+        assert_eq!(serialized, "-32700");
+
+        let serialized = serde_json::to_string(&ErrorCode::ServerError(-12345)).unwrap();
+        assert_eq!(serialized, "-12345");
+    }
+
+    #[test]
+    fn error_code_deserializes_from_i64() {
+        let deserialized: ErrorCode = serde_json::from_str("-32700").unwrap();
+        assert_eq!(deserialized, ErrorCode::ParseError);
+
+        let deserialized: ErrorCode = serde_json::from_str("-12345").unwrap();
+        assert_eq!(deserialized, ErrorCode::ServerError(-12345));
+    }
+}
