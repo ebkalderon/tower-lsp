@@ -356,7 +356,12 @@ impl<'de> Deserialize<'de> for Version {
     where
         D: Deserializer<'de>,
     {
-        match Cow::<'de, str>::deserialize(deserializer)?.as_ref() {
+        #[derive(Deserialize)]
+        struct Inner<'a>(#[serde(borrow)] Cow<'a, str>);
+
+        let Inner(ver) = Inner::deserialize(deserializer)?;
+
+        match ver.as_ref() {
             "2.0" => Ok(Version),
             _ => Err(de::Error::custom("expected JSON-RPC version \"2.0\"")),
         }
@@ -368,7 +373,7 @@ impl Serialize for Version {
     where
         S: Serializer,
     {
-        "2.0".serialize(serializer)
+        serializer.serialize_str("2.0")
     }
 }
 
