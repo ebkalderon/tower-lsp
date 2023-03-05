@@ -45,12 +45,16 @@ impl Request {
     }
 
     /// Constructs a JSON-RPC request from its corresponding LSP type.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `params` could not be serialized into a [`serde_json::Value`]. Since the
+    /// [`lsp_types::request::Request`] trait promises this invariant is upheld, this should never
+    /// happen in practice (unless the trait was implemented incorrectly).
     pub(crate) fn from_request<R>(id: Id, params: R::Params) -> Self
     where
         R: lsp_types::request::Request,
     {
-        // Since `R::Params` come from the `lsp-types` crate and validity is enforced via the
-        // `Request` trait, the `unwrap()` call below should never fail.
         Request {
             jsonrpc: Version,
             method: R::METHOD.into(),
@@ -60,12 +64,16 @@ impl Request {
     }
 
     /// Constructs a JSON-RPC notification from its corresponding LSP type.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `params` could not be serialized into a [`serde_json::Value`]. Since the
+    /// [`lsp_types::notification::Notification`] trait promises this invariant is upheld, this
+    /// should never happen in practice (unless the trait was implemented incorrectly).
     pub(crate) fn from_notification<N>(params: N::Params) -> Self
     where
         N: lsp_types::notification::Notification,
     {
-        // Since `N::Params` comes from the `lsp-types` crate and validity is enforced via the
-        // `Notification` trait, the `unwrap()` call below should never fail.
         Request {
             jsonrpc: Version,
             method: N::METHOD.into(),
