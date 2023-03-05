@@ -87,9 +87,9 @@ impl From<i64> for ErrorCode {
     }
 }
 
-impl Into<i64> for ErrorCode {
-    fn into(self) -> i64 {
-        self.code()
+impl From<ErrorCode> for i64 {
+    fn from(code: ErrorCode) -> Self {
+        code.code()
     }
 }
 
