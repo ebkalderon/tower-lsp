@@ -300,7 +300,7 @@ mod tests {
         assert_eq!(response, Ok(Some(ok)));
 
         let response = service.ready().await.unwrap().call(request).await;
-        let err = Response::from_error(1.into(), Error::invalid_request());
+        let err = Response::from_error(Some(1.into()), Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(response, Ok(Some(ok)));
 
         let response = service.ready().await.unwrap().call(shutdown).await;
-        let err = Response::from_error(1.into(), Error::invalid_request());
+        let err = Response::from_error(Some(1.into()), Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
@@ -360,7 +360,7 @@ mod tests {
         let cancel_fut = service.ready().await.unwrap().call(cancel_request);
         let (pending_response, cancel_response) = futures::join!(pending_fut, cancel_fut);
 
-        let canceled = Response::from_error(1.into(), Error::request_cancelled());
+        let canceled = Response::from_error(Some(1.into()), Error::request_cancelled());
         assert_eq!(pending_response, Ok(Some(canceled)));
         assert_eq!(cancel_response, Ok(None));
     }

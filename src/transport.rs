@@ -16,7 +16,7 @@ use tower::Service;
 use tracing::error;
 
 use crate::codec::{LanguageServerCodec, ParseError};
-use crate::jsonrpc::{Error, Id, Message, Request, Response};
+use crate::jsonrpc::{Error, Message, Request, Response};
 use crate::service::{ClientSocket, RequestStream, ResponseSink};
 
 const DEFAULT_MAX_CONCURRENCY: usize = 4;
@@ -149,7 +149,7 @@ where
                     }
                     Err(err) => {
                         error!("failed to decode message: {}", err);
-                        let res = Response::from_error(Id::Null, to_jsonrpc_error(err));
+                        let res = Response::from_error(None, to_jsonrpc_error(err));
                         responses_tx.send(Message::Response(res)).await.unwrap();
                     }
                 }

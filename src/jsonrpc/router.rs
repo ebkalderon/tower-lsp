@@ -91,7 +91,7 @@ impl<S, E: Send + 'static> Service<Request> for Router<S, E> {
             future::ok(id.map(|id| {
                 let mut error = Error::method_not_found();
                 error.data = Some(Value::from(method));
-                Response::from_error(id, error)
+                Response::from_error(Some(id), error)
             }))
             .boxed()
         }
@@ -142,7 +142,9 @@ where
 
         let params = match P::from_params(params) {
             Ok(params) => params,
-            Err(err) => return future::ok(id.map(|id| Response::from_error(id, err))).boxed(),
+            Err(err) => {
+                return future::ok(id.map(|id| Response::from_error(Some(id), err))).boxed()
+            }
         };
 
         (self.f)(params)
@@ -243,7 +245,7 @@ pub trait IntoResponse: private::Sealed + Send + 'static {
 /// Support JSON-RPC notification methods.
 impl IntoResponse for () {
     fn into_response(self, id: Option<Id>) -> Option<Response> {
-        id.map(|id| Response::from_error(id, Error::invalid_request()))
+        id.map(|id| Response::from_error(Some(id), Error::invalid_request()))
     }
 
     #[inline]
@@ -256,18 +258,14 @@ impl IntoResponse for () {
 impl<R: Serialize + Send + 'static> IntoResponse for Result<R, Error> {
     fn into_response(self, id: Option<Id>) -> Option<Response> {
         debug_assert!(id.is_some(), "Requests always contain an `id` field");
-        if let Some(id) = id {
-            let result = self.and_then(|r| {
-                serde_json::to_value(r).map_err(|e| Error {
-                    code: ErrorCode::InternalError,
-                    message: e.to_string().into(),
-                    data: None,
-                })
-            });
-            Some(Response::from_parts(id, result))
-        } else {
-            None
-        }
+        let result = self.and_then(|r| {
+            serde_json::to_value(r).map_err(|e| Error {
+                code: ErrorCode::InternalError,
+                message: e.to_string().into(),
+                data: None,
+            })
+        });
+        Response::from_parts(id, result)
     }
 
     #[inline]
@@ -365,7 +363,7 @@ mod tests {
         assert_eq!(
             response,
             Ok(Some(Response::from_error(
-                0.into(),
+                Some(0.into()),
                 Error::invalid_params("invalid length 0, expected struct MyParams with 2 elements"),
             )))
         );
@@ -401,7 +399,7 @@ mod tests {
         assert_eq!(
             response,
             Ok(Some(Response::from_error(
-                0.into(),
+                Some(0.into()),
                 Error::invalid_request(),
             )))
         );
@@ -415,7 +413,10 @@ mod tests {
         let response = router.ready().await.unwrap().call(request).await;
         let mut error = Error::method_not_found();
         error.data = Some("foo".into());
-        assert_eq!(response, Ok(Some(Response::from_error(0.into(), error))));
+        assert_eq!(
+            response,
+            Ok(Some(Response::from_error(Some(0.into()), error)))
+        );
     }
 
     #[tokio::test(flavor = "current_thread")]

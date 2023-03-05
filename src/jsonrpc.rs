@@ -33,18 +33,6 @@ pub enum Id {
     Number(i64),
     /// String ID.
     String(String),
-    /// Null ID.
-    ///
-    /// While `null` is considered a valid request ID by the JSON-RPC 2.0 specification, its use is
-    /// _strongly_ discouraged because the specification also uses a `null` value to indicate an
-    /// unknown ID in the [`Response`] object.
-    Null,
-}
-
-impl Default for Id {
-    fn default() -> Self {
-        Id::Null
-    }
 }
 
 impl Display for Id {
@@ -52,7 +40,6 @@ impl Display for Id {
         match self {
             Id::Number(id) => Display::fmt(id, f),
             Id::String(id) => Debug::fmt(id, f),
-            Id::Null => f.write_str("null"),
         }
     }
 }
@@ -113,6 +100,18 @@ impl Serialize for Version {
     }
 }
 
+fn deserialize_opt_id<'de, D>(deserializer: D) -> std::result::Result<Option<Option<Id>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde_json::Value;
+    match Value::deserialize(deserializer)? {
+        Value::Number(v) => Ok(Some(v.as_i64().map(Id::Number))),
+        Value::String(v) => Ok(Some(Some(Id::String(v)))),
+        _ => Ok(Some(None)),
+    }
+}
+
 /// An incoming or outgoing JSON-RPC message.
 #[derive(Deserialize, Serialize)]
 #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -122,6 +121,24 @@ pub(crate) enum Message {
     Response(Response),
     /// A request or notification message.
     Request(Request),
+    /// An invalid JSON-RPC message.
+    Invalid {
+        /// The `id` field of the message, if detected.
+        ///
+        /// This field may be any of the following values:
+        ///
+        /// * `Some(Some(_))` if a field named `id` is present and contains an [`Id`].
+        /// * `Some(None)` if a field named `id` is present, but it is not an [`Id`].
+        /// * `None` if no field named `id` is present.
+        ///
+        /// If this message is a JSON object with some field named `id`, regardless of type, we
+        /// should respond with an "invalid request" error. Otherwise, assume this is <TODO>
+        ///
+        /// TODO: We need to distinguish between an invalid JSON-RPC message and a failed
+        /// notification somehow. Remember: we must not respond to failed notifications.
+        #[serde(default, deserialize_with = "deserialize_opt_id")]
+        id: Option<Option<Id>>,
+    },
 }
 
 #[cfg(test)]
@@ -194,12 +211,6 @@ mod tests {
         let missing_method_with_id = json!({"jsonrpc":"2.0","id":0});
         let incoming = serde_json::from_value(missing_method_with_id).unwrap();
         assert!(matches!(incoming, Message::Request(_)));
-    }
-
-    #[test]
-    fn accepts_null_request_id() {
-        let request_id: Id = serde_json::from_value(json!(null)).unwrap();
-        assert_eq!(request_id, Id::Null);
     }
 
     #[test]

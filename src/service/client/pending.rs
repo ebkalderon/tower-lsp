@@ -22,14 +22,14 @@ impl Pending {
     ///
     /// The corresponding `.wait()` future will then resolve to the given value.
     pub fn insert(&self, r: Response) {
-        match r.id() {
-            Id::Null => warn!("received response with request ID of `null`, ignoring"),
-            id => match self.0.entry(id.clone()) {
-                Entry::Vacant(_) => warn!("received response with unknown request ID: {}", id),
-                Entry::Occupied(mut entry) => {
-                    let tx = match entry.get().len() {
-                        1 => entry.remove().remove(0),
-                        _ => entry.get_mut().remove(0),
+        match r.id().cloned() {
+            None => warn!("received response with request ID of `null`, ignoring"),
+            Some(id) => match self.0.entry(id) {
+                Entry::Vacant(e) => warn!("received response with unknown request ID: {}", e.key()),
+                Entry::Occupied(mut e) => {
+                    let tx = match e.get().len() {
+                        1 => e.remove().remove(0),
+                        _ => e.get_mut().remove(0),
                     };
 
                     tx.send(r).expect("receiver already dropped");

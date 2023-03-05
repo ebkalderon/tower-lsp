@@ -79,7 +79,8 @@ where
         } else {
             warn!("received duplicate `initialize` request, ignoring");
             let (_, id, _) = req.into_parts();
-            future::ok(id.map(|id| Response::from_error(id, Error::invalid_request()))).boxed()
+            future::ok(id.map(|id| Response::from_error(Some(id), Error::invalid_request())))
+                .boxed()
         }
     }
 }
@@ -306,7 +307,7 @@ fn not_initialized_response(id: Option<Id>, server_state: State) -> Option<Respo
         _ => Error::invalid_request(),
     };
 
-    Some(Response::from_error(id, error))
+    Some(Response::from_error(Some(id), error))
 }
 
 // TODO: Add some `tower-test` middleware tests for each middleware.

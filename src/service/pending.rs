@@ -44,11 +44,19 @@ impl Pending {
                 if let Ok(handler_result) = abort_result {
                     handler_result
                 } else {
-                    Ok(Some(Response::from_error(id, Error::request_cancelled())))
+                    Ok(Some(Response::from_error(
+                        Some(id),
+                        Error::request_cancelled(),
+                    )))
                 }
             })
         } else {
-            Either::Right(async { Ok(Some(Response::from_error(id, Error::invalid_request()))) })
+            Either::Right(async {
+                Ok(Some(Response::from_error(
+                    Some(id),
+                    Error::invalid_request(),
+                )))
+            })
         }
     }
 
@@ -118,7 +126,10 @@ mod tests {
         let res = handler_fut.await.expect("task panicked");
         assert_eq!(
             res,
-            Ok(Some(Response::from_error(id, Error::request_cancelled())))
+            Ok(Some(Response::from_error(
+                Some(id),
+                Error::request_cancelled()
+            )))
         );
     }
 }

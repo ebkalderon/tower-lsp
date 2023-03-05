@@ -9,8 +9,15 @@ use super::{Error, Id, Result, Version};
 #[derive(Clone, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 enum Kind {
-    Ok { result: Value },
-    Err { error: Error },
+    Ok {
+        result: Value,
+        id: Id,
+    },
+    Err {
+        error: Error,
+        #[serde(deserialize_with = "Option::deserialize")]
+        id: Option<Id>,
+    },
 }
 
 /// A successful or failed JSON-RPC response.
@@ -19,7 +26,6 @@ pub struct Response {
     jsonrpc: Version,
     #[serde(flatten)]
     kind: Kind,
-    id: Id,
 }
 
 impl Response {
@@ -27,34 +33,32 @@ impl Response {
     pub const fn from_ok(id: Id, result: Value) -> Self {
         Response {
             jsonrpc: Version,
-            kind: Kind::Ok { result },
-            id,
+            kind: Kind::Ok { result, id },
         }
     }
 
     /// Creates a new error response from a response ID and `Error` object.
-    pub const fn from_error(id: Id, error: Error) -> Self {
+    pub const fn from_error(id: Option<Id>, error: Error) -> Self {
         Response {
             jsonrpc: Version,
-            kind: Kind::Err { error },
-            id,
+            kind: Kind::Err { error, id },
         }
     }
 
     /// Creates a new response from a response ID and either an `Ok(Value)` or `Err(Error)` body.
-    pub fn from_parts(id: Id, body: Result<Value>) -> Self {
+    pub fn from_parts(id: Option<Id>, body: Result<Value>) -> Option<Self> {
         match body {
-            Ok(result) => Response::from_ok(id, result),
-            Err(error) => Response::from_error(id, error),
+            Ok(result) => id.map(|id| Response::from_ok(id, result)),
+            Err(error) => Some(Response::from_error(id, error)),
         }
     }
 
     /// Splits the response into a response ID paired with either an `Ok(Value)` or `Err(Error)` to
     /// signify whether the response is a success or failure.
-    pub fn into_parts(self) -> (Id, Result<Value>) {
+    pub fn into_parts(self) -> (Option<Id>, Result<Value>) {
         match self.kind {
-            Kind::Ok { result } => (self.id, Ok(result)),
-            Kind::Err { error } => (self.id, Err(error)),
+            Kind::Ok { result, id } => (Some(id), Ok(result)),
+            Kind::Err { error, id } => (id, Err(error)),
         }
     }
 
@@ -73,7 +77,7 @@ impl Response {
     /// This member only exists if the response indicates success.
     pub const fn result(&self) -> Option<&Value> {
         match &self.kind {
-            Kind::Ok { result } => Some(result),
+            Kind::Ok { result, .. } => Some(result),
             _ => None,
         }
     }
@@ -83,14 +87,17 @@ impl Response {
     /// This member only exists if the response indicates failure.
     pub const fn error(&self) -> Option<&Error> {
         match &self.kind {
-            Kind::Err { error } => Some(error),
+            Kind::Err { error, .. } => Some(error),
             _ => None,
         }
     }
 
     /// Returns the corresponding response ID, if known.
-    pub const fn id(&self) -> &Id {
-        &self.id
+    pub const fn id(&self) -> Option<&Id> {
+        match &self.kind {
+            Kind::Ok { id, .. } => Some(id),
+            Kind::Err { id, .. } => id.as_ref(),
+        }
     }
 }
 
@@ -100,11 +107,11 @@ impl Debug for Response {
         d.field("jsonrpc", &self.jsonrpc);
 
         match &self.kind {
-            Kind::Ok { result } => d.field("result", result),
-            Kind::Err { error } => d.field("error", error),
+            Kind::Ok { result, id } => d.field("result", result).field("id", &id),
+            Kind::Err { error, id } => d.field("error", error).field("id", &id),
         };
 
-        d.field("id", &self.id).finish()
+        d.finish()
     }
 }
 
@@ -135,7 +142,7 @@ mod tests {
         let response = Response::from_str(
             r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":1}"#,
         );
-        let expected = Response::from_error(Id::Number(1), Error::parse_error());
+        let expected = Response::from_error(Some(Id::Number(1)), Error::parse_error());
 
         assert_eq!(response.unwrap(), expected);
     }
@@ -145,7 +152,7 @@ mod tests {
         let response = Response::from_str(
             r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":null}"#,
         );
-        let expected = Response::from_error(Id::Null, Error::parse_error());
+        let expected = Response::from_error(None, Error::parse_error());
 
         assert_eq!(response.unwrap(), expected);
     }
@@ -156,7 +163,7 @@ mod tests {
             r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":123},"id":1}"#,
         );
         let expected = Response::from_error(
-            Id::Number(1),
+            Some(Id::Number(1)),
             Error {
                 data: Some(json!(123u32)),
                 ..Error::parse_error()
