@@ -87,7 +87,7 @@ Method Name                           | Message Type                | Supported 
 Method Name                                | Message Type                | Supported      | Tracking Issue(s)
 -------------------------------------------|:---------------------------:|:--------------:|------------------
 [`$/setTrace`]                             | :arrow_right:               | :red_circle:   |
-[`$/logTrace`]                             | :arrow_right:               | :red_circle:   |
+[`$/logTrace`]                             | :arrow_left:                | :red_circle:   |
 [`textDocument/prepareCallHierarchy`]      | :leftwards_arrow_with_hook: | :green_circle: |
 [`callHierarchy/incomingCalls`]            | :leftwards_arrow_with_hook: | :green_circle: |
 [`callHierarchy/outgoingCalls`]            | :leftwards_arrow_with_hook: | :green_circle: |
