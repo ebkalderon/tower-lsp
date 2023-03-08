@@ -12,7 +12,7 @@ documentation = "https://docs.rs/tower-lsp/"
 readme = "README.md"
 categories = ["asynchronous"]
 keywords = ["language-server", "lsp", "tower"]
-exclude = ["./tower-lsp-macros"]
+exclude = ["FEATURES.md"]
 
 [features]
 default = ["runtime-tokio"]
