@@ -2,8 +2,10 @@
 
 This document tracks which features defined in the [Language Server Protocol
 (LSP) specification][spec] are currently supported by `tower-lsp` and to what
-degree. Please note: the matrices below are kept updated on a best-effort basis
-and may be out of date on mainline at any given time.
+degree. Please note that this document is provided _as-is_ and will be updated
+over time on a best-effort basis. There is no guarantee that it will always
+reflect the current reality exactly on the mainline branch. However, it should
+be updated on every `tower-lsp` release at minimum.
 
 [spec]: https://microsoft.github.io/language-server-protocol/specification
 
