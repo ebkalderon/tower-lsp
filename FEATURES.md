@@ -48,11 +48,11 @@ Method Name                           | Message Type                | Supported 
 [`textDocument/prepareTypeHierarchy`] | :leftwards_arrow_with_hook: | :green_circle: |
 [`typeHierarchy/supertypes`]          | :leftwards_arrow_with_hook: | :green_circle: |
 [`typeHierarchy/subtypes`]            | :leftwards_arrow_with_hook: | :green_circle: |
-[`textDocument/inlayHint`]            | :leftwards_arrow_with_hook: | :green_circle: | [#352]
-[`inlayHint/resolve`]                 | :leftwards_arrow_with_hook: | :green_circle: | [#352]
-[`workspace/inlayHint/refresh`]       | :arrow_right_hook:          | :green_circle: | [#352]
-[`textDocument/inlineValue`]          | :leftwards_arrow_with_hook: | :green_circle: | [#352]
-[`workspace/inlineValue/refresh`]     | :arrow_right_hook:          | :green_circle: | [#352]
+[`textDocument/inlayHint`]            | :leftwards_arrow_with_hook: | :green_circle: | ~[#352]~
+[`inlayHint/resolve`]                 | :leftwards_arrow_with_hook: | :green_circle: | ~[#352]~
+[`workspace/inlayHint/refresh`]       | :arrow_right_hook:          | :green_circle: | ~[#352]~
+[`textDocument/inlineValue`]          | :leftwards_arrow_with_hook: | :green_circle: | ~[#352]~
+[`workspace/inlineValue/refresh`]     | :arrow_right_hook:          | :green_circle: | ~[#352]~
 [`textDocument/diagnostic`]           | :leftwards_arrow_with_hook: | :red_circle:   | [#374]
 [`workspace/diagnostic`]              | :leftwards_arrow_with_hook: | :red_circle:   | [#374]
 [`workspace/diagnostic/refresh`]      | :arrow_right_hook:          | :red_circle:   | [#374]
@@ -90,10 +90,10 @@ Method Name                                | Message Type                | Suppo
 [`callHierarchy/incomingCalls`]            | :leftwards_arrow_with_hook: | :green_circle: |
 [`callHierarchy/outgoingCalls`]            | :leftwards_arrow_with_hook: | :green_circle: |
 [`workspace/codeLens/refresh`]             | :arrow_right_hook:          | :green_circle: |
-[`textDocument/semanticTokens/full`]       | :leftwards_arrow_with_hook: | :green_circle: | [#146]
-[`textDocument/semanticTokens/full/delta`] | :leftwards_arrow_with_hook: | :green_circle: | [#146]
-[`textDocument/semanticTokens/range`]      | :leftwards_arrow_with_hook: | :green_circle: | [#146]
-[`workspace/semanticTokens/refresh`]       | :arrow_right_hook:          | :green_circle: | [#146]
+[`textDocument/semanticTokens/full`]       | :leftwards_arrow_with_hook: | :green_circle: | ~[#146]~
+[`textDocument/semanticTokens/full/delta`] | :leftwards_arrow_with_hook: | :green_circle: | ~[#146]~
+[`textDocument/semanticTokens/range`]      | :leftwards_arrow_with_hook: | :green_circle: | ~[#146]~
+[`workspace/semanticTokens/refresh`]       | :arrow_right_hook:          | :green_circle: | ~[#146]~
 [`textDocument/moniker`]                   | :leftwards_arrow_with_hook: | :green_circle: |
 [`codeAction/resolve`]                     | :arrow_right_hook:          | :green_circle: |
 [`textDocument/linkedEditingRange`]        | :leftwards_arrow_with_hook: | :green_circle: |
@@ -134,10 +134,10 @@ Method Name                                | Message Type                | Suppo
 
 Method Name                        | Message Type                | Supported      | Tracking Issue(s)
 -----------------------------------|:---------------------------:|:--------------:|------------------
-[`$/progress`]                     | :arrow_right: :arrow_left:  | :red_circle:   | [#176], [#380], [#381]
+[`$/progress`]                     | :arrow_right: :arrow_left:  | :red_circle:   | ~[#176]~, [#380], [#381]
 [`window/workDoneProgress/create`] | :arrow_right_hook:          | :red_circle:   | [#381]
 [`window/workDoneProgress/cancel`] | :arrow_right:               | :red_circle:   | [#381]
-[`textDocument/selectionRange`]    | :leftwards_arrow_with_hook: | :green_circle: | [#10]
+[`textDocument/selectionRange`]    | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
 
 [`$/progress`]: https://microsoft.github.io/language-server-protocol/specification#progress
 [`window/workDoneProgress/create`]: https://microsoft.github.io/language-server-protocol/specification#window_workDoneProgress_create
@@ -155,7 +155,7 @@ Method Name                        | Message Type                | Supported    
 
 Method Name                  | Message Type                | Supported      | Tracking Issue(s)
 -----------------------------|:---------------------------:|:--------------:|------------------
-[`textDocument/declaration`] | :leftwards_arrow_with_hook: | :green_circle: | [#10]
+[`textDocument/declaration`] | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
 
 [`textDocument/declaration`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_declaration
 
@@ -167,7 +167,7 @@ Method Name                  | Message Type                | Supported      | Tr
 
 Method Name                    | Message Type                | Supported      | Tracking Issue(s)
 -------------------------------|:---------------------------:|:--------------:|------------------
-[`textDocument/prepareRename`] | :leftwards_arrow_with_hook: | :green_circle: | [#10]
+[`textDocument/prepareRename`] | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
 
 [`textDocument/prepareRename`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_prepareRename
 
@@ -179,7 +179,7 @@ Method Name                    | Message Type                | Supported      | 
 
 Method Name                   | Message Type                | Supported      | Tracking Issue(s)
 ------------------------------|:---------------------------:|:--------------:|------------------
-[`textDocument/foldingRange`] | :leftwards_arrow_with_hook: | :green_circle: | [#10]
+[`textDocument/foldingRange`] | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
 
 [`textDocument/foldingRange`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_foldingRange
 
@@ -191,13 +191,13 @@ Method Name                   | Message Type                | Supported      | T
 
 Method Name                             | Message Type                | Supported      | Tracking Issue(s)
 ----------------------------------------|:---------------------------:|:--------------:|------------------
-[`workspace/workspaceFolders`]          | :arrow_right_hook:          | :green_circle: | [#13]
-[`workspace/didChangeWorkspaceFolders`] | :arrow_right:               | :green_circle: | [#8]
-[`workspace/configuration`]             | :arrow_right_hook:          | :green_circle: | [#13]
-[`textDocument/typeDefinition`]         | :leftwards_arrow_with_hook: | :green_circle: | [#10]
-[`textDocument/implementation`]         | :leftwards_arrow_with_hook: | :green_circle: | [#10]
-[`textDocument/documentColor`]          | :leftwards_arrow_with_hook: | :green_circle: | [#10]
-[`textDocument/colorPresentation`]      | :leftwards_arrow_with_hook: | :green_circle: | [#10]
+[`workspace/workspaceFolders`]          | :arrow_right_hook:          | :green_circle: | ~[#13]~
+[`workspace/didChangeWorkspaceFolders`] | :arrow_right:               | :green_circle: | ~[#8]~
+[`workspace/configuration`]             | :arrow_right_hook:          | :green_circle: | ~[#13]~
+[`textDocument/typeDefinition`]         | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
+[`textDocument/implementation`]         | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
+[`textDocument/documentColor`]          | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
+[`textDocument/colorPresentation`]      | :leftwards_arrow_with_hook: | :green_circle: | ~[#10]~
 
 [`workspace/workspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_workspaceFolders
 [`workspace/didChangeWorkspaceFolders`]: https://microsoft.github.io/language-server-protocol/specification#workspace_didChangeWorkspaceFolders
@@ -219,44 +219,44 @@ Method Name                          | Message Type                | Supported  
 -------------------------------------|:---------------------------:|:-------------------:|------------------
 [`initialize`]                       | :leftwards_arrow_with_hook: | :green_circle:      |
 [`initialized`]                      | :arrow_right:               | :green_circle:      |
-[`client/registerCapability`]        | :arrow_right_hook:          | :green_circle:      | [#13]
-[`client/unregisterCapability`]      | :arrow_right_hook:          | :green_circle:      | [#13]
+[`client/registerCapability`]        | :arrow_right_hook:          | :green_circle:      | ~[#13]~
+[`client/unregisterCapability`]      | :arrow_right_hook:          | :green_circle:      | ~[#13]~
 [`shutdown`]                         | :leftwards_arrow_with_hook: | :green_circle:      |
 [`exit`]                             | :arrow_right:               | :green_circle:      |
 [`textDocument/didOpen`]             | :arrow_right:               | :green_circle:      |
 [`textDocument/didChange`]           | :arrow_right:               | :green_circle:      |
-[`textDocument/willSave`]            | :arrow_right:               | :green_circle:      | [#118]
-[`textDocument/willSaveWaitUntil`]   | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
+[`textDocument/willSave`]            | :arrow_right:               | :green_circle:      | ~[#118]~
+[`textDocument/willSaveWaitUntil`]   | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
 [`textDocument/didSave`]             | :arrow_right:               | :green_circle:      |
 [`textDocument/didClose`]            | :arrow_right:               | :green_circle:      |
-[`textDocument/definition`]          | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/references`]          | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
+[`textDocument/definition`]          | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/references`]          | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
 [`textDocument/documentHighlight`]   | :leftwards_arrow_with_hook: | :green_circle:      |
-[`textDocument/documentLink`]        | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`documentLink/resolve`]             | :leftwards_arrow_with_hook: | :green_circle:      | [#12]
+[`textDocument/documentLink`]        | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`documentLink/resolve`]             | :leftwards_arrow_with_hook: | :green_circle:      | ~[#12]~
 [`textDocument/hover`]               | :leftwards_arrow_with_hook: | :green_circle:      |
-[`textDocument/codeLens`]            | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`codeLens/resolve`]                 | :leftwards_arrow_with_hook: | :green_circle:      | [#11]
-[`textDocument/documentSymbol`]      | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/completion`]          | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`completionItem/resolve`]           | :leftwards_arrow_with_hook: | :green_circle:      | [#9]
+[`textDocument/codeLens`]            | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`codeLens/resolve`]                 | :leftwards_arrow_with_hook: | :green_circle:      | ~[#11]~
+[`textDocument/documentSymbol`]      | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/completion`]          | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`completionItem/resolve`]           | :leftwards_arrow_with_hook: | :green_circle:      | ~[#9]~
 [`textDocument/publishDiagnostics`]  | :arrow_left:                | :green_circle:      |
-[`textDocument/signatureHelp`]       | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/codeAction`]          | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/formatting`]          | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/rangeFormatting`]     | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/onTypeFormatting`]    | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`textDocument/rename`]              | :leftwards_arrow_with_hook: | :green_circle:      | [#10]
-[`workspace/symbol`]                 | :leftwards_arrow_with_hook: | :green_circle:      | [#8]
-[`workspace/didChangeConfiguration`] | :arrow_right:               | :green_circle:      | [#8]
-[`workspace/didChangeWatchedFiles`]  | :arrow_right:               | :green_circle:      | [#8]
-[`workspace/executeCommand`]         | :leftwards_arrow_with_hook: | :green_circle:      | [#8]
-[`workspace/applyEdit`]              | :arrow_right_hook:          | :green_circle:      | [#13]
+[`textDocument/signatureHelp`]       | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/codeAction`]          | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/formatting`]          | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/rangeFormatting`]     | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/onTypeFormatting`]    | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`textDocument/rename`]              | :leftwards_arrow_with_hook: | :green_circle:      | ~[#10]~
+[`workspace/symbol`]                 | :leftwards_arrow_with_hook: | :green_circle:      | ~[#8]~
+[`workspace/didChangeConfiguration`] | :arrow_right:               | :green_circle:      | ~[#8]~
+[`workspace/didChangeWatchedFiles`]  | :arrow_right:               | :green_circle:      | ~[#8]~
+[`workspace/executeCommand`]         | :leftwards_arrow_with_hook: | :green_circle:      | ~[#8]~
+[`workspace/applyEdit`]              | :arrow_right_hook:          | :green_circle:      | ~[#13]~
 [`window/showMessage`]               | :arrow_left:                | :green_circle:      |
-[`window/showMessageRequest`]        | :arrow_right_hook:          | :green_circle:      | [#13]
+[`window/showMessageRequest`]        | :arrow_right_hook:          | :green_circle:      | ~[#13]~
 [`window/logMessage`]                | :arrow_left:                | :green_circle:      |
 [`telemetry/event`]                  | :arrow_left:                | :green_circle:      |
-[`$/cancelRequest`]                  | :arrow_right: :arrow_left:  | :yellow_circle:[^1] | [#145], [#231]
+[`$/cancelRequest`]                  | :arrow_right: :arrow_left:  | :yellow_circle:[^1] | ~[#145]~, [#231]
 
 [`initialize`]: https://microsoft.github.io/language-server-protocol/specification#initialize
 [`initialized`]: https://microsoft.github.io/language-server-protocol/specification#initialized
