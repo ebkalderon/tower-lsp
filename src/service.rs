@@ -1,6 +1,6 @@
 //! Service abstraction for language servers.
 
-pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink};
+pub use self::client::{progress, Client, ClientSocket, RequestStream, ResponseSink};
 
 pub(crate) use self::pending::Pending;
 pub(crate) use self::state::{ServerState, State};
