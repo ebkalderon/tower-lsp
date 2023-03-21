@@ -6,10 +6,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse_macro_input, AttributeArgs, FnArg, ItemTrait, Lit, Meta, MetaNameValue, NestedMeta,
-    ReturnType, TraitItem,
-};
+use syn::{parse_macro_input, FnArg, ItemTrait, LitStr, ReturnType, TraitItem};
 
 /// Macro for generating LSP server implementation from [`lsp-types`](https://docs.rs/lsp-types).
 ///
@@ -18,12 +15,9 @@ use syn::{
 /// as RPC handlers.
 #[proc_macro_attribute]
 pub fn rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr_args = parse_macro_input!(attr as AttributeArgs);
-
-    match attr_args.as_slice() {
-        [] => {}
-        [NestedMeta::Meta(meta)] if meta.path().is_ident("name") => return item,
-        _ => panic!("unexpected attribute arguments"),
+    // It will be checked later in `parse_method_calls()`.
+    if !attr.is_empty() {
+        return item;
     }
 
     let lang_server_trait = parse_macro_input!(item as ItemTrait);
@@ -50,22 +44,28 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
 
     for item in &lang_server_trait.items {
         let method = match item {
-            TraitItem::Method(m) => m,
+            TraitItem::Fn(m) => m,
             _ => continue,
         };
 
-        let rpc_name = method
-            .attrs
-            .iter()
-            .filter_map(|attr| attr.parse_args::<Meta>().ok())
-            .filter(|meta| meta.path().is_ident("name"))
-            .find_map(|meta| match meta {
-                Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(lit), ..
-                }) => Some(lit.value().trim_matches('"').to_owned()),
-                _ => panic!("expected string literal for `#[rpc(name = ???)]` attribute"),
-            })
-            .expect("expected `#[rpc(name = \"foo\")]` attribute");
+        let mut rpc_name: Option<String> = None;
+
+        for attr in &method.attrs {
+            if attr.meta.path().is_ident("rpc") {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("name") {
+                        let s: LitStr = meta.value()?.parse()?;
+                        rpc_name = Some(s.value());
+                        Ok(())
+                    } else {
+                        Err(meta.error("expected `name`"))
+                    }
+                })
+                .unwrap();
+            }
+        }
+
+        let rpc_name = rpc_name.expect("expected `#[rpc(name = \"foo\")]` attribute");
 
         let params = method.sig.inputs.iter().nth(1).and_then(|arg| match arg {
             FnArg::Typed(pat) => Some(&*pat.ty),
