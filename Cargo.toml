@@ -39,7 +39,7 @@ tower = { version = "0.4", default-features = false, features = ["util"] }
 tracing = "0.1"
 
 [dev-dependencies]
-async-tungstenite = { version = "0.18", features = ["tokio-runtime"] }
+async-tungstenite = { version = "0.21", features = ["tokio-runtime"] }
 tracing-subscriber = "0.3"
 tokio = { version = "1.17", features = ["io-util", "io-std", "macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7", features = ["compat"] }
