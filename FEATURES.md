@@ -35,11 +35,11 @@ Symbol          | Description
 
 </details>
 
-### Overall status: (77.5/90) _~86.1%_
+### Overall status: (80.5/90) _~89.4%_
 
 ## [3.17.0] - 2022-05-10
 
-### Status: (9/16)
+### Status: (12/16)
 
 Method Name                           | Message Type                | Supported      | Tracking Issue(s)
 --------------------------------------|:---------------------------:|:--------------:|------------------
@@ -55,9 +55,9 @@ Method Name                           | Message Type                | Supported 
 [`workspace/inlayHint/refresh`]       | :arrow_right_hook:          | :green_circle: | ~[#352]~
 [`textDocument/inlineValue`]          | :leftwards_arrow_with_hook: | :green_circle: | ~[#352]~
 [`workspace/inlineValue/refresh`]     | :arrow_right_hook:          | :green_circle: | ~[#352]~
-[`textDocument/diagnostic`]           | :leftwards_arrow_with_hook: | :red_circle:   | [#374]
-[`workspace/diagnostic`]              | :leftwards_arrow_with_hook: | :red_circle:   | [#374]
-[`workspace/diagnostic/refresh`]      | :arrow_right_hook:          | :red_circle:   | [#374]
+[`textDocument/diagnostic`]           | :leftwards_arrow_with_hook: | :green_circle: | ~[#374]~
+[`workspace/diagnostic`]              | :leftwards_arrow_with_hook: | :green_circle: | ~[#374]~
+[`workspace/diagnostic/refresh`]      | :arrow_right_hook:          | :green_circle: | ~[#374]~
 [`workspaceSymbol/resolve`]           | :leftwards_arrow_with_hook: | :green_circle: |
 
 [`notebookDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification#notebookDocument_didOpen
@@ -74,7 +74,7 @@ Method Name                           | Message Type                | Supported 
 [`workspace/inlineValue/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_inlineValue_refresh
 [`textDocument/diagnostic`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_diagnostic
 [`workspace/diagnostic`]: https://microsoft.github.io/language-server-protocol/specification#workspace_diagnostic
-[`workspace/diagnostic/refresh`]: https://microsoft.github.io/language-server-protocol/specification#workspace_diagnostic_refresh
+[`workspace/diagnostic/refresh`]: https://microsoft.github.io/language-server-protocol/specification#diagnostic_refresh
 [`workspaceSymbol/resolve`]: https://microsoft.github.io/language-server-protocol/specification#workspace_symbolResolve
 
 [#352]: https://github.com/ebkalderon/tower-lsp/issues/352
