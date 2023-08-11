@@ -841,7 +841,67 @@ pub trait LanguageServer: Send + Sync + 'static {
         Err(Error::method_not_found())
     }
 
-    // TODO: Add `diagnostic()` and `workspace_diagnostic()` here when supported by `lsp-types`.
+    /// The [`textDocument/diagnostic`] request is sent from the client to the server to ask the
+    /// server to compute the diagnostics for a given document.
+    ///
+    /// As with other pull requests, the server is asked to compute the diagnostics for the
+    /// currently synced version of the document.
+    ///
+    /// The request doesn't define its own client and server capabilities. It is only issued if a
+    /// server registers for the [`textDocument/diagnostic`] request.
+    ///
+    /// [`textDocument/diagnostic`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_diagnostic
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "textDocument/diagnostic")]
+    async fn diagnostic(
+        &self,
+        params: DocumentDiagnosticParams,
+    ) -> Result<DocumentDiagnosticReportResult> {
+        let _ = params;
+        error!("Got a textDocument/diagnostic request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
+
+    /// The [`workspace/diagnostic`] request is sent from the client to the server to ask the
+    /// server to compute workspace wide diagnostics which previously where pushed from the server
+    /// to the client.
+    ///
+    /// In contrast to the [`textDocument/diagnostic`] request, the workspace request can be
+    /// long-running and is not bound to a specific workspace or document state. If the client
+    /// supports streaming for the workspace diagnostic pull, it is legal to provide a
+    /// `textDocument/diagnostic` report multiple times for the same document URI. The last one
+    /// reported will win over previous reports.
+    ///
+    /// [`textDocument/diagnostic`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_diagnostic
+    ///
+    /// If a client receives a diagnostic report for a document in a workspace diagnostic request
+    /// for which the client also issues individual document diagnostic pull requests, the client
+    /// needs to decide which diagnostics win and should be presented. In general:
+    ///
+    /// * Diagnostics for a higher document version should win over those from a lower document
+    ///   version (e.g. note that document versions are steadily increasing).
+    /// * Diagnostics from a document pull should win over diagnostics from a workspace pull.
+    ///
+    /// The request doesn't define its own client and server capabilities. It is only issued if a
+    /// server registers for the [`workspace/diagnostic`] request.
+    ///
+    /// [`workspace/diagnostic`]: https://microsoft.github.io/language-server-protocol/specification#workspace_diagnostic
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    #[rpc(name = "workspace/diagnostic")]
+    async fn workspace_diagnostic(
+        &self,
+        params: WorkspaceDiagnosticParams,
+    ) -> Result<WorkspaceDiagnosticReportResult> {
+        let _ = params;
+        error!("Got a workspace/diagnostic request, but it is not implemented");
+        Err(Error::method_not_found())
+    }
 
     /// The [`textDocument/signatureHelp`] request is sent from the client to the server to request
     /// signature information at a given cursor position.

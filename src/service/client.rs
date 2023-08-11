@@ -315,7 +315,28 @@ impl Client {
         self.send_request::<InlayHintRefreshRequest>(()).await
     }
 
-    // TODO: Add `workspace_diagnostic_refresh()` here when supported by `lsp-types`.
+    /// Asks the client to refresh all needed document and workspace diagnostics.
+    ///
+    /// This is useful if a server detects a project wide configuration change which requires a
+    /// re-calculation of all diagnostics.
+    ///
+    /// This corresponds to the [`workspace/diagnostic/refresh`] request.
+    ///
+    /// [`workspace/diagnostic/refresh`]: https://microsoft.github.io/language-server-protocol/specification#diagnostic_refresh
+    ///
+    /// # Initialization
+    ///
+    /// If the request is sent to the client before the server has been initialized, this will
+    /// immediately return `Err` with JSON-RPC error code `-32002` ([read more]).
+    ///
+    /// [read more]: https://microsoft.github.io/language-server-protocol/specification#initialize
+    ///
+    /// # Compatibility
+    ///
+    /// This request was introduced in specification version 3.17.0.
+    pub async fn workspace_diagnostic_refresh(&self) -> jsonrpc::Result<()> {
+        self.send_request::<WorkspaceDiagnosticRefresh>(()).await
+    }
 
     /// Submits validation diagnostics for an open file with the given URI.
     ///
