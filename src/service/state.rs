@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::sync::atomic::{AtomicU8, Ordering};
 
 /// A list of possible states the language server can be in.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
 pub enum State {
     /// Server has not received an `initialize` request.
