@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.20.0] - 2023-08-10
+
+### Added
+
+* Add support for pull-based diagnostics from LSP 3.17.0 (PR #396).
+  * Implement `textDocument/diagnostic` server request.
+  * Implement `workspace/diagnostic` server request.
+  * Implement `workspace/diagnostic/refresh` client request.
+* Implement `std::str::FromStr` for `jsonrpc::{Request,Response}` (PR #379).
+* Implement `From<jsonrpc::ErrorCode>` for `i64` (PR #379).
+* Document supported LSP features in [FEATURES.md](./FEATURES.md) matrix (PR
+  #383).
+
+### Changed
+
+* Bump minimum supported Rust version from `1.52.0` to `1.64.0` (PR #377, PR #395).
+* Update `lsp-types` from `0.94` to `0.94.1` (PR #396).
+* Update `syn` from `1` to `2` (PR #390).
+* Update dev-dependency `async-tungstenite` from `0.18` to `0.22` (PR #395).
+* Update dev-dependency `ws_stream_tungstenite` from `0.9` to `0.10` (PR #395).
+* Optimize JSON-RPC deserialization types.
+  * Change `jsonrpc::Error::message` field to `Cow<'static, str>` (PR #378).
+  * Mark several methods on `jsonrpc::Error` as `const fn` (PR #378).
+  * Mark all methods on `jsonrpc::ErrorCode` as `const fn` (PR #378).
+  * Avoid heap allocation in `version` field deserialization (PR #379).
+
+### Fixed
+
+* Fix broken Markdown in doc comment for `LanguageServer::completion()` (PR #396).
+
 ## [0.19.0] - 2023-02-28
 
 ### Added
@@ -549,7 +579,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   * `textDocument/hover`
   * `textDocument/documentHighlight`
 
-[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/ebkalderon/tower-lsp/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/ebkalderon/tower-lsp/compare/v0.16.0...v0.17.0
