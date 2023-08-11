@@ -15,7 +15,7 @@ use syn::{parse_macro_input, FnArg, ItemTrait, LitStr, ReturnType, TraitItem};
 /// as RPC handlers.
 #[proc_macro_attribute]
 pub fn rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
-    // It will be checked later in `parse_method_calls()`.
+    // Attribute will be parsed later in `parse_method_calls()`.
     if !attr.is_empty() {
         return item;
     }
@@ -48,24 +48,23 @@ fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
             _ => continue,
         };
 
-        let mut rpc_name: Option<String> = None;
+        let attr = method
+            .attrs
+            .iter()
+            .find(|attr| attr.meta.path().is_ident("rpc"))
+            .expect("expected `#[rpc(name = \"foo\")]` attribute");
 
-        for attr in &method.attrs {
-            if attr.meta.path().is_ident("rpc") {
-                attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("name") {
-                        let s: LitStr = meta.value()?.parse()?;
-                        rpc_name = Some(s.value());
-                        Ok(())
-                    } else {
-                        Err(meta.error("expected `name`"))
-                    }
-                })
-                .unwrap();
+        let mut rpc_name = String::new();
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("name") {
+                let s: LitStr = meta.value().and_then(|v| v.parse())?;
+                rpc_name = s.value();
+                Ok(())
+            } else {
+                Err(meta.error("expected `name` identifier in `#[rpc]`"))
             }
-        }
-
-        let rpc_name = rpc_name.expect("expected `#[rpc(name = \"foo\")]` attribute");
+        })
+        .unwrap();
 
         let params = method.sig.inputs.iter().nth(1).and_then(|arg| match arg {
             FnArg::Typed(pat) => Some(&*pat.ty),
