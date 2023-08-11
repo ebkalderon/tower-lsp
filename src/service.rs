@@ -25,7 +25,7 @@ mod pending;
 mod state;
 
 /// Error that occurs when attempting to call the language server after it has already exited.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExitedError(());
 
 impl std::error::Error for ExitedError {}
