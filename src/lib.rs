@@ -817,7 +817,7 @@ pub trait LanguageServer: Send + Sync + 'static {
     /// # Compatibility
     ///
     /// Since 3.16.0, the client can signal that it can resolve more properties lazily. This is
-    /// done using the completion_item.resolve_support` client capability which lists all
+    /// done using the `completion_item.resolve_support` client capability which lists all
     /// properties that can be filled in during a `completionItem/resolve` request.
     ///
     /// All other properties (usually `sort_text`, `filter_text`, `insert_text`, and `text_edit`)
