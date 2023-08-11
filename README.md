@@ -92,7 +92,7 @@ features = ["runtime-agnostic"]
 ## Using proposed features
 
 You can use enable proposed features in the
-[LSP Specification version 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)
+[LSP Specification version 3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/)
 by enabling the `proposed` Cargo crate feature. Note that there are no semver
 guarantees to the `proposed` features so there may be breaking changes between
 any type of version in the `proposed` features.
