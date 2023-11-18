@@ -230,6 +230,54 @@ pub trait LanguageServer: Send + Sync + 'static {
         warn!("Got a textDocument/didClose notification, but it is not implemented");
     }
 
+    // Notebook Document Synchronization
+
+    /// The [`notebookDocument/didOpen`] notification is sent from the client to the server when a new notebook document is opened.
+    /// It is only sent for notebooks selected by the `notebookDocumentSync` server capability.
+    ///
+    /// [`notebookDocument/didOpen`]: https://microsoft.github.io/language-server-protocol/specification/#notebookDocument_didChange
+    ///
+    /// TODO: Write more documentation
+    #[rpc(name = "notebookDocument/didOpen")]
+    async fn notebook_did_open(&self, params: DidOpenNotebookDocumentParams) {
+        let _ = params;
+        warn!("Got a notebookDocument/didOpen notification, but it is not implemented");
+    }
+
+    /// The [`notebookDocument/didChange`] notification is sent from the client to the server when a notebook document changes.
+    /// It is only sent for notebooks selected by the `notebookDocumentSync` server capability.
+    ///
+    /// [`notebookDocument/didChange`]: https://microsoft.github.io/language-server-protocol/specification#notebookDocument_didChange
+    ///
+    /// TODO: Write more documentation
+    #[rpc(name = "notebookDocument/didChange")]
+    async fn notebook_did_change(&self, params: DidChangeNotebookDocumentParams) {
+        let _ = params;
+        warn!("Got a notebookDocument/didChange notification, but it is not implemented");
+    }
+
+    /// The [`notebookDocument/didSave`] notification is sent from the client to the server when a notebook document is saved.
+    /// It is only sent for notebooks selected by the `notebookDocumentSync` server capability.
+    ///
+    /// [`notebookDocument/didSave`]: https://microsoft.github.io/language-server-protocol/specification#notebookDocument_didSave
+    #[rpc(name = "notebookDocument/didSave")]
+    async fn notebook_did_save(&self, params: DidSaveNotebookDocumentParams) {
+        let _ = params;
+        warn!("Got a notebookDocument/didSave notification, but it is not implemented");
+    }
+
+    /// The [`notebookDocument/didClose`] notification is sent from the client to the server when a notebook document is closed.
+    /// It is only sent for notebooks selected by the `notebookDocumentSync` server capability.
+    ///
+    /// [`notebookDocument/didClose`]: https://microsoft.github.io/language-server-protocol/specification#notebookDocument_didClose
+    ///
+    /// TODO: Write more documentation
+    #[rpc(name = "notebookDocument/didClose")]
+    async fn notebook_did_close(&self, params: DidCloseNotebookDocumentParams) {
+        let _ = params;
+        warn!("Got a notebookDocument/didClose notification, but it is not implemented");
+    }
+
     // Language Features
 
     /// The [`textDocument/declaration`] request asks the server for the declaration location of a
