@@ -1,11 +1,11 @@
 # tower-lsp
 
-[![Build Status][build-badge]][build-url]
+[![CI][ci-badge]][ci-badge-url]
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
 
-[build-badge]: https://github.com/ebkalderon/tower-lsp/workflows/rust/badge.svg
-[build-url]: https://github.com/ebkalderon/tower-lsp/actions
+[ci-badge]: https://github.com/ebkalderon/tower-lsp/actions/workflows/ci.yml/badge.svg?branch=master
+[ci-badge-url]: https://github.com/ebkalderon/tower-lsp/actions
 [crates-badge]: https://img.shields.io/crates/v/tower-lsp.svg
 [crates-url]: https://crates.io/crates/tower-lsp
 [docs-badge]: https://docs.rs/tower-lsp/badge.svg
