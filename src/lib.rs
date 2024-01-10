@@ -94,13 +94,15 @@ use lsp_types::request::{
     GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
 };
 use lsp_types::*;
-use serde_json::Value;
 use tower_lsp_macros::rpc;
 use tracing::{error, warn};
 
 use self::jsonrpc::{Error, Result};
 
 pub mod jsonrpc;
+pub mod serde_json {
+    pub use serde_json::Value;
+}
 
 mod codec;
 mod service;
