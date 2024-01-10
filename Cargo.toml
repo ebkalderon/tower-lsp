@@ -26,7 +26,10 @@ async-trait = "0.1"
 auto_impl = "1.0"
 bytes = "1.0"
 dashmap = "5.1"
-futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+futures = { version = "0.3", default-features = false, features = [
+    "std",
+    "async-await",
+] }
 httparse = "1.8"
 lsp-types = "0.94.1"
 memchr = "2.5"
@@ -41,10 +44,18 @@ tracing = "0.1"
 [dev-dependencies]
 async-tungstenite = { version = "0.22", features = ["tokio-runtime"] }
 tracing-subscriber = "0.3"
-tokio = { version = "1.17", features = ["io-util", "io-std", "macros", "rt-multi-thread"] }
+tokio = { version = "1.17", features = [
+    "io-util",
+    "io-std",
+    "macros",
+    "rt-multi-thread",
+] }
 tokio-util = { version = "0.7", features = ["compat"] }
 ws_stream_tungstenite = { version = "0.10", features = ["tokio_io"] }
 
 [workspace]
 members = [".", "./tower-lsp-macros"]
 default-members = ["."]
+
+[patch.crates-io]
+lsp-types = { git = 'https://github.com/zebreus/lsp-types.git' }
