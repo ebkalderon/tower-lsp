@@ -11,6 +11,7 @@ use futures::channel::mpsc::{self, Sender};
 use futures::future::BoxFuture;
 use futures::sink::SinkExt;
 use lsp_types::*;
+use lsp_types::request::WorkspaceDiagnosticRefresh;
 use serde::Serialize;
 use serde_json::Value;
 use tower::Service;
