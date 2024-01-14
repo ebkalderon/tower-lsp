@@ -171,6 +171,15 @@ impl Error {
     pub const fn content_modified() -> Self {
         Error::new(ErrorCode::ContentModified)
     }
+
+    /// Sets a custom `message`.
+    pub fn message<M>(mut self, message: M) -> Self
+    where
+        M: Into<Cow<'static, str>>,
+    {
+        self.message = message.into();
+        self
+    }
 }
 
 impl Display for Error {
