@@ -10,6 +10,7 @@ use std::task::{Context, Poll};
 use futures::channel::mpsc::{self, Sender};
 use futures::future::BoxFuture;
 use futures::sink::SinkExt;
+use lsp_types::request::WorkspaceDiagnosticRefresh;
 use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
@@ -210,10 +211,12 @@ impl Client {
         use lsp_types::notification::TelemetryEvent;
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
-            Ok(mut value) => {
-                if !value.is_null() && !value.is_array() && !value.is_object() {
-                    value = Value::Array(vec![value]);
-                }
+            Ok(value) => {
+                let value = match value {
+                    Value::Object(value) => OneOf::Left(value),
+                    Value::Array(value) => OneOf::Right(value),
+                    value => OneOf::Right(vec![value]),
+                };
                 self.send_notification_unchecked::<TelemetryEvent>(value)
                     .await;
             }
@@ -672,20 +675,24 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn telemetry_event() {
         let null = json!(null);
-        let expected = Request::from_notification::<TelemetryEvent>(null.clone());
+        let value = OneOf::Right(vec![null.clone()]);
+        let expected = Request::from_notification::<TelemetryEvent>(value);
         assert_client_message(|p| async move { p.telemetry_event(null).await }, expected).await;
 
         let array = json!([1, 2, 3]);
-        let expected = Request::from_notification::<TelemetryEvent>(array.clone());
+        let value = OneOf::Right(array.as_array().unwrap().to_owned());
+        let expected = Request::from_notification::<TelemetryEvent>(value);
         assert_client_message(|p| async move { p.telemetry_event(array).await }, expected).await;
 
         let object = json!({});
-        let expected = Request::from_notification::<TelemetryEvent>(object.clone());
+        let value = OneOf::Left(object.as_object().unwrap().to_owned());
+        let expected = Request::from_notification::<TelemetryEvent>(value);
         assert_client_message(|p| async move { p.telemetry_event(object).await }, expected).await;
 
         let other = json!("hello");
         let wrapped = Value::Array(vec![other.clone()]);
-        let expected = Request::from_notification::<TelemetryEvent>(wrapped);
+        let value = OneOf::Right(wrapped.as_array().unwrap().to_owned());
+        let expected = Request::from_notification::<TelemetryEvent>(value);
         assert_client_message(|p| async move { p.telemetry_event(other).await }, expected).await;
     }
 
