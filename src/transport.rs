@@ -11,7 +11,9 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use futures::channel::mpsc;
-use futures::{future, join, stream, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt};
+use futures::{
+    future, join, stream, stream_select, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt,
+};
 use tower::Service;
 use tracing::error;
 
@@ -27,7 +29,7 @@ const MESSAGE_QUEUE_SIZE: usize = 100;
 /// This socket handles the server-to-client half of the bidirectional communication stream.
 pub trait Loopback {
     /// Yields a stream of pending server-to-client requests.
-    type RequestStream: Stream<Item = Request>;
+    type RequestStream: Stream<Item = Request> + Unpin;
     /// Routes client-to-server responses back to the server.
     type ResponseSink: Sink<Response> + Unpin;
 
@@ -119,8 +121,8 @@ where
             .map(|res| Ok(Message::Response(res)))
             .forward(responses_tx.clone().sink_map_err(|_| unreachable!()))
             .map(|_| ());
-
-        let print_output = stream::select(responses_rx, client_requests.map(Message::Request))
+        
+        let print_output = stream_select!(responses_rx, client_requests.map(Message::Request))
             .map(Ok)
             .forward(framed_stdout.sink_map_err(|e| error!("failed to encode message: {}", e)))
             .map(|_| ());
