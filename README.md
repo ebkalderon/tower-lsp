@@ -101,6 +101,10 @@ any type of version in the `proposed` features.
 
 - [tower-lsp-boilerplate](https://github.com/IWANABETHATGUY/tower-lsp-boilerplate) - Useful GitHub project template which makes writing new language servers easier.
 
+## Examples
+
+- [Markdown Oxide](https://github.com/Feel-ix-343/markdown-oxide): An advanced markdown language server modeled after Obsidian
+
 ## License
 
 `tower-lsp` is free and open source software distributed under the terms of
