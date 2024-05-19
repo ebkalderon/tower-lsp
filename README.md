@@ -101,6 +101,11 @@ any type of version in the `proposed` features.
 
 - [tower-lsp-boilerplate](https://github.com/IWANABETHATGUY/tower-lsp-boilerplate) - Useful GitHub project template which makes writing new language servers easier.
 
+## Projects using tower-lsp
+
+- [Enderpy](https://github.com/Glyphack/enderpy/tree/main/lsp) - Enderpy is a code completion engine, static type checker & language server for python.
+- [Turborepo](https://github.com/vercel/turbo/tree/main/crates/turborepo-lsp) - This crate is a dual binary / library that provides a language server for turborepo.
+
 ## License
 
 `tower-lsp` is free and open source software distributed under the terms of
