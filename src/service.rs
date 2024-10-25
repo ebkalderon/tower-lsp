@@ -55,7 +55,7 @@ impl Display for ExitedError {
 #[derive(Debug)]
 pub struct LspService<S> {
     inner: Router<S, ExitedError>,
-    state: Arc<ServerState>,
+    pub(crate) state: Arc<ServerState>,
 }
 
 impl<S: LanguageServer> LspService<S> {

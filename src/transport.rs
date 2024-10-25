@@ -11,13 +11,14 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use futures::channel::mpsc;
-use futures::{future, join, stream, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt};
+use futures::{future, stream, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt};
 use tower::Service;
 use tracing::error;
 
 use crate::codec::{LanguageServerCodec, ParseError};
 use crate::jsonrpc::{Error, Id, Message, Request, Response};
 use crate::service::{ClientSocket, RequestStream, ResponseSink};
+use crate::LanguageServer;
 
 const DEFAULT_MAX_CONCURRENCY: usize = 4;
 const MESSAGE_QUEUE_SIZE: usize = 100;
@@ -99,11 +100,8 @@ where
     }
 
     /// Spawns the service with messages read through `stdin` and responses written to `stdout`.
-    pub async fn serve<T>(self, mut service: T)
-    where
-        T: Service<Request, Response = Option<Response>> + Send + 'static,
-        T::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-        T::Future: Send,
+    pub async fn serve<S>(self, mut service: crate::LspService<S>)
+    where S: LanguageServer,
     {
         let (client_requests, mut client_responses) = self.loopback.split();
         let (client_requests, client_abort) = stream::abortable(client_requests);
@@ -130,14 +128,18 @@ where
                 match msg {
                     Ok(Message::Request(req)) => {
                         if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
-                            error!("{}", display_sources(err.into().as_ref()));
+                            error!("{}", display_sources(&err));
                             return;
                         }
 
                         let fut = service.call(req).unwrap_or_else(|err| {
-                            error!("{}", display_sources(err.into().as_ref()));
+                            error!("{}", display_sources(&err));
                             None
                         });
+
+                        if service.state.get() == crate::service::State::Exited {
+                            break
+                        }
 
                         server_tasks_tx.send(fut).await.unwrap();
                     }
@@ -160,7 +162,14 @@ where
             client_abort.abort();
         };
 
-        join!(print_output, read_input, process_server_tasks);
+        // Run all the coroutines, waiting for any of them to stop.
+        futures::select! {
+            () = print_output.fuse() => unreachable!(),
+            () = read_input.fuse() => {
+                // `read_input` exits when the server shuts down gracefully.
+            },
+            () = process_server_tasks.fuse() => unreachable!(),
+        };
     }
 }
 
