@@ -111,13 +111,9 @@ impl<B, C> Progress<B, C> {
     }
 
     /// Starts reporting progress to the client, returning an [`OngoingProgress`] handle.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn begin(self) -> OngoingProgress<B, C> {
         self.client
-            .send_notification::<ProgressNotification>(ProgressParams {
+            .send_notification_unchecked::<ProgressNotification>(ProgressParams {
                 token: self.token.clone(),
                 value: ProgressParamsValue::WorkDone(WorkDoneProgress::Begin(self.begin_msg)),
             })
@@ -153,7 +149,7 @@ pub struct OngoingProgress<B, C> {
 impl<B, C> OngoingProgress<B, C> {
     async fn send_progress_report(&self, report: WorkDoneProgressReport) {
         self.client
-            .send_notification::<ProgressNotification>(ProgressParams {
+            .send_notification_unchecked::<ProgressNotification>(ProgressParams {
                 token: self.token.clone(),
                 value: ProgressParamsValue::WorkDone(WorkDoneProgress::Report(report)),
             })
@@ -167,10 +163,6 @@ impl OngoingProgress<Unbounded, NotCancellable> {
     /// This message is expected to contain information complementary to the `title` string passed
     /// into [`Client::progress`], such as `"3/25 files"`, `"project/src/module2"`, or
     /// `"node_modules/some_dep"`.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report<M>(&self, message: M)
     where
         M: Into<String>,
@@ -185,10 +177,6 @@ impl OngoingProgress<Unbounded, NotCancellable> {
 
 impl OngoingProgress<Unbounded, Cancellable> {
     /// Enables or disables the "cancel" button in the client UI.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report(&self, enable_cancel_btn: bool) {
         self.send_progress_report(WorkDoneProgressReport {
             cancellable: Some(enable_cancel_btn),
@@ -205,10 +193,6 @@ impl OngoingProgress<Unbounded, Cancellable> {
     /// `"node_modules/some_dep"`.
     ///
     /// If `enable_cancel_btn` is `None`, the state of the "cancel" button in the UI is unchanged.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report_with_message<M>(&self, message: M, enable_cancel_btn: Option<bool>)
     where
         M: Into<String>,
@@ -225,10 +209,6 @@ impl OngoingProgress<Unbounded, Cancellable> {
 impl OngoingProgress<Bounded, NotCancellable> {
     /// Updates the progress percentage displayed in the client UI, where a value of `100` for
     /// example is considered 100% by the client.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report(&self, percentage: u32) {
         self.send_progress_report(WorkDoneProgressReport {
             percentage: Some(percentage),
@@ -243,10 +223,6 @@ impl OngoingProgress<Bounded, NotCancellable> {
     /// This message is expected to contain information complementary to the `title` string passed
     /// into [`Client::progress`], such as `"3/25 files"`, `"project/src/module2"`, or
     /// `"node_modules/some_dep"`.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report_with_message<M>(&self, message: M, percentage: u32)
     where
         M: Into<String>,
@@ -265,10 +241,6 @@ impl OngoingProgress<Bounded, Cancellable> {
     /// example is considered 100% by the client.
     ///
     /// If `enable_cancel_btn` is `None`, the state of the "cancel" button in the UI is unchanged.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report(&self, percentage: u32, enable_cancel_btn: Option<bool>) {
         self.send_progress_report(WorkDoneProgressReport {
             cancellable: enable_cancel_btn,
@@ -284,10 +256,6 @@ impl OngoingProgress<Bounded, Cancellable> {
     /// This message is expected to contain information complementary to the `title` string passed
     /// into [`Client::progress`], such as `"3/25 files"`, `"project/src/module2"`, or
     /// `"node_modules/some_dep"`.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn report_with_message<M>(
         &self,
         message: M,
@@ -320,10 +288,6 @@ impl<C> OngoingProgress<Bounded, C> {
 
 impl<B, C> OngoingProgress<B, C> {
     /// Indicates this long-running operation is complete.
-    ///
-    /// # Initialization
-    ///
-    /// This notification will only be sent if the server is initialized.
     pub async fn finish(self) {
         self.finish_inner(None).await;
     }
@@ -347,7 +311,7 @@ impl<B, C> OngoingProgress<B, C> {
 
     async fn finish_inner(self, message: Option<String>) {
         self.client
-            .send_notification::<ProgressNotification>(ProgressParams {
+            .send_notification_unchecked::<ProgressNotification>(ProgressParams {
                 token: self.token,
                 value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(
                     lsp_types::WorkDoneProgressEnd { message },

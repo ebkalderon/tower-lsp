@@ -10,6 +10,7 @@ use std::task::{Context, Poll};
 use futures::channel::mpsc::{self, Sender};
 use futures::future::BoxFuture;
 use futures::sink::SinkExt;
+use lsp_types::request::WorkspaceDiagnosticRefresh;
 use lsp_types::*;
 use serde::Serialize;
 use serde_json::Value;
@@ -214,6 +215,11 @@ impl Client {
                 if !value.is_null() && !value.is_array() && !value.is_object() {
                     value = Value::Array(vec![value]);
                 }
+                let value = if value.is_object() {
+                    OneOf::Left(value.as_object().unwrap().clone())
+                } else {
+                    OneOf::Right(value.as_array().unwrap().clone())
+                };
                 self.send_notification_unchecked::<TelemetryEvent>(value)
                     .await;
             }
@@ -361,7 +367,7 @@ impl Client {
     /// This notification will only be sent if the server is initialized.
     pub async fn publish_diagnostics(
         &self,
-        uri: Url,
+        uri: Uri,
         diags: Vec<Diagnostic>,
         version: Option<i32>,
     ) {
@@ -456,10 +462,6 @@ impl Client {
     /// performed, e.g. "Indexing" or "Linking Dependencies".
     ///
     /// [`ProgressToken`]: https://docs.rs/lsp-types/latest/lsp_types/type.ProgressToken.html
-    ///
-    /// # Initialization
-    ///
-    /// These notifications will only be sent if the server is initialized.
     ///
     /// # Examples
     ///
@@ -671,27 +673,35 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn telemetry_event() {
-        let null = json!(null);
-        let expected = Request::from_notification::<TelemetryEvent>(null.clone());
-        assert_client_message(|p| async move { p.telemetry_event(null).await }, expected).await;
+        let object = json!({});
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Left(
+            object.as_object().unwrap().clone(),
+        ));
+        assert_client_message(|p| async move { p.telemetry_event(object).await }, expected).await;
 
         let array = json!([1, 2, 3]);
-        let expected = Request::from_notification::<TelemetryEvent>(array.clone());
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Right(
+            array.as_array().unwrap().clone(),
+        ));
         assert_client_message(|p| async move { p.telemetry_event(array).await }, expected).await;
 
         let object = json!({});
-        let expected = Request::from_notification::<TelemetryEvent>(object.clone());
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Left(
+            object.as_object().unwrap().clone(),
+        ));
         assert_client_message(|p| async move { p.telemetry_event(object).await }, expected).await;
 
         let other = json!("hello");
         let wrapped = Value::Array(vec![other.clone()]);
-        let expected = Request::from_notification::<TelemetryEvent>(wrapped);
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Right(
+            wrapped.as_array().unwrap().clone(),
+        ));
         assert_client_message(|p| async move { p.telemetry_event(other).await }, expected).await;
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn publish_diagnostics() {
-        let uri: Url = "file:///path/to/file".parse().unwrap();
+        let uri: Uri = "file:///path/to/file".parse().unwrap();
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);

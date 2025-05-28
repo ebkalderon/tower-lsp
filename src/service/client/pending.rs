@@ -64,6 +64,7 @@ impl Pending {
 impl Debug for Pending {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         #[derive(Debug)]
+        #[allow(dead_code)]
         struct Waiters(usize);
 
         let iter = self
