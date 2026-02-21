@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::sync::Arc;
 
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::{DashMap, mapref::entry::Entry};
 use futures::future::{self, Either};
 use tracing::{debug, info};
 

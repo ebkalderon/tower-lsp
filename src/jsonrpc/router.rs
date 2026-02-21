@@ -9,9 +9,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::future::{self, BoxFuture, FutureExt};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
-use tower::{util::BoxService, Layer, Service};
+use tower::{Layer, Service, util::BoxService};
 
 use crate::jsonrpc::ErrorCode;
 
@@ -282,8 +282,8 @@ mod private {
 mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::json;
-    use tower::layer::layer_fn;
     use tower::ServiceExt;
+    use tower::layer::layer_fn;
 
     use super::*;
 

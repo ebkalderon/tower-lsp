@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::{DashMap, mapref::entry::Entry};
 use futures::channel::oneshot;
 use tracing::warn;
 
@@ -64,6 +64,7 @@ impl Pending {
 impl Debug for Pending {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         #[derive(Debug)]
+        #[allow(dead_code)]
         struct Waiters(usize);
 
         let iter = self

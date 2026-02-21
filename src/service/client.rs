@@ -3,8 +3,8 @@
 pub use self::socket::{ClientSocket, RequestStream, ResponseSink};
 
 use std::fmt::{self, Debug, Display, Formatter};
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::task::{Context, Poll};
 
 use futures::channel::mpsc::{self, Sender};
@@ -18,8 +18,8 @@ use tracing::{error, trace};
 
 use self::pending::Pending;
 use self::progress::Progress;
-use super::state::{ServerState, State};
 use super::ExitedError;
+use super::state::{ServerState, State};
 use crate::jsonrpc::{self, Error, ErrorCode, Id, Request, Response};
 
 pub mod progress;
@@ -210,11 +210,14 @@ impl Client {
         use lsp_types::notification::TelemetryEvent;
         match serde_json::to_value(data) {
             Err(e) => error!("invalid JSON in `telemetry/event` notification: {}", e),
-            Ok(mut value) => {
-                if !value.is_null() && !value.is_array() && !value.is_object() {
-                    value = Value::Array(vec![value]);
-                }
-                self.send_notification_unchecked::<TelemetryEvent>(value)
+            Ok(value) => {
+                let params = match value {
+                    Value::Array(arr) => OneOf::Right(arr),
+                    Value::Object(map) => OneOf::Left(map),
+                    Value::Null => OneOf::Right(vec![]),
+                    other => OneOf::Right(vec![other]),
+                };
+                self.send_notification_unchecked::<TelemetryEvent>(params)
                     .await;
             }
         }
@@ -347,6 +350,7 @@ impl Client {
     ///
     /// This request was introduced in specification version 3.17.0.
     pub async fn workspace_diagnostic_refresh(&self) -> jsonrpc::Result<()> {
+        use lsp_types::request::WorkspaceDiagnosticRefresh;
         self.send_request::<WorkspaceDiagnosticRefresh>(()).await
     }
 
@@ -361,7 +365,7 @@ impl Client {
     /// This notification will only be sent if the server is initialized.
     pub async fn publish_diagnostics(
         &self,
-        uri: Url,
+        uri: Uri,
         diags: Vec<Diagnostic>,
         version: Option<i32>,
     ) {
@@ -672,26 +676,31 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn telemetry_event() {
         let null = json!(null);
-        let expected = Request::from_notification::<TelemetryEvent>(null.clone());
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Right(vec![]));
         assert_client_message(|p| async move { p.telemetry_event(null).await }, expected).await;
 
         let array = json!([1, 2, 3]);
-        let expected = Request::from_notification::<TelemetryEvent>(array.clone());
+        let expected = Request::from_notification::<TelemetryEvent>(OneOf::Right(vec![
+            json!(1),
+            json!(2),
+            json!(3),
+        ]));
         assert_client_message(|p| async move { p.telemetry_event(array).await }, expected).await;
 
         let object = json!({});
-        let expected = Request::from_notification::<TelemetryEvent>(object.clone());
+        let expected =
+            Request::from_notification::<TelemetryEvent>(OneOf::Left(serde_json::Map::new()));
         assert_client_message(|p| async move { p.telemetry_event(object).await }, expected).await;
 
         let other = json!("hello");
-        let wrapped = Value::Array(vec![other.clone()]);
-        let expected = Request::from_notification::<TelemetryEvent>(wrapped);
+        let expected =
+            Request::from_notification::<TelemetryEvent>(OneOf::Right(vec![other.clone()]));
         assert_client_message(|p| async move { p.telemetry_event(other).await }, expected).await;
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn publish_diagnostics() {
-        let uri: Url = "file:///path/to/file".parse().unwrap();
+        let uri: Uri = "file:///path/to/file".parse().unwrap();
         let diagnostics = vec![Diagnostic::new_simple(Default::default(), "example".into())];
 
         let params = PublishDiagnosticsParams::new(uri.clone(), diagnostics.clone(), None);

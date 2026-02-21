@@ -4,8 +4,8 @@ use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 
 use lsp_types::{
-    notification::Progress as ProgressNotification, ProgressParams, ProgressParamsValue,
-    ProgressToken, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressReport,
+    ProgressParams, ProgressParamsValue, ProgressToken, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressReport, notification::Progress as ProgressNotification,
 };
 
 use super::Client;

@@ -1,6 +1,6 @@
 //! Service abstraction for language servers.
 
-pub use self::client::{progress, Client, ClientSocket, RequestStream, ResponseSink};
+pub use self::client::{Client, ClientSocket, RequestStream, ResponseSink, progress};
 
 pub(crate) use self::pending::Pending;
 pub(crate) use self::state::{ServerState, State};
@@ -13,10 +13,10 @@ use futures::future::{self, BoxFuture, FutureExt};
 use serde_json::Value;
 use tower::Service;
 
+use crate::LanguageServer;
 use crate::jsonrpc::{
     Error, ErrorCode, FromParams, IntoResponse, Method, Request, Response, Router,
 };
-use crate::LanguageServer;
 
 pub(crate) mod layers;
 

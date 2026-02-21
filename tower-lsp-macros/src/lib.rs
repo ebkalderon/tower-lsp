@@ -6,7 +6,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, FnArg, ItemTrait, LitStr, ReturnType, TraitItem};
+use syn::{FnArg, ItemTrait, LitStr, ReturnType, TraitItem, parse_macro_input};
 
 /// Macro for generating LSP server implementation from [`lsp-types`](https://docs.rs/lsp-types).
 ///
@@ -39,7 +39,7 @@ struct MethodCall<'a> {
     result: Option<&'a syn::Type>,
 }
 
-fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall> {
+fn parse_method_calls(lang_server_trait: &ItemTrait) -> Vec<MethodCall<'_>> {
     let mut calls = Vec::new();
 
     for item in &lang_server_trait.items {

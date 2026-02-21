@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+* Bump minimum supported Rust version from `1.64.0` to `1.92.0`.
+* Update `edition` from `2021` to `2024`.
+* Update `lsp-types` from `0.94.1` to `0.97`.
+  * `Url` type has been replaced with `Uri` (backed by `fluent-uri`).
+  * `TelemetryEvent` notification params changed from `Value` to `OneOf<Map<String, Value>, Vec<Value>>`.
+* Update `tower` from `0.4` to `0.5`.
+* Update dev-dependency `async-tungstenite` from `0.22` to `0.29`.
+* Update dev-dependency `ws_stream_tungstenite` from `0.10` to `0.15`.
+* Replace archived `actions-rs` GitHub Actions with maintained alternatives.
+* Derive MSRV from `Cargo.toml` in CI workflow.
+* Address Clippy lints for edition 2024.
+
+### Fixed
+
+* Add missing `use lsp_types::request::WorkspaceDiagnosticRefresh` import in client module.
+
 ## [0.20.0] - 2023-08-10
 
 ### Added

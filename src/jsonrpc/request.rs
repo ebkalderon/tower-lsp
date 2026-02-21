@@ -116,7 +116,7 @@ impl Display for Request {
                 fn io_error<E>(_: E) -> io::Error {
                     // Error value does not matter because fmt::Display impl below just
                     // maps it to fmt::Error
-                    io::Error::new(io::ErrorKind::Other, "fmt error")
+                    io::Error::other("fmt error")
                 }
                 let s = str::from_utf8(buf).map_err(io_error)?;
                 self.inner.write_str(s).map_err(io_error)?;
